@@ -5,7 +5,7 @@ env = Environment(CPPPATH='src')
 env['FRAMEWORKS'] = ['OpenGL', 'Foundation', 'Cocoa'] 
 
 flags = '-Wall -pedantic -g'
-libs = ['SDL','SDL_net','moag']
+libs = ['SDL','SDL_net', 'SDL_ttf','moag']
 
 Library('moag', Glob('moag*.c'), CPPFLAGS=flags)
 

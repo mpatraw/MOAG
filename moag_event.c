@@ -7,9 +7,13 @@ static int _keyTable[SDLK_LAST] = {0};
 static int _x = 0;
 static int _y = 0;
 
+static int _quitting = 0;
+
 void MOAG_GrabEvents(void)
 {
     static SDL_Event ev;
+    
+    _quitting = 0;
     
     while (SDL_PollEvent(&ev))
     {
@@ -24,6 +28,10 @@ void MOAG_GrabEvents(void)
         case SDL_MOUSEMOTION:
             _x = ev.motion.x;
             _y = ev.motion.y;
+            break;
+        case SDL_QUIT:
+            _quitting = 1;
+            break;
         default:
             break;
         }
@@ -54,5 +62,10 @@ void MOAG_GetMousePosition(int *x, int *y)
 {
     *x = _x;
     *y = _y;
+}
+
+int MOAG_IsQuitting(void)
+{
+    return _quitting;
 }
 

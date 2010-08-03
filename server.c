@@ -44,7 +44,7 @@ void server_update(void *arg)
     {
         while (clients[i] && MOAG_HasActivity(clients[i], timeout))
         {
-            if (MOAG_RecieveRaw(clients[i], buf, 4) != -1)
+            if (MOAG_RecieveRaw(clients[i], buf, 8) != -1)
             {
                 data = MOAG_Unpack32(buf);
                 /* Dispatch to the clients. */
@@ -52,7 +52,7 @@ void server_update(void *arg)
                 {
                     if (j != i && clients[j])
                     {
-                        if (MOAG_SendRaw(clients[j], buf, 4) == -1)
+                        if (MOAG_SendRaw(clients[j], buf, 8) == -1)
                         {
                             printf("Client DCed\n");
                             MOAG_Disconnect(clients[j]);

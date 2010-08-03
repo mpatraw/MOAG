@@ -1,24 +1,47 @@
 
 #include "moag_window.h"
 #include <SDL/SDL.h>
+#include <SDL/SDL_ttf.h>
 
 #define BPP    32
 #define FLAGS  SDL_SWSURFACE | SDL_DOUBLEBUF
+
+static TTF_Font *_font = NULL;
 
 int MOAG_OpenWindow(int width, int height, const char *title)
 {
     if (SDL_Init(SDL_INIT_EVERYTHING) == -1)
         return -1;
     
+    if (TTF_Init() == -1)
+        return -1;
+    
     if (!SDL_SetVideoMode(width, height, BPP, FLAGS))
         return -1;
+    
+    SDL_WM_SetCaption(title, NULL);
     
     return 0;
 }
 
 void MOAG_CloseWindow(void)
 {
+    TTF_Quit();
     SDL_Quit();
+}
+
+int MOAG_SetFont(const char *ttf, int ptsize)
+{
+    if (_font)
+        TTF_CloseFont(_font);
+
+    _font = TTF_OpenFont(ttf, ptsize);
+    
+    if (!_font)
+        return -1;
+        
+    
+    return 0;
 }
 
 void MOAG_SetBlock(int x, int y, int w, int h, Uint8 r, Uint8 g, Uint8 b)
@@ -106,6 +129,31 @@ void MOAG_GetPixel(int x, int y, Uint8 *r, Uint8 *g, Uint8 *b)
     }
     
     SDL_GetRGB(pixel, surface->format, r, g, b);
+}
+
+void MOAG_SetString(int x, int y, const char *str, Uint8 r, Uint8 g, Uint8 b)
+{
+    SDL_Surface *text;
+    SDL_Color color;
+    SDL_Rect pos;
+    
+    if (!_font)
+        return;
+    
+    color.r = r;
+    color.g = g;
+    color.b = b;
+    
+    text = TTF_RenderText_Solid(_font, str, color);
+    
+    if (!text)
+        return;
+    
+    pos.x = x;
+    pos.y = y;
+    
+    SDL_BlitSurface(text, NULL, SDL_GetVideoSurface(), &pos);
+    SDL_FreeSurface(text);
 }
 
 void MOAG_ClearWindow(Uint8 r, Uint8 g, Uint8 b)
