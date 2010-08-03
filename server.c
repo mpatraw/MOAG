@@ -34,7 +34,7 @@ void client_connect(void *arg)
 
 void server_update(void *arg)
 {
-    Uint32 buf[1];
+    Uint32 buf[2];
     Uint32 data;
     int i, j;
     int timeout = 200 / (numClients ? numClients : 1);
