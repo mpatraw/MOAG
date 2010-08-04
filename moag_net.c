@@ -98,7 +98,7 @@ int MOAG_SendRaw(MOAG_Connection con, void *data, int len)
     return 0;
 }
 
-int MOAG_RecieveRaw(MOAG_Connection con, void *data, int len)
+int MOAG_ReceiveRaw(MOAG_Connection con, void *data, int len)
 {
     TCPsocket sock;
     int recvd;
@@ -121,5 +121,15 @@ void MOAG_Pack32(Uint32 i, void *buffer)
 Uint32 MOAG_Unpack32(void *buffer)
 {
     return SDLNet_Read32(buffer);
+}
+
+void MOAG_Pack16(Uint16 i, void *buffer)
+{
+    SDLNet_Write16(i, buffer);
+}
+
+Uint16 MOAG_Unpack16(void *buffer)
+{
+    return SDLNet_Read16(buffer);
 }
 

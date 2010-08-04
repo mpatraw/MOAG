@@ -3,6 +3,8 @@
 #include <SDL/SDL.h>
 
 static int _keyTable[SDLK_LAST] = {0};
+static int _keyTablePressed[SDLK_LAST] = {0};
+static int _keyTableReleased[SDLK_LAST] = {0};
 
 static int _x = 0;
 static int _y = 0;
@@ -12,18 +14,26 @@ static int _quitting = 0;
 void MOAG_GrabEvents(void)
 {
     static SDL_Event ev;
+    int i;
     
     _quitting = 0;
     
+    for(i=0; i<SDLK_LAST; i++)
+        _keyTablePressed[i]=0;
+    for(i=0; i<SDLK_LAST; i++)
+        _keyTableReleased[i]=0;
+
     while (SDL_PollEvent(&ev))
     {
         switch (ev.type)
         {
         case SDL_KEYDOWN:
             _keyTable[ev.key.keysym.sym] = 1;
+            _keyTablePressed[ev.key.keysym.sym] = 1;
             break;
         case SDL_KEYUP:
             _keyTable[ev.key.keysym.sym] = 0;
+            _keyTableReleased[ev.key.keysym.sym] = 1;
             break;
         case SDL_MOUSEMOTION:
             _x = ev.motion.x;
@@ -38,9 +48,16 @@ void MOAG_GrabEvents(void)
     }
 }
 
-int MOAG_IsKeyDown(int key)
-{
+int MOAG_IsKeyDown(int key) {
     return _keyTable[key];
+}
+
+int MOAG_IsKeyPressed(int key) {
+    return _keyTablePressed[key];
+}
+
+int MOAG_IsKeyReleased(int key) {
+    return _keyTableReleased[key];
 }
 
 int MOAG_IsButtonDown(int button)
