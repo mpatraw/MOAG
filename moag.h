@@ -2,6 +2,7 @@
 #ifndef MOAG_H
 #define MOAG_H
 
+#include "moag_chunk.h"
 #include "moag_client.h"
 #include "moag_event.h"
 #include "moag_loop.h"

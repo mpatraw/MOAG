@@ -9,19 +9,32 @@
 #define MAX_BULLETS 256
 #define GRAVITY 0.1
 
+#define WIDTH  800
+#define HEIGHT 600
+
+#define LAND_CHUNK   1
+#define TANK_CHUNK   2
+#define BULLET_CHUNK 3
+
 void disconnect_client(int);
 
 MOAG_Connection clients[MAX_CLIENTS] = {NULL};
 int numClients = 0;
 
-static char land[800*600];
+static char land[WIDTH*HEIGHT];
 static struct Tank tanks[MAX_CLIENTS];
 static struct Bullet bullets[MAX_BULLETS];
 
 inline char landAt(int x, int y){
-    if(x<0 || x>=800 || y<0 || y>=600)
+    if(x<0 || x>=WIDTH || y<0 || y>=HEIGHT)
         return -1;
-    return land[y*800+x];
+    return land[y*WIDTH+x];
+}
+
+inline void setLandAt(int x, int y, char to) {
+    if(x<0 || x>=WIDTH || y<0 || y>=HEIGHT)
+        return;
+    land[y*WIDTH+x] = to;
 }
 
 void spawnTank(int id){
@@ -39,9 +52,9 @@ void spawnTank(int id){
 }
 
 void sendLand(int to, int x, int y, int w, int h){
-    char* buf;
-    int len;
+    int xx, yy;
     int i;
+    
     if(to<-1 || to>=MAX_CLIENTS)
         return;
     if(x<0){ w+=x; x=0; }
@@ -49,86 +62,104 @@ void sendLand(int to, int x, int y, int w, int h){
     if(x+w>800) w=800-x;
     if(y+h>800) h=600-y;
     if(w<=0 || h<=0 || x+w>800 || y+h>600)
-        return;        
+        return;
+    
+    /* Prepare chunk. */
+    MOAG_ChunkEnqueue8(LAND_CHUNK);
+    MOAG_ChunkEnqueue16(x);
+    MOAG_ChunkEnqueue16(y);
+    MOAG_ChunkEnqueue16(w);
+    MOAG_ChunkEnqueue16(h);
+    
+    printf("%d, %d: %d, %d\n", x, y, w, h);
+    int count = 0;
+    for (yy = y; yy < h + y; ++yy)
+        for (xx = x; xx < w + x; ++xx)
+        {
+            MOAG_ChunkEnqueue8(landAt(xx, yy));
+            count++;
+        }
+    printf("COUNT: %d\n", count);
+    fflush(stdout);
 
-    len=9+w*h;
-    buf=malloc(len);
-    buf[0]=1;
-    MOAG_Pack16((short)x,&buf[1]);
-    MOAG_Pack16((short)y,&buf[3]);
-    MOAG_Pack16((short)w,&buf[5]);
-    MOAG_Pack16((short)h,&buf[7]);
-    for(i=0;i<h;i++)
-        memcpy(&buf[9+i*w],&land[(y+i)*800+x],w);
-
+    /* Send chunk. */
     if(to!=-1){
-        if(clients[to] && MOAG_SendRaw(clients[to], buf, len)==-1)
+        if(clients[to] && MOAG_SendChunk(clients[to], -1, 1)==-1)
             disconnect_client(to);
     }else{
         for(i=0;i<MAX_CLIENTS;i++)
-            if(clients[i] && MOAG_SendRaw(clients[i], buf, len)==-1)
+            if(clients[i] && MOAG_SendChunk(clients[i], -1, 0)==-1)
                 disconnect_client(i);
     }
-    free(buf);
+    
+    /* Clear the queue buffer. */
+    MOAG_SendChunk(NULL, -1, 1);
 }
 
-void sendTank(int to, int id){
-    char buf[7];
+void sendTank(int to, int id) {
     int i;
     if(to<-1 || to>=MAX_CLIENTS || (to>=0 && !clients[to]) || id<0 || id>=MAX_CLIENTS)
         return;
 
-    buf[0]=2;
-    buf[1]=(char)id;
+    MOAG_ChunkEnqueue8(TANK_CHUNK);
+    MOAG_ChunkEnqueue8(id);
+    
     if(!tanks[id].active){
         tanks[id].x=-1;
         tanks[id].y=-1;
     }
-    MOAG_Pack16((short)tanks[id].x,&buf[2]);
-    MOAG_Pack16((short)tanks[id].y,&buf[4]);
-    buf[6]=(char)tanks[id].angle;
-    if(tanks[id].facingLeft)
-        buf[6]=-buf[6];
+    
+    MOAG_ChunkEnqueue16(tanks[id].x);
+    MOAG_ChunkEnqueue16(tanks[id].y);
+    if (tanks[id].facingLeft)
+        MOAG_ChunkEnqueue8(-tanks[id].angle);
+    else
+        MOAG_ChunkEnqueue8(tanks[id].angle);
 
-    if(to!=-1){
-        if(MOAG_SendRaw(clients[to], buf, 7)==-1)
+    if (to != -1) {
+        if (MOAG_SendChunk(clients[to], -1, 1) == -1)
             disconnect_client(to);
-    }else{
-        for(i=0;i<MAX_CLIENTS;i++)
-            if(clients[i] && MOAG_SendRaw(clients[i], buf, 7)==-1)
+    } else {
+        for (i = 0; i < MAX_CLIENTS; i++)
+            if (clients[i] && MOAG_SendChunk(clients[i], -1, 0) == -1)
                 disconnect_client(i);
     }
+    
+    /* Clear the queue buffer. */
+    MOAG_SendChunk(NULL, -1, 1);
 }
 
-void sendBullets(){
-    char buf[MAX_BULLETS*4+3];
-    int len;
+void sendBullets() {
     int i;
-    int count=0;
-
-    buf[0]=3;
-    len=3;
-    for(i=0;i<MAX_BULLETS;i++)
-        if(bullets[i].active){
-            MOAG_Pack16((short)bullets[i].x,&buf[len]);
-            len+=2;
-            MOAG_Pack16((short)bullets[i].y,&buf[len]);
-            len+=2;
+    int count = 0;
+    
+    for (i = 0; i < MAX_BULLETS; i++)
+        if (bullets[i].active)
             count++;
-        }
-    MOAG_Pack16((short)count,&buf[1]);
+    
+    /* Queue the bytes. */
+    MOAG_ChunkEnqueue8(BULLET_CHUNK);
+    MOAG_ChunkEnqueue16(count);
 
-    for(i=0;i<MAX_CLIENTS;i++)
-        if(clients[i] && MOAG_SendRaw(clients[i], buf, len)==-1)
+    for (i = 0; i < MAX_BULLETS; i++)
+        if (bullets[i].active) {
+            MOAG_ChunkEnqueue16(bullets[i].x);
+            MOAG_ChunkEnqueue16(bullets[i].y);
+        }
+
+    /* Send the bytes. */
+    for (i = 0; i < MAX_CLIENTS; i++)
+        if (clients[i] && MOAG_SendChunk(clients[i], -1, 0) == -1)
             disconnect_client(i);
+    
+    /* Clear the queue. */
+    MOAG_SendChunk(NULL, -1, 1);
 }
 
 void spawnClient(int id){
-    int i;
     spawnTank(id);
-    sendLand(id,0,0,800,600);
-    for(i=0;i<MAX_CLIENTS;i++)
-        sendTank(id,i);
+    sendLand(id,0,0,WIDTH,HEIGHT);
+    sendTank(id,-1);
 }
 
 void disconnect_client(int c){
@@ -164,10 +195,11 @@ void explode(int x, int y, int rad){
     for(iy=-rad;iy<=rad;iy++)
     for(ix=-rad;ix<=rad;ix++)
         if(landAt(x+ix,y+iy)==1 && ix*ix+iy*iy<rad*rad)
-            land[(y+iy)*800+x+ix]=0;
+            setLandAt(x+ix,y+iy, 0);
     for(i=0;i<MAX_CLIENTS;i++)
         if(tanks[i].active && sqr(tanks[i].x-x)+sqr(tanks[i].y-y)<rad*rad)
             spawnTank(i);
+            
     sendLand(-1,x-rad,y-rad,rad*2,rad*2);
 }
 
@@ -191,8 +223,8 @@ void tankUpdate(int id){
         t->facingLeft=0;
         for(i=0;i<8;i++)
             if(landAt(t->x+1,t->y-i)==0){
-                if((t->x++)>=800-10)
-                    t->x=800-10;
+                if((t->x++)>=WIDTH-10)
+                    t->x=WIDTH-10;
                 t->y-=i;
                 break;
             }
@@ -234,15 +266,21 @@ inline void bulletUpdate(int b){
 
 void initGame(){
     int i;
+    int x, y;
     for(i=0;i<MAX_CLIENTS;i++)
         tanks[i].active=0;
     for(i=0;i<MAX_BULLETS;i++)
         bullets[i].active=0;
-    for(i=0;i<800*600/2;i++)
-        land[i]=0;
-    for(;i<800*600;i++)
-        land[i]=1;
-    sendLand(-1,0,0,800,600);
+        
+    for (x = 0; x < WIDTH; ++x)
+        for (y = 0; y < HEIGHT; ++y)
+        {
+            if (y < HEIGHT / 2)
+                setLandAt(x, y, 0);
+            else
+                setLandAt(x, y, 1);
+        }
+    sendLand(-1,0,0,WIDTH,HEIGHT);
 }
 
 void stepGame(){
@@ -289,12 +327,14 @@ void server_update(void *arg)
 
     /* For each client... */
     for (i = 0; i < MAX_CLIENTS; ++i)
-        while (clients[i] && MOAG_HasActivity(clients[i], 0)){
+        while (clients[i] && MOAG_HasActivity(clients[i], 0)) {
             /* Get data. */
-            if (MOAG_ReceiveRaw(clients[i], &byte, 1) == -1){
+            if (MOAG_ReceiveChunk(clients[i], 1) == -1){
                 disconnect_client(i);
                 continue;
             }
+            
+            byte = MOAG_ChunkDequeue8();
 
             /* printf("client %d sent %d\n",i,byte); */
             switch(byte){

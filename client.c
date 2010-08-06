@@ -5,34 +5,45 @@
 #include "tank.h"
 
 struct Bullet{
-    short x,y;
+    Uint16 x,y;
 };
 
 #define MAX_CLIENTS 8
 #define MAX_BULLETS 256
 #define BUFLEN 256
 
-static char land[800*600];
+#define WIDTH 800
+#define HEIGHT 600
+
+#define LAND_CHUNK   1
+#define TANK_CHUNK   2
+#define BULLET_CHUNK 3
+
+static char land[WIDTH*HEIGHT];
 static struct Tank tanks[MAX_CLIENTS];
 static struct Bullet bullets[MAX_BULLETS];
 static struct Tank keys;
-static char sendbuf[BUFLEN];
-static int sendbuflen=0;
 static int numBullets=0;
 
 inline char landAt(int x, int y){
-    if(x<0 || x>=800 || y<0 || y>=600)
+    if(x<0 || x>=WIDTH || y<0 || y>=HEIGHT)
         return -1;
-    return land[y*800+x];
+    return land[y*WIDTH+x];
+}
+
+inline void setLandAt(int x, int y, char to) {
+    if(x<0 || x>=WIDTH || y<0 || y>=HEIGHT)
+        return;
+    land[y*WIDTH+x] = to;
 }
 
 void redrawLand(int x, int y, int w, int h){
     int ix,iy;
     if(x<0){ w+=x; x=0; }
     if(y<0){ h+=y; y=0; }
-    if(x+w>800) w=800-x;
-    if(y+h>800) h=600-y;
-    if(w<=0 || h<=0 || x+w>800 || y+h>600)
+    if(x+w>WIDTH) w=WIDTH-x;
+    if(y+h>WIDTH) h=HEIGHT-y;
+    if(w<=0 || h<=0 || x+w>WIDTH || y+h>HEIGHT)
         return;
     for(iy=y;iy<y+h;iy++)
     for(ix=x;ix<x+w;ix++)
@@ -65,7 +76,7 @@ void drawTank(int x, int y, int turretangle, char facingLeft){
     float rise=0;
     int next;
     int xlen;
-    if(x<0 || x>800-18 || y<0 || y>600-14)
+    if(x<0 || x>WIDTH-18 || y<0 || y>HEIGHT-14)
         return;
     for(iy=0;iy<14;iy++)
     for(ix=0;ix<18;ix++)
@@ -87,7 +98,7 @@ void drawTank(int x, int y, int turretangle, char facingLeft){
 void drawBullets(){
     int i;
     for(i=0;i<numBullets;i++){
-        if(bullets[i].x<1 || bullets[i].x>=800-1 || bullets[i].y<1 || bullets[i].y>=600-1)
+        if(bullets[i].x<1 || bullets[i].x>=WIDTH-1 || bullets[i].y<1 || bullets[i].y>=HEIGHT-1)
             continue;
         MOAG_SetPixel(bullets[i].x,bullets[i].y-1,255,255,255);
         MOAG_SetPixel(bullets[i].x-1,bullets[i].y,255,255,255);
@@ -100,7 +111,7 @@ void drawBullets(){
 void undrawBullets(){
     int i;
     for(i=0;i<numBullets;i++){
-        if(bullets[i].x<1 || bullets[i].x>=800-1 || bullets[i].y<1 || bullets[i].y>=600-1)
+        if(bullets[i].x<1 || bullets[i].x>=WIDTH-1 || bullets[i].y<1 || bullets[i].y>=HEIGHT-1)
             return;
         MOAG_SetPixel(bullets[i].x,bullets[i].y-1,40,40,40);
         MOAG_SetPixel(bullets[i].x-1,bullets[i].y,40,40,40);
@@ -118,7 +129,9 @@ void draw(void) {
             redrawLand(tanks[i].lastx-9,tanks[i].lasty-32,18,33);
     for(i=0;i<MAX_CLIENTS;i++)
         if(tanks[i].active){
-            const char str[]={i+'0','\0'};
+            char str[2];
+            str[0] = i+'0';
+            str[1] = '\0';
             drawTank(tanks[i].x-9,tanks[i].y-13,tanks[i].angle,tanks[i].facingLeft);
             MOAG_SetString(tanks[i].x-4,tanks[i].y-32,str,255,255,255);
             tanks[i].lastx=tanks[i].x;
@@ -143,9 +156,7 @@ void initClient(void) {
 }
 
 void sendByte(char k){
-    if(sendbuflen>=BUFLEN)
-        return;
-    sendbuf[sendbuflen++]=k;
+    MOAG_ChunkEnqueue8(k);
 }
 
 void update(void) {
@@ -189,14 +200,39 @@ void client_update(void *arg)
     char byte;
 
     while (MOAG_HasActivity(arg, 0)){
-        if (MOAG_ReceiveRaw(arg, &byte, 1) == -1){
+        if (MOAG_ReceiveChunk(arg, 1) == -1){
             printf("Disconnected from server!\n");
             exit(0);
         }
-
+        
+        byte = MOAG_ChunkDequeue8();
+        
         /* printf("server sent %d\n",byte); */
-        switch(byte){
-        case 1: { /* updated rectangle of land */
+        switch(byte) {
+        case LAND_CHUNK: { /* updated rectangle of land */
+            /*XXX DOESN'T WORK XXX
+            int x,y,w,h;
+            int xx, yy;
+            
+            MOAG_ReceiveChunk(arg, 8);
+            x = MOAG_ChunkDequeue16();
+            y = MOAG_ChunkDequeue16();
+            w = MOAG_ChunkDequeue16();
+            h = MOAG_ChunkDequeue16();
+            if(w<0) w=0;
+            if(h<0) h=0;
+            if(x<0 || y<0 || x+w>WIDTH || y+h>HEIGHT)
+                break;
+            
+            MOAG_ReceiveChunk(arg, w*h);
+            for (yy = y; yy < h + y; ++yy)
+                for (xx = x; xx < w + x; ++xx)
+                    setLandAt(xx, yy, MOAG_ChunkDequeue8());
+
+            printf("%d, %d: %d, %d\n", x, y, w, h);
+            printf("Size: %d\n", MOAG_IncomingChunkLength());
+            fflush(stdout);
+            redrawLand(x,y,w,h);*/
             char buf[8];
             int x,y,w,h;
             int i;
@@ -213,17 +249,18 @@ void client_update(void *arg)
                 MOAG_ReceiveRaw(arg, &land[(y+i)*800+x], w);
             redrawLand(x,y,w,h);
         } break;
-        case 2: { /* updated tank position */
-            char buf[6];
+        case TANK_CHUNK: { /* updated tank position */
             int id;
-            short x,y;
+            Uint16 x,y;
             char angle;
             char facingLeft=0;
-            MOAG_ReceiveRaw(arg, buf, 6);
-            id = buf[0];
-            x = MOAG_Unpack16(&buf[1]);
-            y = MOAG_Unpack16(&buf[3]);
-            angle = buf[5];
+            
+            MOAG_ReceiveChunk(arg, 6);
+            id = MOAG_ChunkDequeue8();
+            x = MOAG_ChunkDequeue16();
+            y = MOAG_ChunkDequeue16();
+            angle = MOAG_ChunkDequeue8();
+            
             if(id<0 || id>=MAX_CLIENTS)
                 break;
             if(angle<0){
@@ -241,37 +278,37 @@ void client_update(void *arg)
             tanks[id].angle=angle;
             tanks[id].facingLeft=facingLeft;
         } break;
-        case 3: { /* bullets */
-            char buf[2];
-            char* data;
+        case BULLET_CHUNK: { /* bullets */
             int i;
             undrawBullets();
-            MOAG_ReceiveRaw(arg, buf, 2);
-            numBullets = MOAG_Unpack16(&buf[0]);
+            
+            MOAG_ReceiveChunk(arg, 2);
+            numBullets = MOAG_ChunkDequeue16();
+            
             if(numBullets<=0)
                 break;
             if(numBullets>=MAX_BULLETS){ /* error! */
                 numBullets=0;
                 break;
             }
-            data = malloc(numBullets*4);
-            MOAG_ReceiveRaw(arg, data, numBullets*4);
-            for(i=0;i<numBullets;i++){
-                bullets[i].x = MOAG_Unpack16(&data[i*4]);
-                bullets[i].y = MOAG_Unpack16(&data[i*4+2]);
+            
+            MOAG_ReceiveChunk(arg, numBullets*4);
+            for (i = 0; i < numBullets; i++) {
+                bullets[i].x = MOAG_ChunkDequeue16();
+                bullets[i].y = MOAG_ChunkDequeue16();
             }
-            free(data);
+            
             drawBullets();
         } break;
-        default: break;
+        default:
+            break;
         }
     }
 
-    if(sendbuflen>0 && MOAG_SendRaw(arg, &sendbuf, sendbuflen) == -1){
+    if (MOAG_SendChunk(arg, -1, 1) == -1) {
         printf("Disconnected from server!\n");
         exit(0);
     }
-    sendbuflen=0;
 
     fflush(stdout);
 }
@@ -293,7 +330,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (MOAG_OpenWindow(800, 600, "MOAG") == -1) {
+    if (MOAG_OpenWindow(WIDTH, HEIGHT, "MOAG") == -1) {
         printf("Failed to start window\n");
         return 1;
     }
