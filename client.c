@@ -42,7 +42,7 @@ void redrawLand(int x, int y, int w, int h){
     if(x<0){ w+=x; x=0; }
     if(y<0){ h+=y; y=0; }
     if(x+w>WIDTH) w=WIDTH-x;
-    if(y+h>WIDTH) h=HEIGHT-y;
+    if(y+h>HEIGHT) h=HEIGHT-y;
     if(w<=0 || h<=0 || x+w>WIDTH || y+h>HEIGHT)
         return;
     for(iy=y;iy<y+h;iy++)
@@ -243,10 +243,10 @@ void client_update(void *arg)
             h = MOAG_Unpack16(&buf[6]);
             if(w<0) w=0;
             if(h<0) h=0;
-            if(x<0 || y<0 || x+w>800 || y+h>600)
+            if(x<0 || y<0 || x+w>WIDTH || y+h>HEIGHT)
                 break;
             for(i=0;i<h;i++)
-                MOAG_ReceiveRaw(arg, &land[(y+i)*800+x], w);
+                MOAG_ReceiveRaw(arg, &land[(y+i)*WIDTH+x], w);
             redrawLand(x,y,w,h);
         } break;
         case TANK_CHUNK: { /* updated tank position */

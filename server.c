@@ -38,7 +38,7 @@ inline void setLandAt(int x, int y, char to) {
 }
 
 void spawnTank(int id){
-    tanks[id].x=400;
+    tanks[id].x=WIDTH/2;
     tanks[id].y=80;
     tanks[id].angle=35;
     tanks[id].power=0;
@@ -59,9 +59,9 @@ void sendLand(int to, int x, int y, int w, int h){
         return;
     if(x<0){ w+=x; x=0; }
     if(y<0){ h+=y; y=0; }
-    if(x+w>800) w=800-x;
-    if(y+h>800) h=600-y;
-    if(w<=0 || h<=0 || x+w>800 || y+h>600)
+    if(x+w>WIDTH) w=WIDTH-x;
+    if(y+h>HEIGHT) h=HEIGHT-y;
+    if(w<=0 || h<=0 || x+w>WIDTH || y+h>HEIGHT)
         return;
     
     /* Prepare chunk. */
