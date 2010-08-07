@@ -137,6 +137,7 @@ void draw(void) {
             tanks[i].lastx=tanks[i].x;
             tanks[i].lasty=tanks[i].y;
         }
+    drawBullets();
 }
 
 
@@ -297,8 +298,6 @@ void client_update(void *arg)
                 bullets[i].x = MOAG_ChunkDequeue16();
                 bullets[i].y = MOAG_ChunkDequeue16();
             }
-            
-            drawBullets();
         } break;
         default:
             break;
