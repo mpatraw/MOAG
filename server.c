@@ -24,6 +24,7 @@ int numClients = 0;
 static char land[WIDTH*HEIGHT];
 static struct Tank tanks[MAX_CLIENTS];
 static struct Bullet bullets[MAX_BULLETS];
+int bulletsFired;
 
 inline char landAt(int x, int y){
     if(x<0 || x>=WIDTH || y<0 || y>=HEIGHT)
@@ -42,6 +43,7 @@ void spawnTank(int id){
     tanks[id].y=80;
     tanks[id].angle=35;
     tanks[id].power=0;
+    tanks[id].bullet=1;
     tanks[id].active=1;
     tanks[id].facingLeft=0;
     tanks[id].kLeft=0;
@@ -54,6 +56,7 @@ void spawnTank(int id){
 void sendLand(int to, int x, int y, int w, int h){
     int xx, yy;
     int i;
+    int count;
     
     if(to<-1 || to>=MAX_CLIENTS)
         return;
@@ -72,7 +75,7 @@ void sendLand(int to, int x, int y, int w, int h){
     MOAG_ChunkEnqueue16(h);
     
     printf("%d, %d: %d, %d\n", x, y, w, h);
-    int count = 0;
+    count = 0;
     for (yy = y; yy < h + y; ++yy)
         for (xx = x; xx < w + x; ++xx)
         {
@@ -173,11 +176,12 @@ void disconnect_client(int c){
 
 
 
-void fireBullet(int x, int y, float angle, float vel){
+void fireBullet(char type, int x, int y, float angle, float vel){
     int i;
     for(i=0;i<MAX_BULLETS;i++)
         if(!bullets[i].active){
             bullets[i].active=4;
+            bullets[i].type=type;
             bullets[i].x=x;
             bullets[i].y=y;
             bullets[i].fx=(float)x;
@@ -190,15 +194,18 @@ void fireBullet(int x, int y, float angle, float vel){
 
 inline int sqr(int n){ return n*n; }
 
-void explode(int x, int y, int rad){
+void explode(int x, int y, int rad, char type){
+    /* type: 0=explode, 1=dirt, 2=clear dirt */
     int ix,iy,i;
+    char p=type==1?1:0;
     for(iy=-rad;iy<=rad;iy++)
     for(ix=-rad;ix<=rad;ix++)
         if(ix*ix+iy*iy<rad*rad)
-            setLandAt(x+ix,y+iy, 0);
-    for(i=0;i<MAX_CLIENTS;i++)
-        if(tanks[i].active && sqr(tanks[i].x-x)+sqr(tanks[i].y-3-y)<sqr(rad+6))
-            spawnTank(i);
+            setLandAt(x+ix,y+iy, p);
+    if(type==0)
+        for(i=0;i<MAX_CLIENTS;i++)
+            if(tanks[i].active && sqr(tanks[i].x-x)+sqr(tanks[i].y-3-y)<sqr(rad+6))
+                spawnTank(i);
             
     sendLand(-1,x-rad,y-rad,rad*2,rad*2);
 }
@@ -239,7 +246,10 @@ void tankUpdate(int id){
         if(t->power<1000)
             t->power+=10;
     }else if(t->power){
-        fireBullet(t->x,t->y-7,t->facingLeft?180-t->angle:t->angle, (float)t->power*0.01);
+        if((++bulletsFired)%500==0)
+            t->bullet=3;
+        fireBullet(t->bullet, t->x,t->y-7,t->facingLeft?180-t->angle:t->angle, (float)t->power*0.01);
+        t->bullet=1;
         t->power=0;
     }
     /* Physics. */
@@ -250,7 +260,23 @@ void tankUpdate(int id){
     sendTank(-1,id);
 }
 
-inline void bulletUpdate(int b){
+void bulletDetonate(int b){
+    switch(bullets[b].type){
+    case 1: /* missile */
+        explode(bullets[b].x,bullets[b].y, 12, 0);
+        break;
+    case 2: /* nuke */
+        explode(bullets[b].x,bullets[b].y, 64, 0);
+        break;
+    case 3: /* dirt */
+        explode(bullets[b].x,bullets[b].y, 96, 1);
+        break;
+    default: break;
+    }
+    bullets[b].active=0;
+}
+
+void bulletUpdate(int b){
     int i;
     if(!bullets[b].active)
         return;
@@ -260,8 +286,8 @@ inline void bulletUpdate(int b){
     bullets[b].x=(int)bullets[b].fx;
     bullets[b].y=(int)bullets[b].fy;
     if(landAt(bullets[b].x,bullets[b].y)){
-        explode(bullets[b].x,bullets[b].y, 12);
-        bullets[b].active=0;
+        bulletDetonate(b);
+        return;
     }
     if(bullets[b].active>1){
         bullets[b].active--;
@@ -269,8 +295,7 @@ inline void bulletUpdate(int b){
     }
     for(i=0;i<MAX_CLIENTS;i++)
         if(sqr(tanks[i].x-bullets[b].x)+sqr(tanks[i].y-3-bullets[b].y)<72){
-            explode(bullets[b].x,bullets[b].y, 12);
-            bullets[b].active=0;
+            bulletDetonate(b);
             break;
         }    
 }
@@ -278,6 +303,7 @@ inline void bulletUpdate(int b){
 void initGame(){
     int i;
     int x, y;
+    bulletsFired=0;
     for(i=0;i<MAX_CLIENTS;i++)
         tanks[i].active=0;
     for(i=0;i<MAX_BULLETS;i++)

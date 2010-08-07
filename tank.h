@@ -4,6 +4,7 @@
 struct Tank{
     int x,y,lastx,lasty;
     int angle,power;
+    char bullet;
     char active;
     char facingLeft;
     char kLeft,kRight,kUp,kDown,kFire;
