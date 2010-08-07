@@ -252,14 +252,14 @@ void client_update(void *arg)
         } break;
         case TANK_CHUNK: { /* updated tank position */
             int id;
-            Uint16 x,y;
+            short x,y;
             char angle;
             char facingLeft=0;
             
             MOAG_ReceiveChunk(arg, 6);
             id = MOAG_ChunkDequeue8();
-            x = MOAG_ChunkDequeue16();
-            y = MOAG_ChunkDequeue16();
+            x = (short)MOAG_ChunkDequeue16();
+            y = (short)MOAG_ChunkDequeue16();
             angle = MOAG_ChunkDequeue8();
             
             if(id<0 || id>=MAX_CLIENTS)
