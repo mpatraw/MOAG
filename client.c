@@ -208,7 +208,6 @@ void client_update(void *arg)
         
         byte = MOAG_ChunkDequeue8();
         
-        /* printf("server sent %d\n",byte); */
         switch(byte) {
         case LAND_CHUNK: { /* updated rectangle of land */
             /*XXX DOESN'T WORK XXX
@@ -300,6 +299,7 @@ void client_update(void *arg)
             }
         } break;
         default:
+            printf("unknown byte: %d\n",byte);
             break;
         }
     }

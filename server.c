@@ -25,6 +25,7 @@ static char land[WIDTH*HEIGHT];
 static struct Tank tanks[MAX_CLIENTS];
 static struct Bullet bullets[MAX_BULLETS];
 int bulletsFired;
+int spawns;
 
 inline char landAt(int x, int y){
     if(x<0 || x>=WIDTH || y<0 || y>=HEIGHT)
@@ -39,8 +40,9 @@ inline void setLandAt(int x, int y, char to) {
 }
 
 void spawnTank(int id){
-    tanks[id].x=WIDTH/2;
-    tanks[id].y=80;
+    spawns++;
+    tanks[id].x=(spawns*240)%(WIDTH-40)+20;
+    tanks[id].y=60;
     tanks[id].angle=35;
     tanks[id].power=0;
     tanks[id].bullet=1;
@@ -246,8 +248,10 @@ void tankUpdate(int id){
         if(t->power<1000)
             t->power+=10;
     }else if(t->power){
-        if((++bulletsFired)%500==0)
+        if((++bulletsFired)%50==0)
             t->bullet=3;
+        else if(bulletsFired%313==0)
+            t->bullet=2;
         fireBullet(t->bullet, t->x,t->y-7,t->facingLeft?180-t->angle:t->angle, (float)t->power*0.01);
         t->bullet=1;
         t->power=0;
@@ -266,10 +270,10 @@ void bulletDetonate(int b){
         explode(bullets[b].x,bullets[b].y, 12, 0);
         break;
     case 2: /* nuke */
-        explode(bullets[b].x,bullets[b].y, 64, 0);
+        explode(bullets[b].x,bullets[b].y, 128, 0);
         break;
     case 3: /* dirt */
-        explode(bullets[b].x,bullets[b].y, 96, 1);
+        explode(bullets[b].x,bullets[b].y, 64, 1);
         break;
     default: break;
     }
@@ -304,6 +308,7 @@ void initGame(){
     int i;
     int x, y;
     bulletsFired=0;
+    spawns=0;
     for(i=0;i<MAX_CLIENTS;i++)
         tanks[i].active=0;
     for(i=0;i<MAX_BULLETS;i++)
