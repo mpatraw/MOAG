@@ -177,7 +177,7 @@ void fireBullet(int x, int y, float angle, float vel){
     int i;
     for(i=0;i<MAX_BULLETS;i++)
         if(!bullets[i].active){
-            bullets[i].active=1;
+            bullets[i].active=4;
             bullets[i].x=x;
             bullets[i].y=y;
             bullets[i].fx=(float)x;
@@ -194,10 +194,10 @@ void explode(int x, int y, int rad){
     int ix,iy,i;
     for(iy=-rad;iy<=rad;iy++)
     for(ix=-rad;ix<=rad;ix++)
-        if(landAt(x+ix,y+iy)==1 && ix*ix+iy*iy<rad*rad)
+        if(ix*ix+iy*iy<rad*rad)
             setLandAt(x+ix,y+iy, 0);
     for(i=0;i<MAX_CLIENTS;i++)
-        if(tanks[i].active && sqr(tanks[i].x-x)+sqr(tanks[i].y-y)<rad*rad)
+        if(tanks[i].active && sqr(tanks[i].x-x)+sqr(tanks[i].y-3-y)<sqr(rad+6))
             spawnTank(i);
             
     sendLand(-1,x-rad,y-rad,rad*2,rad*2);
@@ -251,6 +251,7 @@ void tankUpdate(int id){
 }
 
 inline void bulletUpdate(int b){
+    int i;
     if(!bullets[b].active)
         return;
     bullets[b].fx+=bullets[b].vx;
@@ -262,6 +263,16 @@ inline void bulletUpdate(int b){
         explode(bullets[b].x,bullets[b].y, 12);
         bullets[b].active=0;
     }
+    if(bullets[b].active>1){
+        bullets[b].active--;
+        return;
+    }
+    for(i=0;i<MAX_CLIENTS;i++)
+        if(sqr(tanks[i].x-bullets[b].x)+sqr(tanks[i].y-3-bullets[b].y)<72){
+            explode(bullets[b].x,bullets[b].y, 12);
+            bullets[b].active=0;
+            break;
+        }    
 }
 
 void initGame(){
