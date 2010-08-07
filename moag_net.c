@@ -101,14 +101,17 @@ int MOAG_SendRaw(MOAG_Connection con, void *data, int len)
 int MOAG_ReceiveRaw(MOAG_Connection con, void *data, int len)
 {
     TCPsocket sock;
-    int recvd;
+    int recvd = 0;
     
     sock = (TCPsocket)con;
     
-    recvd = SDLNet_TCP_Recv(sock, data, len);
-    
-    if (recvd <= 0)
-        return -1;
+    while (len > 0)
+    {
+        recvd = SDLNet_TCP_Recv(sock, data, len);
+        if (recvd <= 0)
+            return -1;
+        len -= recvd;
+    }
     
     return 0;
 }
