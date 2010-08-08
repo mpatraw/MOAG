@@ -3,6 +3,7 @@
 #define MOAG_CHUNK_H
 
 #include <SDL/SDL_types.h>
+#include "moag_net.h"
 
 #define MOAG_SEND_ALL 0xFFFFFFFF
 #define MOAG_FLUSH_QUEUE 1
@@ -15,8 +16,8 @@ Uint16 MOAG_ChunkDequeue16(void);
 Uint32 MOAG_ChunkDequeue32(void);
 Uint32 MOAG_IncomingChunkLength(void);
 Uint32 MOAG_OutgoingChunkLength(void);
-int MOAG_SendChunk(void *con, Uint32 bytes, int flush);
-int MOAG_ReceiveChunk(void *con, Uint32 bytes);
+int MOAG_SendChunk(MOAG_Connection con, Uint32 bytes, int flush);
+int MOAG_ReceiveChunk(MOAG_Connection con, Uint32 bytes);
 
 #endif /* MOAG_CHUNK_H */
 

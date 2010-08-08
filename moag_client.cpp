@@ -3,7 +3,7 @@
 #include "moag_net.h"
 #include <SDL/SDL.h>
 
-static MOAG_Connection *_host = NULL;
+static MOAG_Connection _host = NULL;
 
 int MOAG_OpenClient(const char *server, int port)
 {

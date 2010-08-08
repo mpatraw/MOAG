@@ -3,8 +3,9 @@
 #define MOAG_NET_H
 
 #include <SDL/SDL_types.h>
+#include <SDL/SDL_net.h>
 
-typedef void *MOAG_Connection;
+typedef TCPsocket MOAG_Connection;
 
 int MOAG_OpenNet(void);
 void MOAG_CloseNet(void);

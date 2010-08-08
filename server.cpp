@@ -336,7 +336,7 @@ void stepGame(){
 
 
 
-void client_connect(void *arg)
+void client_connect(MOAG_Connection arg)
 {
     int i;
     
@@ -359,7 +359,7 @@ void client_connect(void *arg)
     fflush(stdout);
 }
 
-void server_update(void *arg)
+void server_update(MOAG_Connection arg)
 {
     char byte;
     /*int timeout = 200 / (numClients ? numClients : 1);*/

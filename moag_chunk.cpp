@@ -19,13 +19,13 @@ void MOAG_ChunkEnqueue8(Uint8 ch)
     if (!_outgoing)
     {
         _outAlloc = 4;
-        _outgoing = malloc(_outAlloc);
+        _outgoing = (Uint8 *)malloc(_outAlloc);
     }
     
     if (_outLen + 1 > _outAlloc)
     {
         _outAlloc *= 2;
-        _outgoing = realloc(_outgoing, _outAlloc);
+        _outgoing = (Uint8 *)realloc(_outgoing, _outAlloc);
     }
     
     _outgoing[_outLen] = ch;
@@ -37,13 +37,13 @@ void MOAG_ChunkEnqueue16(Uint16 ch)
     if (!_outgoing)
     {
         _outAlloc = 4;
-        _outgoing = malloc(_outAlloc);
+        _outgoing = (Uint8 *)malloc(_outAlloc);
     }
     
     if (_outLen + 2 > _outAlloc)
     {
         _outAlloc *= 2;
-        _outgoing = realloc(_outgoing, _outAlloc);
+        _outgoing = (Uint8 *)realloc(_outgoing, _outAlloc);
     }
     
     MOAG_Pack16(ch, &_outgoing[_outLen]);
@@ -55,13 +55,13 @@ void MOAG_ChunkEnqueue32(Uint32 ch)
     if (!_outgoing)
     {
         _outAlloc = 4;
-        _outgoing = malloc(_outAlloc);
+        _outgoing = (Uint8 *)malloc(_outAlloc);
     }
     
     if (_outLen + 4 > _outAlloc)
     {
         _outAlloc *= 2;
-        _outgoing = realloc(_outgoing, _outAlloc);
+        _outgoing = (Uint8 *)realloc(_outgoing, _outAlloc);
     }
     
     MOAG_Pack32(ch, &_outgoing[_outLen]);
@@ -139,7 +139,7 @@ Uint32 MOAG_OutgoingChunkLength(void)
     return _outLen;
 }
 
-int MOAG_SendChunk(void *con, Uint32 bytes, int flush)
+int MOAG_SendChunk(MOAG_Connection con, Uint32 bytes, int flush)
 {
     if (bytes > _outLen)
         bytes = _outLen;
@@ -162,14 +162,14 @@ int MOAG_SendChunk(void *con, Uint32 bytes, int flush)
     return 0;
 }
 
-int MOAG_ReceiveChunk(void *con, Uint32 bytes)
+int MOAG_ReceiveChunk(MOAG_Connection con, Uint32 bytes)
 {
     if (!_incoming)
     {
         _inAlloc = 4;
         _inLen = 0;
         _inFront = 0;
-        _incoming = malloc(_inAlloc);
+        _incoming = (Uint8 *)malloc(_inAlloc);
     }
     
     memmove(_incoming, _incoming + _inFront, _inLen);
@@ -178,7 +178,7 @@ int MOAG_ReceiveChunk(void *con, Uint32 bytes)
     while (_inLen + bytes > _inAlloc)
     {
         _inAlloc *= 2;
-        _incoming = realloc(_incoming, _inAlloc);
+        _incoming = (Uint8 *)realloc(_incoming, _inAlloc);
     }
     
     if (MOAG_ReceiveRaw(con, _incoming + _inLen, bytes) == -1)

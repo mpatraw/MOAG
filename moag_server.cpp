@@ -49,7 +49,7 @@ void MOAG_SetServerCallback(MOAG_ServerCallback cb, int type)
 
 void MOAG_ServerTick(void)
 {
-    MOAG_Connection *con = NULL;
+    MOAG_Connection con = NULL;
 
     if (_serverUpdate)
         _serverUpdate(_server);

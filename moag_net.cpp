@@ -74,7 +74,7 @@ int MOAG_HasActivity(MOAG_Connection con, int timeout)
     SDLNet_SocketSet ss;
     ss = SDLNet_AllocSocketSet(1);
     
-    SDLNet_AddSocket(ss, con);
+    SDLNet_TCP_AddSocket(ss, con);
     if (SDLNet_CheckSockets(ss, timeout) != 1)
         return 0;
     

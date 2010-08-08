@@ -196,7 +196,7 @@ void update(void) {
 
 
 
-void client_update(void *arg)
+void client_update(MOAG_Connection arg)
 {
     char byte;
 
