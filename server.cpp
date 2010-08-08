@@ -5,25 +5,25 @@
 #include "tank.h"
 #include "bullet.h"
 
-#define MAX_CLIENTS 8
-#define MAX_BULLETS 256
-#define GRAVITY 0.1
+const int MAX_CLIENTS = 8;
+const int MAX_BULLETS = 256;
+const float GRAVITY = 0.1;
 
-#define WIDTH  800
-#define HEIGHT 600
+const int WIDTH  = 800;
+const int HEIGHT = 600;
 
-#define LAND_CHUNK   1
-#define TANK_CHUNK   2
-#define BULLET_CHUNK 3
+const int LAND_CHUNK   = 1;
+const int TANK_CHUNK   = 2;
+const int BULLET_CHUNK = 3;
 
 void disconnect_client(int);
 
-MOAG_Connection clients[MAX_CLIENTS] = {NULL};
+MOAG_Connection clients[MAX_CLIENTS] = {};
 int numClients = 0;
 
-static char land[WIDTH*HEIGHT];
-static struct Tank tanks[MAX_CLIENTS];
-static struct Bullet bullets[MAX_BULLETS];
+char land[WIDTH*HEIGHT];
+Tank tanks[MAX_CLIENTS];
+Bullet bullets[MAX_BULLETS];
 int bulletsFired;
 int spawns;
 
@@ -56,10 +56,6 @@ void spawnTank(int id){
 }
 
 void sendLand(int to, int x, int y, int w, int h){
-    int xx, yy;
-    int i;
-    int count;
-    
     if(to<-1 || to>=MAX_CLIENTS)
         return;
     if(x<0){ w+=x; x=0; }
@@ -69,7 +65,7 @@ void sendLand(int to, int x, int y, int w, int h){
     if(w<=0 || h<=0 || x+w>WIDTH || y+h>HEIGHT)
         return;
     
-    /* Prepare chunk. */
+    // Prepare chunk.
     MOAG_ChunkEnqueue8(LAND_CHUNK);
     MOAG_ChunkEnqueue16(x);
     MOAG_ChunkEnqueue16(y);
@@ -77,32 +73,30 @@ void sendLand(int to, int x, int y, int w, int h){
     MOAG_ChunkEnqueue16(h);
     
     printf("%d, %d: %d, %d\n", x, y, w, h);
-    count = 0;
-    for (yy = y; yy < h + y; ++yy)
-        for (xx = x; xx < w + x; ++xx)
-        {
+    int count = 0;
+    for (int yy = y; yy < h + y; ++yy)
+        for (int xx = x; xx < w + x; ++xx) {
             MOAG_ChunkEnqueue8(landAt(xx, yy));
             count++;
         }
     printf("COUNT: %d\n", count);
     fflush(stdout);
 
-    /* Send chunk. */
+    // Send chunk.
     if(to!=-1){
         if(clients[to] && MOAG_SendChunk(clients[to], -1, 1)==-1)
             disconnect_client(to);
     }else{
-        for(i=0;i<MAX_CLIENTS;i++)
+        for(int i=0;i<MAX_CLIENTS;i++)
             if(clients[i] && MOAG_SendChunk(clients[i], -1, 0)==-1)
                 disconnect_client(i);
     }
     
-    /* Clear the queue buffer. */
+    // Clear the queue buffer.
     MOAG_SendChunk(NULL, -1, 1);
 }
 
 void sendTank(int to, int id) {
-    int i;
     if(to<-1 || to>=MAX_CLIENTS || (to>=0 && !clients[to]) || id<0 || id>=MAX_CLIENTS)
         return;
 
@@ -125,39 +119,37 @@ void sendTank(int to, int id) {
         if (MOAG_SendChunk(clients[to], -1, 1) == -1)
             disconnect_client(to);
     } else {
-        for (i = 0; i < MAX_CLIENTS; i++)
+        for (int i = 0; i < MAX_CLIENTS; i++)
             if (clients[i] && MOAG_SendChunk(clients[i], -1, 0) == -1)
                 disconnect_client(i);
     }
     
-    /* Clear the queue buffer. */
+    // Clear the queue buffer.
     MOAG_SendChunk(NULL, -1, 1);
 }
 
 void sendBullets() {
-    int i;
     int count = 0;
-    
-    for (i = 0; i < MAX_BULLETS; i++)
+    for (int i = 0; i < MAX_BULLETS; i++)
         if (bullets[i].active)
             count++;
     
-    /* Queue the bytes. */
+    // Queue the bytes.
     MOAG_ChunkEnqueue8(BULLET_CHUNK);
     MOAG_ChunkEnqueue16(count);
 
-    for (i = 0; i < MAX_BULLETS; i++)
+    for (int i = 0; i < MAX_BULLETS; i++)
         if (bullets[i].active) {
             MOAG_ChunkEnqueue16(bullets[i].x);
             MOAG_ChunkEnqueue16(bullets[i].y);
         }
 
-    /* Send the bytes. */
-    for (i = 0; i < MAX_CLIENTS; i++)
+    // Send the bytes.
+    for (int i = 0; i < MAX_CLIENTS; i++)
         if (clients[i] && MOAG_SendChunk(clients[i], -1, 0) == -1)
             disconnect_client(i);
     
-    /* Clear the queue. */
+    // Clear the queue.
     MOAG_SendChunk(NULL, -1, 1);
 }
 
@@ -170,8 +162,8 @@ void spawnClient(int id){
 void disconnect_client(int c){
     printf("Client DCed\n");
     MOAG_Disconnect(clients[c]);
-    numClients -= 1;
-    clients[c] = NULL;
+    numClients--;
+    clients[c]=NULL;
     tanks[c].active=0;
     sendTank(-1,c);
 }
@@ -179,33 +171,31 @@ void disconnect_client(int c){
 
 
 void fireBullet(char type, int x, int y, float angle, float vel){
-    int i;
-    for(i=0;i<MAX_BULLETS;i++)
-        if(!bullets[i].active){
-            bullets[i].active=4;
-            bullets[i].type=type;
-            bullets[i].x=x;
-            bullets[i].y=y;
-            bullets[i].fx=(float)x;
-            bullets[i].fy=(float)y;
-            bullets[i].vx=vel*cosf(angle*M_PI/180.0);
-            bullets[i].vy=-vel*sinf(angle*M_PI/180.0);
-            break;
-        }
+    int i=0;
+    while(bullets[i].active)
+        if(++i>=MAX_BULLETS)
+            return;
+    bullets[i].active=4;
+    bullets[i].type=type;
+    bullets[i].x=x;
+    bullets[i].y=y;
+    bullets[i].fx=(float)x;
+    bullets[i].fy=(float)y;
+    bullets[i].vx=vel*cosf(angle*M_PI/180.0);
+    bullets[i].vy=-vel*sinf(angle*M_PI/180.0);
 }
 
 inline int sqr(int n){ return n*n; }
 
 void explode(int x, int y, int rad, char type){
-    /* type: 0=explode, 1=dirt, 2=clear dirt */
-    int ix,iy,i;
+    // type: 0=explode, 1=dirt, 2=clear dirt
     char p=type==1?1:0;
-    for(iy=-rad;iy<=rad;iy++)
-    for(ix=-rad;ix<=rad;ix++)
+    for(int iy=-rad;iy<=rad;iy++)
+    for(int ix=-rad;ix<=rad;ix++)
         if(ix*ix+iy*iy<rad*rad)
             setLandAt(x+ix,y+iy, p);
     if(type==0)
-        for(i=0;i<MAX_CLIENTS;i++)
+        for(int i=0;i<MAX_CLIENTS;i++)
             if(tanks[i].active && sqr(tanks[i].x-x)+sqr(tanks[i].y-3-y)<sqr(rad+6))
                 spawnTank(i);
             
@@ -213,66 +203,64 @@ void explode(int x, int y, int rad, char type){
 }
 
 void tankUpdate(int id){
-    struct Tank *t=&tanks[id];
-    if(!t->active)
+    Tank& t=tanks[id];
+    if(!t.active)
         return;
-    /* Movement. */
-    if(t->kLeft){
-        int i;
-        t->facingLeft=1;
-        for(i=0;i<8;i++)
-            if(landAt(t->x-1,t->y-i)==0){
-                if((t->x--)<=10)
-                    t->x=10;
-                t->y-=i;
+    // Movement
+    if(t.kLeft){
+        t.facingLeft=1;
+        for(int i=0;i<8;i++)
+            if(landAt(t.x-1,t.y-i)==0){
+                if((t.x--)<=10)
+                    t.x=10;
+                t.y-=i;
                 break;
             }
-    }else if(t->kRight){
-        int i;
-        t->facingLeft=0;
-        for(i=0;i<8;i++)
-            if(landAt(t->x+1,t->y-i)==0){
-                if((t->x++)>=WIDTH-10)
-                    t->x=WIDTH-10;
-                t->y-=i;
+    }else if(t.kRight){
+        t.facingLeft=0;
+        for(int i=0;i<8;i++)
+            if(landAt(t.x+1,t.y-i)==0){
+                if((t.x++)>=WIDTH-10)
+                    t.x=WIDTH-10;
+                t.y-=i;
                 break;
             }
     }
-    /* Aim. */
-    if(t->kUp && t->angle<90)
-        t->angle++;
-    else if(t->kDown && t->angle>1)
-        t->angle--;
-    /* Fire */
-    if(t->kFire){
-        if(t->power<1000)
-            t->power+=10;
-    }else if(t->power){
+    // Aim
+    if(t.kUp && t.angle<90)
+        t.angle++;
+    else if(t.kDown && t.angle>1)
+        t.angle--;
+    // Fire
+    if(t.kFire){
+        if(t.power<1000)
+            t.power+=10;
+    }else if(t.power){
         if((++bulletsFired)%50==0)
-            t->bullet=3;
+            t.bullet=3;
         else if(bulletsFired%313==0)
-            t->bullet=2;
-        fireBullet(t->bullet, t->x,t->y-7,t->facingLeft?180-t->angle:t->angle, (float)t->power*0.01);
-        t->bullet=1;
-        t->power=0;
+            t.bullet=2;
+        fireBullet(t.bullet, t.x,t.y-7,t.facingLeft?180-t.angle:t.angle, (float)t.power*0.01);
+        t.bullet=1;
+        t.power=0;
     }
-    /* Physics. */
-    if(landAt(t->x,t->y+1)==0)
-        t->y++;
-    if(landAt(t->x,t->y+1)==0)
-        t->y++;
+    // Physics
+    if(landAt(t.x,t.y+1)==0)
+        t.y++;
+    if(landAt(t.x,t.y+1)==0)
+        t.y++;
     sendTank(-1,id);
 }
 
 void bulletDetonate(int b){
     switch(bullets[b].type){
-    case 1: /* missile */
+    case 1: // missile
         explode(bullets[b].x,bullets[b].y, 12, 0);
         break;
-    case 2: /* nuke */
+    case 2: // nuke
         explode(bullets[b].x,bullets[b].y, 128, 0);
         break;
-    case 3: /* dirt */
+    case 3: // dirt
         explode(bullets[b].x,bullets[b].y, 64, 1);
         break;
     default: break;
@@ -281,7 +269,6 @@ void bulletDetonate(int b){
 }
 
 void bulletUpdate(int b){
-    int i;
     if(!bullets[b].active)
         return;
     bullets[b].fx+=bullets[b].vx;
@@ -297,7 +284,7 @@ void bulletUpdate(int b){
         bullets[b].active--;
         return;
     }
-    for(i=0;i<MAX_CLIENTS;i++)
+    for(int i=0;i<MAX_CLIENTS;i++)
         if(sqr(tanks[i].x-bullets[b].x)+sqr(tanks[i].y-3-bullets[b].y)<72){
             bulletDetonate(b);
             break;
@@ -305,18 +292,15 @@ void bulletUpdate(int b){
 }
 
 void initGame(){
-    int i;
-    int x, y;
     bulletsFired=0;
     spawns=0;
-    for(i=0;i<MAX_CLIENTS;i++)
+    for(int i=0;i<MAX_CLIENTS;i++)
         tanks[i].active=0;
-    for(i=0;i<MAX_BULLETS;i++)
+    for(int i=0;i<MAX_BULLETS;i++)
         bullets[i].active=0;
         
-    for (x = 0; x < WIDTH; ++x)
-        for (y = 0; y < HEIGHT; ++y)
-        {
+    for (int y = 0; y < HEIGHT; ++y)
+        for (int x = 0; x < WIDTH; ++x){
             if (y < HEIGHT / 2)
                 setLandAt(x, y, 0);
             else
@@ -326,10 +310,9 @@ void initGame(){
 }
 
 void stepGame(){
-    int i;
-    for(i=0;i<MAX_CLIENTS;i++)
+    for(int i=0;i<MAX_CLIENTS;i++)
         tankUpdate(i);
-    for(i=0;i<MAX_BULLETS;i++)
+    for(int i=0;i<MAX_BULLETS;i++)
         bulletUpdate(i);
     sendBullets();
 }
@@ -338,47 +321,38 @@ void stepGame(){
 
 void client_connect(MOAG_Connection arg)
 {
-    int i;
-    
-    for (i = 0; i < MAX_CLIENTS; i++)
-        if (!clients[i]) {
-            clients[i] = arg;
-            numClients += 1;
-            printf("Client connected!\n");
-            spawnClient(i);
-            break;
+    int i=0;
+    while(clients[i])
+        if(++i>=MAX_CLIENTS){
+            printf("Client failed to connect, too many clients.\n");
+            MOAG_Disconnect(arg);
+            return;
         }
     
-    /* Too many clients. */
-    if (i == MAX_CLIENTS) {
-        printf("Client failed to connect, too many clients.\n");
-        MOAG_Disconnect(arg);
-        return;
-    }
+    clients[i] = arg;
+    numClients += 1;
+    printf("Client connected!\n");
+    spawnClient(i);
     
     fflush(stdout);
 }
 
 void server_update(MOAG_Connection arg)
 {
-    char byte;
-    /*int timeout = 200 / (numClients ? numClients : 1);*/
-    int i;
-    
     stepGame();
 
-    /* For each client... */
-    for (i = 0; i < MAX_CLIENTS; ++i)
+    // For each client...
+    for (int i = 0; i < MAX_CLIENTS; ++i)
         while (clients[i] && MOAG_HasActivity(clients[i], 0)) {
-            /* Get data. */
+            // Get data.
             if (MOAG_ReceiveChunk(clients[i], 1) == -1){
                 disconnect_client(i);
                 continue;
             }
             
-            byte = MOAG_ChunkDequeue8();
+            char byte = MOAG_ChunkDequeue8();
 
-            /* printf("client %d sent %d\n",i,byte); */
+            // printf("client %d sent %d\n",i,byte);
             switch(byte){
             case 1: tanks[i].kLeft=1; break;
             case 2: tanks[i].kLeft=0; break;
@@ -404,8 +378,7 @@ void server_update(MOAG_Connection arg)
 
 int main(int argc, char *argv[])
 {
-    if (MOAG_OpenServer(8080) == -1)
-    {
+    if (MOAG_OpenServer(8080) == -1) {
         printf("Failed to start server\n");
         return 1;
     }

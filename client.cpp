@@ -8,22 +8,22 @@ struct Bullet{
     Uint16 x,y;
 };
 
-#define MAX_CLIENTS 8
-#define MAX_BULLETS 256
-#define BUFLEN 256
+const int MAX_CLIENTS = 8;
+const int MAX_BULLETS = 256;
+const int BUFLEN = 256;
 
-#define WIDTH 800
-#define HEIGHT 600
+const int WIDTH = 800;
+const int HEIGHT = 600;
 
-#define LAND_CHUNK   1
-#define TANK_CHUNK   2
-#define BULLET_CHUNK 3
+const int LAND_CHUNK   = 1;
+const int TANK_CHUNK   = 2;
+const int BULLET_CHUNK = 3;
 
-static char land[WIDTH*HEIGHT];
-static struct Tank tanks[MAX_CLIENTS];
-static struct Bullet bullets[MAX_BULLETS];
-static struct Tank keys;
-static int numBullets=0;
+char land[WIDTH*HEIGHT];
+Tank tanks[MAX_CLIENTS];
+Bullet bullets[MAX_BULLETS];
+Tank keys;
+int numBullets=0;
 
 inline char landAt(int x, int y){
     if(x<0 || x>=WIDTH || y<0 || y>=HEIGHT)
@@ -38,15 +38,14 @@ inline void setLandAt(int x, int y, char to) {
 }
 
 void redrawLand(int x, int y, int w, int h){
-    int ix,iy;
     if(x<0){ w+=x; x=0; }
     if(y<0){ h+=y; y=0; }
     if(x+w>WIDTH) w=WIDTH-x;
     if(y+h>HEIGHT) h=HEIGHT-y;
     if(w<=0 || h<=0 || x+w>WIDTH || y+h>HEIGHT)
         return;
-    for(iy=y;iy<y+h;iy++)
-    for(ix=x;ix<x+w;ix++)
+    for(int iy=y;iy<y+h;iy++)
+    for(int ix=x;ix<x+w;ix++)
         if(landAt(ix,iy)==0)
             MOAG_SetPixel(ix,iy,0,0,0);
         else
@@ -71,33 +70,29 @@ const char tanksprite[14][19]={
 };
 
 void drawTank(int x, int y, int turretangle, char facingLeft){
-    int ix,iy;
-    float step;
-    float rise=0;
-    int next;
-    int xlen;
     if(x<0 || x>WIDTH-18 || y<0 || y>HEIGHT-14)
         return;
-    for(iy=0;iy<14;iy++)
-    for(ix=0;ix<18;ix++)
+    for(int iy=0;iy<14;iy++)
+    for(int ix=0;ix<18;ix++)
         if(tanksprite[iy][ix]=='x')
             MOAG_SetPixel(x+ix,y+iy,255,255,255);
     if(turretangle==90)
         turretangle=89;
-    step=tanf((float)turretangle*M_PI/180.0);
-    xlen=6.5*cosf((float)turretangle*M_PI/180.0);
-    for(ix=0;ix<=xlen;ix++){
-        next=rise+step;
+
+    float step=tanf((float)turretangle*M_PI/180.0);
+    int xlen=6.5*cosf((float)turretangle*M_PI/180.0);
+    float rise=0;
+    for(int ix=0;ix<=xlen;ix++){
+        int next=rise+step;
         if(next>6) next=6;
-        for(iy=-(int)rise;iy>=-next;iy--)
+        for(int iy=-(int)rise;iy>=-next;iy--)
             MOAG_SetPixel(x+(facingLeft?9-ix:8+ix),y+6+iy,255,255,255);
         rise+=step;
     }
 }
 
 void drawBullets(){
-    int i;
-    for(i=0;i<numBullets;i++){
+    for(int i=0;i<numBullets;i++){
         if(bullets[i].x<1 || bullets[i].x>=WIDTH-1 || bullets[i].y<1 || bullets[i].y>=HEIGHT-1)
             continue;
         MOAG_SetPixel(bullets[i].x,bullets[i].y-1,255,255,255);
@@ -109,8 +104,7 @@ void drawBullets(){
 }
 
 void undrawBullets(){
-    int i;
-    for(i=0;i<numBullets;i++){
+    for(int i=0;i<numBullets;i++){
         if(bullets[i].x<1 || bullets[i].x>=WIDTH-1 || bullets[i].y<1 || bullets[i].y>=HEIGHT-1)
             return;
         MOAG_SetPixel(bullets[i].x,bullets[i].y-1,40,40,40);
@@ -123,14 +117,13 @@ void undrawBullets(){
 }
 
 void draw(void) {
-    int i;
-    for(i=0;i<MAX_CLIENTS;i++)
+    for(int i=0;i<MAX_CLIENTS;i++)
         if(tanks[i].active)
             redrawLand(tanks[i].lastx-9,tanks[i].lasty-32,18,33);
-    for(i=0;i<MAX_CLIENTS;i++)
+    for(int i=0;i<MAX_CLIENTS;i++)
         if(tanks[i].active){
             char str[2];
-            str[0] = i+'0';
+            str[0] = '0'+i;
             str[1] = '\0';
             drawTank(tanks[i].x-9,tanks[i].y-13,tanks[i].angle,tanks[i].facingLeft);
             MOAG_SetString(tanks[i].x-4,tanks[i].y-32,str,255,255,255);
@@ -143,8 +136,7 @@ void draw(void) {
 
 
 void initClient(void) {
-    int i;
-    for(i=0;i<MAX_CLIENTS;i++){
+    for(int i=0;i<MAX_CLIENTS;i++){
         tanks[i].active=0;
         tanks[i].lastx=0;
         tanks[i].lasty=0;
@@ -198,18 +190,16 @@ void update(void) {
 
 void client_update(MOAG_Connection arg)
 {
-    char byte;
-
     while (MOAG_HasActivity(arg, 0)){
         if (MOAG_ReceiveChunk(arg, 1) == -1){
             printf("Disconnected from server!\n");
             exit(0);
         }
         
-        byte = MOAG_ChunkDequeue8();
+        char byte = MOAG_ChunkDequeue8();
         
         switch(byte) {
-        case LAND_CHUNK: { /* updated rectangle of land */
+        case LAND_CHUNK: { // updated rectangle of land
             /*XXX DOESN'T WORK XXX
             int x,y,w,h;
             int xx, yy;
@@ -234,32 +224,26 @@ void client_update(MOAG_Connection arg)
             fflush(stdout);
             redrawLand(x,y,w,h);*/
             char buf[8];
-            int x,y,w,h;
-            int i;
             MOAG_ReceiveRaw(arg, buf, 8);
-            x = MOAG_Unpack16(&buf[0]);
-            y = MOAG_Unpack16(&buf[2]);
-            w = MOAG_Unpack16(&buf[4]);
-            h = MOAG_Unpack16(&buf[6]);
+            int x = MOAG_Unpack16(&buf[0]);
+            int y = MOAG_Unpack16(&buf[2]);
+            int w = MOAG_Unpack16(&buf[4]);
+            int h = MOAG_Unpack16(&buf[6]);
             if(w<0) w=0;
             if(h<0) h=0;
             if(x<0 || y<0 || x+w>WIDTH || y+h>HEIGHT)
                 break;
-            for(i=0;i<h;i++)
+            for(int i=0;i<h;i++)
                 MOAG_ReceiveRaw(arg, &land[(y+i)*WIDTH+x], w);
             redrawLand(x,y,w,h);
         } break;
-        case TANK_CHUNK: { /* updated tank position */
-            int id;
-            short x,y;
-            char angle;
-            char facingLeft=0;
-            
+        case TANK_CHUNK: { // updated tank position
             MOAG_ReceiveChunk(arg, 6);
-            id = MOAG_ChunkDequeue8();
-            x = (short)MOAG_ChunkDequeue16();
-            y = (short)MOAG_ChunkDequeue16();
-            angle = MOAG_ChunkDequeue8();
+            int id = MOAG_ChunkDequeue8();
+            short x = (short)MOAG_ChunkDequeue16();
+            short y = (short)MOAG_ChunkDequeue16();
+            char angle = MOAG_ChunkDequeue8();
+            char facingLeft=0;
             
             if(id<0 || id>=MAX_CLIENTS)
                 break;
@@ -278,8 +262,7 @@ void client_update(MOAG_Connection arg)
             tanks[id].angle=angle;
             tanks[id].facingLeft=facingLeft;
         } break;
-        case BULLET_CHUNK: { /* bullets */
-            int i;
+        case BULLET_CHUNK: { // bullets
             undrawBullets();
             
             MOAG_ReceiveChunk(arg, 2);
@@ -287,13 +270,13 @@ void client_update(MOAG_Connection arg)
             
             if(numBullets<=0)
                 break;
-            if(numBullets>=MAX_BULLETS){ /* error! */
+            if(numBullets>=MAX_BULLETS){ // error!
                 numBullets=0;
                 break;
             }
             
             MOAG_ReceiveChunk(arg, numBullets*4);
-            for (i = 0; i < numBullets; i++) {
+            for (int i=0;i<numBullets;i++) {
                 bullets[i].x = MOAG_ChunkDequeue16();
                 bullets[i].y = MOAG_ChunkDequeue16();
             }
@@ -314,12 +297,12 @@ void client_update(MOAG_Connection arg)
 
 int main(int argc, char *argv[])
 {
-    int port=8080;
-
     if (argc<2) {
         printf("usage:  %s [address] {[port]}\n", argv[0]);
         exit(0);
     }
+
+    int port=8080;
 
     if (argc>=3)
         port = atoi(argv[2]);
