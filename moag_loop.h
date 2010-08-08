@@ -14,12 +14,13 @@ enum
 typedef void (*MOAG_LoopCallback) (void);
 
 void MOAG_SetFps(int fps);
+int MOAG_GetTicks();
 int MOAG_SetLoopCallback(MOAG_LoopCallback cb, int type);
 int MOAG_SetLoopState(int type);
 int MOAG_PushLoopState(int type);
-void MOAG_PopLoopState(void);
-void MOAG_MainLoop(void);
-void MOAG_QuitMainLoop(void);
+void MOAG_PopLoopState();
+void MOAG_MainLoop();
+void MOAG_QuitMainLoop();
 
 #endif
 

@@ -1,16 +1,13 @@
 #include "moag.h"
 #include <unistd.h>
 #include <math.h>
-
-#include "tank.h"
-
-struct Bullet{
-    Uint16 x,y;
-};
+#include <string.h>
 
 const int MAX_CLIENTS = 8;
 const int MAX_BULLETS = 256;
 const int BUFLEN = 256;
+const int CHAT_LINES = 7;
+const int CHAT_EXPIRETIME = 14000;
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
@@ -18,11 +15,31 @@ const int HEIGHT = 600;
 const int LAND_CHUNK   = 1;
 const int TANK_CHUNK   = 2;
 const int BULLET_CHUNK = 3;
+const int MSG_CHUNK    = 4;
 
+struct BulletPos{
+    Uint16 x,y;
+};
+
+struct ChatLine{
+    int expire;
+    char* str;
+};
+
+struct Redraw{
+    int x,y,w,h;
+    Redraw* next;
+    Redraw(int _x, int _y, int _w, int _h) : x(_x),y(_y),w(_w),h(_h),next(NULL) {}
+};
+
+ChatLine chatlines[CHAT_LINES];
+char* typingStr=NULL;
+bool typingDone=false;
+Redraw redraws(0,0,0,0);
 char land[WIDTH*HEIGHT];
 Tank tanks[MAX_CLIENTS];
-Bullet bullets[MAX_BULLETS];
 Tank keys;
+BulletPos bullets[MAX_BULLETS];
 int numBullets=0;
 
 inline char landAt(int x, int y){
@@ -49,7 +66,25 @@ void redrawLand(int x, int y, int w, int h){
         if(landAt(ix,iy)==0)
             MOAG_SetPixel(ix,iy,0,0,0);
         else
-            MOAG_SetPixel(ix,iy,160,160,160);
+            MOAG_SetPixel(ix,iy,155,155,155);
+}
+
+void pushRedraw(int x, int y, int w, int h){
+    Redraw* p=&redraws;
+    while(p->next)
+        p=p->next;
+    p->next=new Redraw(x,y,w,h);
+}
+
+void redraw(){
+    Redraw* p=redraws.next;
+    while(p){
+        redrawLand(p->x,p->y,p->w,p->h);
+        Redraw* q=p;
+        p=p->next;
+        delete q;
+    }
+    redraws.next=NULL;
 }
 
 const char tanksprite[14][19]={
@@ -75,7 +110,7 @@ void drawTank(int x, int y, int turretangle, char facingLeft){
     for(int iy=0;iy<14;iy++)
     for(int ix=0;ix<18;ix++)
         if(tanksprite[iy][ix]=='x')
-            MOAG_SetPixel(x+ix,y+iy,255,255,255);
+            MOAG_SetPixel(x+ix,y+iy,240,240,240);
     if(turretangle==90)
         turretangle=89;
 
@@ -86,7 +121,7 @@ void drawTank(int x, int y, int turretangle, char facingLeft){
         int next=rise+step;
         if(next>6) next=6;
         for(int iy=-(int)rise;iy>=-next;iy--)
-            MOAG_SetPixel(x+(facingLeft?9-ix:8+ix),y+6+iy,255,255,255);
+            MOAG_SetPixel(x+(facingLeft?9-ix:8+ix),y+6+iy,240,240,240);
         rise+=step;
     }
 }
@@ -107,35 +142,69 @@ void undrawBullets(){
     for(int i=0;i<numBullets;i++){
         if(bullets[i].x<1 || bullets[i].x>=WIDTH-1 || bullets[i].y<1 || bullets[i].y>=HEIGHT-1)
             return;
-        MOAG_SetPixel(bullets[i].x,bullets[i].y-1,40,40,40);
-        MOAG_SetPixel(bullets[i].x-1,bullets[i].y,40,40,40);
-        MOAG_SetPixel(bullets[i].x,  bullets[i].y,40,40,40);
-        MOAG_SetPixel(bullets[i].x+1,bullets[i].y,40,40,40);
-        MOAG_SetPixel(bullets[i].x,bullets[i].y+1,40,40,40);
+        MOAG_SetPixel(bullets[i].x,bullets[i].y-1,30,30,30);
+        MOAG_SetPixel(bullets[i].x-1,bullets[i].y,30,30,30);
+        MOAG_SetPixel(bullets[i].x,  bullets[i].y,30,30,30);
+        MOAG_SetPixel(bullets[i].x+1,bullets[i].y,30,30,30);
+        MOAG_SetPixel(bullets[i].x,bullets[i].y+1,30,30,30);
     }
     numBullets=0;
 }
 
-void draw(void) {
+void delChatLine(){
+    if(chatlines[0].str && chatlines[0].expire<MOAG_GetTicks()){
+        delete[] chatlines[0].str;
+        for(int i=0;i<CHAT_LINES-1;i++){
+            chatlines[i].expire=chatlines[i+1].expire;
+            chatlines[i].str=chatlines[i+1].str;
+        }
+        chatlines[CHAT_LINES-1].str=NULL;
+    }
+}
+
+void addChatLine(char* str){
+    int i=0;
+    while(chatlines[i].str)
+        if(++i>=CHAT_LINES){
+            chatlines[0].expire=0;
+            delChatLine();
+            i=CHAT_LINES-1;
+            break;
+        }
+    chatlines[i].str=str;
+    chatlines[i].expire=MOAG_GetTicks()+CHAT_EXPIRETIME;
+}
+
+void draw() {
+    redraw();
     for(int i=0;i<MAX_CLIENTS;i++)
         if(tanks[i].active)
-            redrawLand(tanks[i].lastx-9,tanks[i].lasty-32,18,33);
+            redrawLand(tanks[i].lastx-9,tanks[i].lasty-13,18,14);
     for(int i=0;i<MAX_CLIENTS;i++)
         if(tanks[i].active){
-            char str[2];
-            str[0] = '0'+i;
-            str[1] = '\0';
             drawTank(tanks[i].x-9,tanks[i].y-13,tanks[i].angle,tanks[i].facingLeft);
-            MOAG_SetString(tanks[i].x-4,tanks[i].y-32,str,255,255,255);
+            MOAG_SetStringCentered(tanks[i].x,tanks[i].y-36,tanks[i].name,240,240,240);
             tanks[i].lastx=tanks[i].x;
             tanks[i].lasty=tanks[i].y;
         }
     drawBullets();
+    delChatLine();
+    for(int i=0;i<CHAT_LINES;i++)
+        if(chatlines[i].str)
+            MOAG_SetString(4,4+12*i,chatlines[i].str,255,255,255);
+    if(typingStr){
+        MOAG_SetBlock(6,8+12*(CHAT_LINES),4,4,210,210,210);
+        pushRedraw(6,8+12*(CHAT_LINES),4,4);
+        MOAG_SetString(16,4+12*(CHAT_LINES),typingStr,210,210,210);
+    }
 }
 
 
 
-void initClient(void) {
+void initClient() {
+    redraw();
+    for(int i=0;i<CHAT_LINES;i++)
+        chatlines[i].str=NULL;
     for(int i=0;i<MAX_CLIENTS;i++){
         tanks[i].active=0;
         tanks[i].lastx=0;
@@ -152,10 +221,38 @@ void sendByte(char k){
     MOAG_ChunkEnqueue8(k);
 }
 
-void update(void) {
+void update() {
     MOAG_ClientTick();
     MOAG_GrabEvents();
+    if(MOAG_IsKeyPressed(SDLK_ESCAPE) || MOAG_IsQuitting())
+        MOAG_QuitMainLoop();
+
+    if(typingStr && !typingDone){
+        if(MOAG_IsKeyPressed(SDLK_LEFT)
+            || MOAG_IsKeyPressed(SDLK_RIGHT)
+            || MOAG_IsKeyPressed(SDLK_UP)
+            || MOAG_IsKeyPressed(SDLK_DOWN)){
+            typingStr=NULL;
+            MOAG_StopTextInput();
+            return;
+        }
+        if(MOAG_IsKeyPressed(SDLK_RETURN)){
+            typingDone=true;
+            MOAG_StopTextInput();
+            return;
+        }
+        return;
+    }
     
+    if(MOAG_IsKeyPressed('t')){
+        typingStr=MOAG_StartTextInput();
+        return;
+    }
+    if(MOAG_IsKeyPressed('/')){
+        typingStr=MOAG_StartTextCmdInput();
+        return;
+    }
+
     if(MOAG_IsKeyPressed(SDLK_LEFT)){
         sendByte(1); keys.kLeft=1;
     }else if(MOAG_IsKeyReleased(SDLK_LEFT)){
@@ -181,12 +278,17 @@ void update(void) {
     }else if(MOAG_IsKeyReleased(SDLK_SPACE)){
         sendByte(10); keys.kFire=0;
     }
-    
-    if (MOAG_IsKeyPressed(SDLK_ESCAPE) || MOAG_IsQuitting())
-        MOAG_QuitMainLoop();
 }
 
 
+
+void validate_str(char* s){
+    while(*s){
+        if(*s<20 || *s>126)
+            *s='?';
+        s++;
+    }
+}
 
 void client_update(MOAG_Connection arg)
 {
@@ -199,7 +301,7 @@ void client_update(MOAG_Connection arg)
         char byte = MOAG_ChunkDequeue8();
         
         switch(byte) {
-        case LAND_CHUNK: { // updated rectangle of land
+        case LAND_CHUNK: {
             /*XXX DOESN'T WORK XXX
             int x,y,w,h;
             int xx, yy;
@@ -237,7 +339,7 @@ void client_update(MOAG_Connection arg)
                 MOAG_ReceiveRaw(arg, &land[(y+i)*WIDTH+x], w);
             redrawLand(x,y,w,h);
         } break;
-        case TANK_CHUNK: { // updated tank position
+        case TANK_CHUNK: {
             MOAG_ReceiveChunk(arg, 6);
             int id = MOAG_ChunkDequeue8();
             short x = (short)MOAG_ChunkDequeue16();
@@ -262,7 +364,7 @@ void client_update(MOAG_Connection arg)
             tanks[id].angle=angle;
             tanks[id].facingLeft=facingLeft;
         } break;
-        case BULLET_CHUNK: { // bullets
+        case BULLET_CHUNK: {
             undrawBullets();
             
             MOAG_ReceiveChunk(arg, 2);
@@ -281,15 +383,56 @@ void client_update(MOAG_Connection arg)
                 bullets[i].y = MOAG_ChunkDequeue16();
             }
         } break;
+        case MSG_CHUNK: {
+            MOAG_ReceiveChunk(arg, 3);
+            int id = MOAG_ChunkDequeue8();
+            char cmd = MOAG_ChunkDequeue8();
+            unsigned char len = MOAG_ChunkDequeue8();
+            switch(cmd){
+            case 1: { //chat message
+                int namelen=strlen(tanks[id].name);
+                int linelen=namelen+len+4;
+                char* line=new char[linelen];
+                line[0]='<';
+                for(int i=0;i<namelen;i++)
+                    line[i+1]=tanks[id].name[i];
+                line[namelen+1]='>';
+                line[namelen+2]=' ';
+                MOAG_ReceiveRaw(arg, &line[namelen+3], len);
+                line[linelen-1]='\0';
+                validate_str(line);
+                addChatLine(line);
+            } break;
+            case 2: { //name change
+                if(len<1 || len>15){ // error!
+                    break;
+                }
+                MOAG_ReceiveRaw(arg, tanks[id].name, len);
+                tanks[id].name[len]='\0';
+                validate_str(tanks[id].name);
+            } break;
+            default:
+                break;
+            }
+        } break;
         default:
             printf("unknown byte: %d\n",byte);
             break;
         }
     }
 
-    if (MOAG_SendChunk(arg, -1, 1) == -1) {
+    if(MOAG_SendChunk(arg, -1, 1) == -1) {
         printf("Disconnected from server!\n");
         exit(0);
+    }
+
+    if(typingDone){
+        unsigned char len=strlen(typingStr);
+        char buf[2]={11,len};
+        MOAG_SendRaw(arg, buf, 2);
+        MOAG_SendRaw(arg, typingStr, len);
+        typingDone=false;
+        typingStr=NULL;
     }
 
     fflush(stdout);

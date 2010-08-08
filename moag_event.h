@@ -13,6 +13,9 @@ int MOAG_IsKeyPressed(int key);
 int MOAG_IsKeyReleased(int key);
 int MOAG_IsButtonDown(int button);
 void MOAG_GetMousePosition(int *x, int *y);
+char* MOAG_StartTextInput();
+char* MOAG_StartTextCmdInput();
+void MOAG_StopTextInput();
 int MOAG_IsQuitting(void);
 
 #endif

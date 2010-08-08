@@ -2,9 +2,6 @@
 #include <unistd.h>
 #include <math.h>
 
-#include "tank.h"
-#include "bullet.h"
-
 const int MAX_CLIENTS = 8;
 const int MAX_BULLETS = 256;
 const float GRAVITY = 0.1;
@@ -15,6 +12,7 @@ const int HEIGHT = 600;
 const int LAND_CHUNK   = 1;
 const int TANK_CHUNK   = 2;
 const int BULLET_CHUNK = 3;
+const int MSG_CHUNK    = 4;
 
 void disconnect_client(int);
 
@@ -41,18 +39,45 @@ inline void setLandAt(int x, int y, char to) {
 
 void spawnTank(int id){
     spawns++;
+    sprintf(tanks[id].name,"p%d",id);
+    tanks[id].active=1;
     tanks[id].x=(spawns*240)%(WIDTH-40)+20;
     tanks[id].y=60;
     tanks[id].angle=35;
     tanks[id].power=0;
     tanks[id].bullet=1;
-    tanks[id].active=1;
     tanks[id].facingLeft=0;
     tanks[id].kLeft=0;
     tanks[id].kRight=0;
     tanks[id].kUp=0;
     tanks[id].kDown=0;
     tanks[id].kFire=0;
+}
+
+void sendChat(int to, int id, char cmd, const char* msg, unsigned char len){
+    if(to<-1 || to>=MAX_CLIENTS || id<0 || id>=MAX_CLIENTS || !clients[id])
+        return;
+    
+    // Prepare chunk.
+    MOAG_ChunkEnqueue8(MSG_CHUNK);
+    MOAG_ChunkEnqueue8(id);
+    MOAG_ChunkEnqueue8(cmd);
+    MOAG_ChunkEnqueue8(len);
+    for(int i=0;i<len;i++)
+        MOAG_ChunkEnqueue8(msg[i]);
+    
+    // Send chunk.
+    if(to!=-1){
+        if(clients[to] && MOAG_SendChunk(clients[to], -1, 1)==-1)
+            disconnect_client(to);
+    }else{
+        for(int i=0;i<MAX_CLIENTS;i++)
+            if(clients[i] && MOAG_SendChunk(clients[i], -1, 0)==-1)
+                disconnect_client(i);
+    }
+    
+    // Clear the queue buffer.
+    MOAG_SendChunk(NULL, -1, 1);
 }
 
 void sendLand(int to, int x, int y, int w, int h){
@@ -72,14 +97,12 @@ void sendLand(int to, int x, int y, int w, int h){
     MOAG_ChunkEnqueue16(w);
     MOAG_ChunkEnqueue16(h);
     
-    printf("%d, %d: %d, %d\n", x, y, w, h);
     int count = 0;
     for (int yy = y; yy < h + y; ++yy)
         for (int xx = x; xx < w + x; ++xx) {
             MOAG_ChunkEnqueue8(landAt(xx, yy));
             count++;
         }
-    printf("COUNT: %d\n", count);
     fflush(stdout);
 
     // Send chunk.
@@ -157,6 +180,10 @@ void spawnClient(int id){
     spawnTank(id);
     sendLand(id,0,0,WIDTH,HEIGHT);
     sendTank(id,-1);
+    sendChat(-1,id,2,tanks[id].name,strlen(tanks[id].name));
+    for(int i=0;i<MAX_CLIENTS;i++)
+        if(i!=id && clients[i])
+            sendChat(id,i,2,tanks[i].name,strlen(tanks[i].name));
 }
 
 void disconnect_client(int c){
@@ -319,8 +346,7 @@ void stepGame(){
 
 
 
-void client_connect(MOAG_Connection arg)
-{
+void client_connect(MOAG_Connection arg) {
     int i=0;
     while(clients[i])
         if(++i>=MAX_CLIENTS){
@@ -337,22 +363,34 @@ void client_connect(MOAG_Connection arg)
     fflush(stdout);
 }
 
-void server_update(MOAG_Connection arg)
-{
+void handleMsg(int id, const char* msg, int len){
+    if(msg[0]=='/' && msg[1]=='n' && msg[2]==' '){
+        len-=3;
+        if(len>15)
+            len=15;
+        for(int i=0;i<len;i++)
+            tanks[id].name[i]=msg[i+3];
+        tanks[id].name[len]='\0';
+        sendChat(-1,id,2,tanks[id].name,strlen(tanks[id].name));
+        return;
+    }
+    sendChat(-1,id,1,msg,len);
+}
+
+void server_update(MOAG_Connection arg) {
     stepGame();
 
     // For each client...
     for (int i = 0; i < MAX_CLIENTS; ++i)
         while (clients[i] && MOAG_HasActivity(clients[i], 0)) {
             // Get data.
-            if (MOAG_ReceiveChunk(clients[i], 1) == -1){
+            if(MOAG_ReceiveChunk(clients[i], 1)==-1){
                 disconnect_client(i);
                 continue;
             }
             
             char byte = MOAG_ChunkDequeue8();
 
-            // printf("client %d sent %d\n",i,byte);
             switch(byte){
             case 1: tanks[i].kLeft=1; break;
             case 2: tanks[i].kLeft=0; break;
@@ -364,6 +402,18 @@ void server_update(MOAG_Connection arg)
             case 8: tanks[i].kDown=0; break;
             case 9: tanks[i].kFire=1; break;
             case 10: tanks[i].kFire=0; break;
+            case 11: { //msg
+                if(MOAG_ReceiveChunk(clients[i], 1)==-1)
+                    break;
+                unsigned char len = MOAG_ChunkDequeue8();
+                char* msg=new char[len];
+                if(MOAG_ReceiveChunk(clients[i], len)==-1)
+                    break;
+                for(int j=0;j<len;j++)
+                    msg[j] = MOAG_ChunkDequeue8();
+                handleMsg(i,msg,len);
+                delete[] msg;
+            } break;
             default: break;
             }
         }

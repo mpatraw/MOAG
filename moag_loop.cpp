@@ -69,6 +69,10 @@ void MOAG_SetFps(int fps) {
     _fps = fps;
 }
 
+int MOAG_GetTicks() {
+    return SDL_GetTicks();
+}
+
 void MOAG_MainLoop() {
     const int skipTicks = 1000 / _fps;
     const int maxFrameSkip = 10;

@@ -1,4 +1,5 @@
 #include "moag_window.h"
+#include "client.h"
 #include <SDL/SDL.h>
 #include <SDL/SDL_ttf.h>
 
@@ -108,6 +109,26 @@ void MOAG_SetString(int x, int y, const char *str, Uint8 r, Uint8 g, Uint8 b) {
     SDL_Surface *text = TTF_RenderText_Solid(_font, str, color);
     if (!text)
         return;
+    pushRedraw(x,y,text->w,text->h);
+    SDL_Rect pos;
+    pos.x = x;
+    pos.y = y;
+    SDL_BlitSurface(text, NULL, SDL_GetVideoSurface(), &pos);
+    SDL_FreeSurface(text);
+}
+
+void MOAG_SetStringCentered(int x, int y, const char *str, Uint8 r, Uint8 g, Uint8 b) {
+    if (!_font)
+        return;
+    SDL_Color color;
+    color.r = r;
+    color.g = g;
+    color.b = b;
+    SDL_Surface *text = TTF_RenderText_Solid(_font, str, color);
+    if (!text)
+        return;
+    x -= text->w/2;
+    pushRedraw(x,y,text->w,text->h);
     SDL_Rect pos;
     pos.x = x;
     pos.y = y;
