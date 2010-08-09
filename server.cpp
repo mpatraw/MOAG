@@ -13,6 +13,7 @@ const int LAND_CHUNK   = 1;
 const int TANK_CHUNK   = 2;
 const int BULLET_CHUNK = 3;
 const int MSG_CHUNK    = 4;
+const int CRATE_CHUNK  = 5;
 
 void disconnect_client(int);
 
@@ -22,7 +23,7 @@ int numClients = 0;
 char land[WIDTH*HEIGHT];
 Tank tanks[MAX_CLIENTS];
 Bullet bullets[MAX_BULLETS];
-int bulletsFired;
+Crate crate;
 int spawns;
 
 inline char landAt(int x, int y){
@@ -43,7 +44,7 @@ void spawnTank(int id){
     tanks[id].active=1;
     tanks[id].x=(spawns*240)%(WIDTH-40)+20;
     tanks[id].y=60;
-    tanks[id].angle=35;
+    //tanks[id].angle=35;
     tanks[id].power=0;
     tanks[id].bullet=1;
     tanks[id].facingLeft=0;
@@ -81,7 +82,7 @@ void sendChat(int to, int id, char cmd, const char* msg, unsigned char len){
 }
 
 void sendLand(int to, int x, int y, int w, int h){
-    if(to<-1 || to>=MAX_CLIENTS)
+    if(to<-1 || to>=MAX_CLIENTS || (to>=0 && !clients[to]))
         return;
     if(x<0){ w+=x; x=0; }
     if(y<0){ h+=y; y=0; }
@@ -176,8 +177,21 @@ void sendBullets() {
     moag::SendChunk(NULL, -1, 1);
 }
 
+void sendCrate() {
+    moag::ChunkEnqueue8(CRATE_CHUNK);
+    moag::ChunkEnqueue16(crate.x);
+    moag::ChunkEnqueue16(crate.y);
+
+    for (int i = 0; i < MAX_CLIENTS; i++)
+        if (clients[i] && moag::SendChunk(clients[i], -1, 0) == -1)
+            disconnect_client(i);
+    
+    moag::SendChunk(NULL, -1, 1);
+}
+
 void spawnClient(int id){
     spawnTank(id);
+    tanks[id].angle=35;
     sendLand(id,0,0,WIDTH,HEIGHT);
     sendTank(id,-1);
     sendChat(-1,id,2,tanks[id].name,strlen(tanks[id].name));
@@ -197,19 +211,19 @@ void disconnect_client(int c){
 
 
 
-void fireBullet(char type, int x, int y, float angle, float vel){
+void fireBullet(char type, int x, int y, int lastx, int lasty, float angle, float vel){
     int i=0;
     while(bullets[i].active)
         if(++i>=MAX_BULLETS)
             return;
     bullets[i].active=4;
     bullets[i].type=type;
-    bullets[i].x=x;
-    bullets[i].y=y;
-    bullets[i].fx=(float)x;
-    bullets[i].fy=(float)y;
-    bullets[i].vx=vel*cosf(angle*M_PI/180.0);
-    bullets[i].vy=-vel*sinf(angle*M_PI/180.0);
+    bullets[i].fx=(float)x+5.0*cosf(angle*M_PI/180);
+    bullets[i].fy=(float)y-5.0*sinf(angle*M_PI/180);
+    bullets[i].x=(int)bullets[i].fx;
+    bullets[i].y=(int)bullets[i].fy;
+    bullets[i].vx=x-lastx+vel*cosf(angle*M_PI/180.0);
+    bullets[i].vy=y-lasty-vel*sinf(angle*M_PI/180.0);
 }
 
 inline int sqr(int n){ return n*n; }
@@ -223,7 +237,7 @@ void explode(int x, int y, int rad, char type){
             setLandAt(x+ix,y+iy, p);
     if(type==0)
         for(int i=0;i<MAX_CLIENTS;i++)
-            if(tanks[i].active && sqr(tanks[i].x-x)+sqr(tanks[i].y-3-y)<sqr(rad+6))
+            if(tanks[i].active && sqr(tanks[i].x-x)+sqr(tanks[i].y-3-y)<sqr(rad+4))
                 spawnTank(i);
             
     sendLand(-1,x-rad,y-rad,rad*2,rad*2);
@@ -234,6 +248,8 @@ void tankUpdate(int id){
     if(!t.active)
         return;
     // Movement
+    t.lastx=t.x;
+    t.lasty=t.y;
     if(t.kLeft){
         t.facingLeft=1;
         for(int i=0;i<8;i++)
@@ -253,6 +269,16 @@ void tankUpdate(int id){
                 break;
             }
     }
+    // Pickup
+    if(abs(t.x-crate.x)<14 && abs(t.y-crate.y)<14){
+        int r=(moag::GetTicks()*2387)%1024;
+        if(r<20) t.bullet=3; //nuke
+        else if(r<30) t.bullet=5; //super dirt
+        else if(r<200) t.bullet=2; //mini nuke
+        else t.bullet=4; //dirt
+        crate.x=0;
+        crate.y=0;
+    }
     // Aim
     if(t.kUp && t.angle<90)
         t.angle++;
@@ -263,11 +289,7 @@ void tankUpdate(int id){
         if(t.power<1000)
             t.power+=10;
     }else if(t.power){
-        if((++bulletsFired)%50==0)
-            t.bullet=3;
-        else if(bulletsFired%313==0)
-            t.bullet=2;
-        fireBullet(t.bullet, t.x,t.y-7,t.facingLeft?180-t.angle:t.angle, (float)t.power*0.01);
+        fireBullet(t.bullet, t.x, t.y-7, t.lastx, t.lasty-7, t.facingLeft?180-t.angle:t.angle, (float)t.power*0.01);
         t.bullet=1;
         t.power=0;
     }
@@ -284,11 +306,17 @@ void bulletDetonate(int b){
     case 1: // missile
         explode(bullets[b].x,bullets[b].y, 12, 0);
         break;
-    case 2: // nuke
-        explode(bullets[b].x,bullets[b].y, 128, 0);
+    case 2: // baby nuke
+        explode(bullets[b].x,bullets[b].y, 60, 0);
         break;
-    case 3: // dirt
-        explode(bullets[b].x,bullets[b].y, 64, 1);
+    case 3: // nuke
+        explode(bullets[b].x,bullets[b].y, 150, 0);
+        break;
+    case 4: // dirt
+        explode(bullets[b].x,bullets[b].y, 30, 1);
+        break;
+    case 5: // super dirt
+        explode(bullets[b].x,bullets[b].y, 400, 1);
         break;
     default: break;
     }
@@ -318,13 +346,25 @@ void bulletUpdate(int b){
         }    
 }
 
+void crateUpdate(){
+    if(crate.x==0 && crate.y==0){
+        crate.x=(moag::GetTicks()*2387)%(WIDTH-10)+5;
+        crate.y=20;
+        explode(crate.x,crate.y-12, 12, 0);
+    }
+    if(landAt(crate.x,crate.y+1)==0)
+        crate.y++;
+    sendCrate();
+}
+
 void initGame(){
-    bulletsFired=0;
     spawns=0;
     for(int i=0;i<MAX_CLIENTS;i++)
         tanks[i].active=0;
     for(int i=0;i<MAX_BULLETS;i++)
         bullets[i].active=0;
+    crate.x=0;
+    crate.y=0;
         
     for (int y = 0; y < HEIGHT; ++y)
         for (int x = 0; x < WIDTH; ++x){
@@ -337,6 +377,7 @@ void initGame(){
 }
 
 void stepGame(){
+    crateUpdate();
     for(int i=0;i<MAX_CLIENTS;i++)
         tankUpdate(i);
     for(int i=0;i<MAX_BULLETS;i++)

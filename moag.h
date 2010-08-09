@@ -27,5 +27,10 @@ struct Bullet{
     char type;
 };
 
+struct Crate{
+    int x,y;
+    char type;
+};
+
 #endif
 

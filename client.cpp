@@ -16,6 +16,7 @@ const int LAND_CHUNK   = 1;
 const int TANK_CHUNK   = 2;
 const int BULLET_CHUNK = 3;
 const int MSG_CHUNK    = 4;
+const int CRATE_CHUNK  = 5;
 
 struct BulletPos{
     Uint16 x,y;
@@ -41,6 +42,7 @@ Tank tanks[MAX_CLIENTS];
 Tank keys;
 BulletPos bullets[MAX_BULLETS];
 int numBullets=0;
+Crate crate;
 
 inline char landAt(int x, int y){
     if(x<0 || x>=WIDTH || y<0 || y>=HEIGHT)
@@ -104,6 +106,18 @@ const char tanksprite[14][19]={
 "..xxxxxxxxxxxxxx..",
 };
 
+const char cratesprite[9][10]={
+".xxxxxxx.",
+"xx.....xx",
+"x.x...x.x",
+"x..x.x..x",
+"x...x...x",
+"x..x.x..x",
+"x.x...x.x",
+"xx.....xx",
+".xxxxxxx.",
+};
+
 void drawTank(int x, int y, int turretangle, char facingLeft){
     if(x<0 || x>WIDTH-18 || y<0 || y>HEIGHT-14)
         return;
@@ -124,6 +138,16 @@ void drawTank(int x, int y, int turretangle, char facingLeft){
             moag::SetPixel(x+(facingLeft?9-ix:8+ix),y+6+iy,240,240,240);
         rise+=step;
     }
+}
+
+void drawCrate(int x, int y){
+    if(x<0 || x>WIDTH-9 || y<0 || y>HEIGHT-9)
+        return;
+    for(int iy=0;iy<9;iy++)
+    for(int ix=0;ix<9;ix++)
+        if(cratesprite[iy][ix]=='x')
+            moag::SetPixel(x+ix,y+iy,240,240,240);
+    pushRedraw(x,y,9,9);
 }
 
 void drawBullets(){
@@ -191,6 +215,8 @@ void draw() {
             tanks[i].lastx=tanks[i].x;
             tanks[i].lasty=tanks[i].y;
         }
+    if(crate.x || crate.y)
+        drawCrate(crate.x-4,crate.y-8);
     drawBullets();
     delChatLine();
     for(int i=0;i<CHAT_LINES;i++)
@@ -222,6 +248,8 @@ void initClient() {
         tanks[i].lastx=0;
         tanks[i].lasty=0;
     }
+    crate.x=0;
+    crate.y=0;
     keys.kLeft=0;
     keys.kRight=0;
     keys.kUp=0;
@@ -426,6 +454,11 @@ void client_update(moag::Connection arg)
             default:
                 break;
             }
+        } break;
+        case CRATE_CHUNK: {
+            moag::ReceiveChunk(arg, 4);
+            crate.x=(short)moag::ChunkDequeue16();
+            crate.y=(short)moag::ChunkDequeue16();
         } break;
         default:
             printf("unknown byte: %d\n",byte);
