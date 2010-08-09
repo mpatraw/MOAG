@@ -8,9 +8,9 @@ namespace moag
 
 moag::Connection _server = NULL;
 
-int OpenServer(int port) {
+int OpenServer(int port, int maxConnections) {
     // We only need the timer.
-    if (SDL_Init(SDL_INIT_TIMER) == -1 || moag::OpenNet() == -1)
+    if (SDL_Init(SDL_INIT_TIMER) == -1 || moag::OpenNet(maxConnections) == -1)
         return -1;
 
     _server = moag::ListenOn(port);

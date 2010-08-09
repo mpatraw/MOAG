@@ -15,7 +15,7 @@ enum
 
 typedef void (*ServerCallback) (moag::Connection arg);
 
-int OpenServer(int port);
+int OpenServer(int port, int maxConnections);
 void CloseServer(void);
 void SetServerCallback(ServerCallback cb, int type);
 void ServerTick(void);

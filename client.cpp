@@ -304,7 +304,7 @@ void validate_str(char* s){
 
 void client_update(moag::Connection arg)
 {
-    while (moag::HasActivity(arg, 0)){
+    if (moag::HasActivity(arg, 0)){
         if (moag::ReceiveChunk(arg, 1) == -1){
             printf("Disconnected from server!\n");
             exit(0);

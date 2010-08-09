@@ -1,50 +1,80 @@
 
 #include "moag_net.h"
+#include <algorithm>
 #include <SDL/SDL.h>
 #include <SDL/SDL_net.h>
+#include <vector>
+
+using std::vector;
+using std::find;
 
 namespace moag
 {
 
-int OpenNet(void) {
+static SDLNet_SocketSet _socketSet;
+
+int OpenNet(int maxConnections) {
     if (SDL_WasInit(SDL_INIT_EVERYTHING) == 0 || SDLNet_Init() == -1)
         return -1;
+    
+    _socketSet = SDLNet_AllocSocketSet(maxConnections);
+    if (!_socketSet) {
+        SDLNet_Quit();
+        return -1;
+    }
+    
     return 0;
 }
 
 void CloseNet(void) {
+    SDLNet_FreeSocketSet(_socketSet);
     SDLNet_Quit();
 }
 
 Connection ListenOn(int port) {
     IPaddress ip;
+    
     if (SDLNet_ResolveHost(&ip, NULL, port) == -1)
         return NULL;
-    return SDLNet_TCP_Open(&ip);
+    
+    TCPsocket con = SDLNet_TCP_Open(&ip);
+    if (con)
+        SDLNet_TCP_AddSocket(_socketSet, con);
+        
+    return con;
 }
 
 Connection AcceptClient(Connection server) {
-    return SDLNet_TCP_Accept(server);
+    TCPsocket con = SDLNet_TCP_Accept(server);
+    if (con)
+        SDLNet_TCP_AddSocket(_socketSet, con);
+    return con;
 }
 
 Connection ConnectTo(const char *host, int port) {
     IPaddress ip;
+    
     if (SDLNet_ResolveHost(&ip, host, port) == -1)
         return NULL;
-    return SDLNet_TCP_Open(&ip);
+    
+    TCPsocket con = SDLNet_TCP_Open(&ip);
+    if (con)
+        SDLNet_TCP_AddSocket(_socketSet, con);
+    
+    return con;
 }
 
 void Disconnect(Connection con) {
+    SDLNet_TCP_DelSocket(_socketSet, con);
     SDLNet_TCP_Close((TCPsocket)con);
 }
 
 int HasActivity(Connection con, int timeout) {
-    SDLNet_SocketSet ss = SDLNet_AllocSocketSet(1);
-    SDLNet_TCP_AddSocket(ss, con);
-    if (SDLNet_CheckSockets(ss, timeout) != 1)
+    if (SDLNet_CheckSockets(_socketSet, timeout) < 1)
         return 0;
-    SDLNet_FreeSocketSet(ss);
-    return 1;
+    if (SDLNet_SocketReady(con) != 0)
+        return 1;
+    return 0;
 }
 
 int SendRaw(Connection con, void *data, int len) {

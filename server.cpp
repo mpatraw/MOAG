@@ -382,7 +382,7 @@ void server_update(moag::Connection arg) {
 
     // For each client...
     for (int i = 0; i < MAX_CLIENTS; ++i)
-        while (clients[i] && moag::HasActivity(clients[i], 0)) {
+        if (clients[i] && moag::HasActivity(clients[i], 0)) {
             // Get data.
             if(moag::ReceiveChunk(clients[i], 1)==-1){
                 disconnect_client(i);
@@ -428,7 +428,7 @@ void server_update(moag::Connection arg) {
 
 int main(int argc, char *argv[])
 {
-    if (moag::OpenServer(8080) == -1) {
+    if (moag::OpenServer(8080, MAX_CLIENTS) == -1) {
         printf("Failed to start server\n");
         return 1;
     }

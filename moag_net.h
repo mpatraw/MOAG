@@ -10,7 +10,7 @@ namespace moag
 
 typedef TCPsocket Connection;
 
-int OpenNet(void);
+int OpenNet(int maxConnections);
 void CloseNet(void);
 
 Connection ListenOn(int port);

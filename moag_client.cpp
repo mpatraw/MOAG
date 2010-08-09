@@ -11,7 +11,7 @@ ClientCallback _clientUpdate = NULL;
 
 int OpenClient(const char *server, int port) {
     // We only need the timer.
-    if (SDL_Init(SDL_INIT_TIMER) == -1 || OpenNet() == -1)
+    if (SDL_Init(SDL_INIT_TIMER) == -1 || OpenNet(1) == -1)
         return -1;
 
     _host = ConnectTo(server, port);
