@@ -39,7 +39,16 @@ void GrabEvents(void) {
                         _input[--_inputlen]='\0';
                     break;
                 default:
-                    int ch=ev.key.keysym.sym;
+                    if(_inputlen<255){
+                        char ch=ev.key.keysym.unicode&0x7f;
+                        if((ev.key.keysym.unicode&0xff80)!=0)
+                            ch='?';
+                        if(ch>=32 && ch<=126)
+                            _input[_inputlen++]=ch;
+                            _input[_inputlen]='\0';
+                    }
+                    break;
+                    /*int ch=ev.key.keysym.sym;
                     if(ch>=32 && ch<=122){
                         if(ev.key.keysym.mod&KMOD_SHIFT){
                             switch(ch){
@@ -70,14 +79,6 @@ void GrabEvents(void) {
                         _input[_inputlen++]=(char)ch;
                         _input[_inputlen]='\0';
                     }
-                    /*if(_inputlen<255){
-                        char ch=ev.key.keysym.unicode&0x7f;
-                        if((ev.key.keysym.unicode&0xff80)!=0)
-                            ch='?';
-                        if(ch>=32 && ch<=126)
-                            _input[_inputlen++]=ch;
-                            _input[_inputlen]='\0';
-                    }
                     break;*/
                 }
             }
@@ -100,7 +101,6 @@ void GrabEvents(void) {
 }
 
 char* StartTextInput(){
-    //SDL_EnableUNICODE(1);
     SDL_EnableKeyRepeat(200,50);
     _inputmodep=true;
     _inputlen=0;
@@ -117,7 +117,6 @@ char* StartTextCmdInput(){
 }
 
 void StopTextInput(){
-    //SDL_EnableUNICODE(0);
     SDL_EnableKeyRepeat(0,0);
     _inputmodep=false;
 }

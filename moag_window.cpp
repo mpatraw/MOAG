@@ -16,6 +16,9 @@ int OpenWindow(int width, int height, const char *title) {
         !SDL_SetVideoMode(width, height, BPP, FLAGS))
         return -1;
     SDL_WM_SetCaption(title, NULL);
+    // This is used for text input. Apparently, it slows down keypresses,
+    // but enabling/disabling it during the game causes problems.
+    SDL_EnableUNICODE(1);
     return 0;
 }
 
