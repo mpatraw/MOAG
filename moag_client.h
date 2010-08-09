@@ -1,20 +1,25 @@
 
-#ifndef MOAG_CLIENT_H
-#define MOAG_CLIENT_H
+#ifndef CLIENT_H
+#define CLIENT_H
 
 #include "moag_net.h"
 
+namespace moag
+{
+
 enum
 {
-    MOAG_CB_CLIENT_UPDATE
+    CB_CLIENT_UPDATE
 };
 
-typedef void (*MOAG_ClientCallback) (MOAG_Connection args);
+typedef void (*ClientCallback) (moag::Connection args);
 
-int MOAG_OpenClient(const char *server, int port);
-void MOAG_CloseClient(void);
-void MOAG_SetClientCallback(MOAG_ClientCallback cb, int type);
-void MOAG_ClientTick(void);
+int OpenClient(const char *server, int port);
+void CloseClient(void);
+void SetClientCallback(ClientCallback cb, int type);
+void ClientTick(void);
+
+}
 
 #endif
 

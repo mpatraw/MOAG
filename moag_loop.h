@@ -1,26 +1,34 @@
 
-#ifndef MOAG_LOOP_H
-#define MOAG_LOOP_H
+#ifndef LOOP_H
+#define LOOP_H
 
-#define MOAG_LS_BLOCKING 0
-#define MOAG_LS_NONBLOCKING 1
+namespace moag
+{
 
 enum
 {
-    MOAG_CB_DRAW,
-    MOAG_CB_UPDATE
+    LS_BLOCKING = 0,
+    LS_NONBLOCKING = 1
 };
 
-typedef void (*MOAG_LoopCallback) (void);
+enum
+{
+    CB_DRAW,
+    CB_UPDATE
+};
 
-void MOAG_SetFps(int fps);
-int MOAG_GetTicks();
-int MOAG_SetLoopCallback(MOAG_LoopCallback cb, int type);
-int MOAG_SetLoopState(int type);
-int MOAG_PushLoopState(int type);
-void MOAG_PopLoopState();
-void MOAG_MainLoop();
-void MOAG_QuitMainLoop();
+typedef void (*LoopCallback) (void);
+
+void SetFps(int fps);
+int GetTicks();
+int SetLoopCallback(LoopCallback cb, int type);
+int SetLoopState(int type);
+int PushLoopState(int type);
+void PopLoopState();
+void MainLoop();
+void QuitMainLoop();
+
+}
 
 #endif
 

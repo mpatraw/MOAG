@@ -2,29 +2,32 @@
 #include "moag_window.h"
 #include <SDL/SDL.h>
 
-#define _MAX_LOOPSTATES 20
+namespace moag
+{
+
+const int _MAX_LOOPSTATES = 20;
 
 struct _LoopState {
-    MOAG_LoopCallback drawFunc;
-    MOAG_LoopCallback updateFunc;
+    LoopCallback drawFunc;
+    LoopCallback updateFunc;
     int type;
 };
 
 _LoopState _loopStates[_MAX_LOOPSTATES] = {
-    {NULL, NULL, MOAG_LS_BLOCKING}
+    {NULL, NULL, LS_BLOCKING}
 };
 
 int _currentLoopState = 0;
 
-int MOAG_SetLoopCallback(MOAG_LoopCallback cb, int type) {
+int SetLoopCallback(LoopCallback cb, int type) {
     if (_currentLoopState < 0 || _currentLoopState >= _MAX_LOOPSTATES)
         return -1;
         
     switch (type) {
-    case MOAG_CB_DRAW:
+    case CB_DRAW:
         _loopStates[_currentLoopState].drawFunc = cb;
         break;
-    case MOAG_CB_UPDATE:
+    case CB_UPDATE:
         _loopStates[_currentLoopState].updateFunc = cb;
         break;
     default:
@@ -34,7 +37,7 @@ int MOAG_SetLoopCallback(MOAG_LoopCallback cb, int type) {
     return 0;
 }
 
-int MOAG_SetLoopState(int type) {
+int SetLoopState(int type) {
     if (_currentLoopState >= _MAX_LOOPSTATES)
         return -1;
 
@@ -43,7 +46,7 @@ int MOAG_SetLoopState(int type) {
     return 0;
 }
 
-int MOAG_PushLoopState(int type) {
+int PushLoopState(int type) {
     if (_currentLoopState + 1 >= _MAX_LOOPSTATES)
         return -1;
     _currentLoopState++;
@@ -54,7 +57,7 @@ int MOAG_PushLoopState(int type) {
     return 0;
 }
 
-void MOAG_PopLoopState() {
+void PopLoopState() {
     if (_currentLoopState <= 0)
         return;
     _loopStates[_currentLoopState].drawFunc = NULL;
@@ -65,15 +68,15 @@ void MOAG_PopLoopState() {
 int _running = 1;
 int _fps = 1000;
 
-void MOAG_SetFps(int fps) {
+void SetFps(int fps) {
     _fps = fps;
 }
 
-int MOAG_GetTicks() {
+int GetTicks() {
     return SDL_GetTicks();
 }
 
-void MOAG_MainLoop() {
+void MainLoop() {
     const int skipTicks = 1000 / _fps;
     const int maxFrameSkip = 10;
 
@@ -90,18 +93,20 @@ void MOAG_MainLoop() {
         
         // Draw from the last BLOCKING state upward.
         int blockState = _currentLoopState;
-        while (_loopStates[blockState].type != MOAG_LS_BLOCKING && blockState >= 0)
+        while (_loopStates[blockState].type != LS_BLOCKING && blockState >= 0)
             blockState--;
         while (blockState <= _currentLoopState) {
             _loopStates[blockState].drawFunc();
             blockState++;
         }
         
-        MOAG_UpdateWindow();
+        UpdateWindow();
     }
 }
 
-void MOAG_QuitMainLoop(void) {
+void QuitMainLoop(void) {
     _running = 0;
+}
+
 }
 

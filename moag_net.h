@@ -1,29 +1,34 @@
 
-#ifndef MOAG_NET_H
-#define MOAG_NET_H
+#ifndef NET_H
+#define NET_H
 
 #include <SDL/SDL_types.h>
 #include <SDL/SDL_net.h>
 
-typedef TCPsocket MOAG_Connection;
+namespace moag
+{
 
-int MOAG_OpenNet(void);
-void MOAG_CloseNet(void);
+typedef TCPsocket Connection;
 
-MOAG_Connection MOAG_ListenOn(int port);
-MOAG_Connection MOAG_AcceptClient(MOAG_Connection server);
+int OpenNet(void);
+void CloseNet(void);
 
-MOAG_Connection MOAG_ConnectTo(const char *host, int port);
-void MOAG_Disconnect(MOAG_Connection con);
+Connection ListenOn(int port);
+Connection AcceptClient(Connection server);
 
-int MOAG_HasActivity(MOAG_Connection con, int timeout);
+Connection ConnectTo(const char *host, int port);
+void Disconnect(Connection con);
 
-int MOAG_SendRaw(MOAG_Connection con, void *data, int len);
-int MOAG_ReceiveRaw(MOAG_Connection con, void *data, int len);
-void MOAG_Pack32(Uint32 i, void *buffer);
-Uint32 MOAG_Unpack32(void *buffer);
-void MOAG_Pack16(Uint16 i, void *buffer);
-Uint16 MOAG_Unpack16(void *buffer);
+int HasActivity(Connection con, int timeout);
+
+int SendRaw(Connection con, void *data, int len);
+int ReceiveRaw(Connection con, void *data, int len);
+void Pack32(Uint32 i, void *buffer);
+Uint32 Unpack32(void *buffer);
+void Pack16(Uint16 i, void *buffer);
+Uint16 Unpack16(void *buffer);
+
+}
 
 #endif
 

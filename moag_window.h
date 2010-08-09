@@ -1,19 +1,25 @@
 
-#ifndef MOAG_WINDOW_H
-#define MOAG_WINDOW_H
+#ifndef WINDOW_H
+#define WINDOW_H
 
 #include <SDL/SDL_types.h>
 
-int MOAG_OpenWindow(int width, int height, const char *title);
-void MOAG_CloseWindow();
-int MOAG_SetFont(const char *ttf, int ptsize);
-void MOAG_SetBlock(int x, int y, int w, int h, Uint8 r, Uint8 g, Uint8 b);
-void MOAG_SetPixel(int x, int y, Uint8 r, Uint8 g, Uint8 b);
-void MOAG_GetPixel(int x, int y, Uint8 *r, Uint8 *g, Uint8 *b);
-void MOAG_SetString(int x, int y, const char *str, Uint8 r, Uint8 g, Uint8 b);
-void MOAG_SetStringCentered(int x, int y, const char *str, Uint8 r, Uint8 g, Uint8 b);
-void MOAG_ClearWindow(Uint8 r, Uint8 g, Uint8 b);
-void MOAG_UpdateWindow();
+namespace moag
+{
+
+int OpenWindow(int width, int height, const char *title);
+void CloseWindow();
+int SetFont(const char *ttf, int ptsize);
+void SetBlock(int x, int y, int w, int h, Uint8 r, Uint8 g, Uint8 b);
+void SetPixel(int x, int y, Uint8 r, Uint8 g, Uint8 b);
+void GetPixel(int x, int y, Uint8 *r, Uint8 *g, Uint8 *b);
+void SetString(int x, int y, const char *str, Uint8 r, Uint8 g, Uint8 b);
+void SetStringCentered(int x, int y, const char *str, Uint8 r, Uint8 g, Uint8 b);
+int GetStringSize(const char *str, int *w, int *h);
+void ClearWindow(Uint8 r, Uint8 g, Uint8 b);
+void UpdateWindow();
+
+}
 
 #endif
 

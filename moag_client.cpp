@@ -3,31 +3,34 @@
 #include "moag_net.h"
 #include <SDL/SDL.h>
 
-MOAG_Connection _host = NULL;
-MOAG_ClientCallback _clientUpdate = NULL;
+namespace moag
+{
 
-int MOAG_OpenClient(const char *server, int port) {
+Connection _host = NULL;
+ClientCallback _clientUpdate = NULL;
+
+int OpenClient(const char *server, int port) {
     // We only need the timer.
-    if (SDL_Init(SDL_INIT_TIMER) == -1 || MOAG_OpenNet() == -1)
+    if (SDL_Init(SDL_INIT_TIMER) == -1 || OpenNet() == -1)
         return -1;
 
-    _host = MOAG_ConnectTo(server, port);
+    _host = ConnectTo(server, port);
     if (!_host)
         return -1;
 
     return 0;
 }
 
-void MOAG_CloseClient() {
+void CloseClient() {
     if (_host)
-        MOAG_Disconnect(_host);
-    MOAG_CloseNet();
+        Disconnect(_host);
+    CloseNet();
     SDL_Quit();
 }
 
-void MOAG_SetClientCallback(MOAG_ClientCallback cb, int type) {
+void SetClientCallback(ClientCallback cb, int type) {
     switch (type) {
-    case MOAG_CB_CLIENT_UPDATE:
+    case CB_CLIENT_UPDATE:
         _clientUpdate = cb;
         break;
     default:
@@ -35,10 +38,11 @@ void MOAG_SetClientCallback(MOAG_ClientCallback cb, int type) {
     }
 }
 
-void MOAG_ClientTick() {
+void ClientTick() {
     if (_clientUpdate)
         _clientUpdate(_host);
 }
 
+}
 
 

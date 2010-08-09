@@ -2,6 +2,9 @@
 #include "moag_event.h"
 #include <SDL/SDL.h>
 
+namespace moag
+{
+
 bool _keyTable[SDLK_LAST] = {};
 bool _keyTablePressed[SDLK_LAST] = {};
 bool _keyTableReleased[SDLK_LAST] = {};
@@ -15,7 +18,7 @@ int _y = 0;
 
 bool _quitting = false;
 
-void MOAG_GrabEvents(void) {
+void GrabEvents(void) {
     _quitting = 0;
     
     for(int i=0; i<SDLK_LAST; i++)
@@ -96,7 +99,7 @@ void MOAG_GrabEvents(void) {
     }
 }
 
-char* MOAG_StartTextInput(){
+char* StartTextInput(){
     //SDL_EnableUNICODE(1);
     SDL_EnableKeyRepeat(200,50);
     _inputmodep=true;
@@ -105,47 +108,49 @@ char* MOAG_StartTextInput(){
     return _input;
 }
 
-char* MOAG_StartTextCmdInput(){
-    MOAG_StartTextInput();
+char* StartTextCmdInput(){
+    StartTextInput();
     _inputlen=1;
     _input[0]='/';
     _input[1]='\0';
     return _input;
 }
 
-void MOAG_StopTextInput(){
+void StopTextInput(){
     //SDL_EnableUNICODE(0);
     SDL_EnableKeyRepeat(0,0);
     _inputmodep=false;
 }
 
-int MOAG_IsKeyDown(int key) {
+int IsKeyDown(int key) {
     return _keyTable[key];
 }
 
-int MOAG_IsKeyPressed(int key) {
+int IsKeyPressed(int key) {
     return _keyTablePressed[key];
 }
 
-int MOAG_IsKeyReleased(int key) {
+int IsKeyReleased(int key) {
     return _keyTableReleased[key];
 }
 
-int MOAG_IsButtonDown(int button) {
+int IsButtonDown(int button) {
     Uint8 newbutton = 0;
-    if (button & MOAG_BUTTON_LEFT)
+    if (button & BUTTON_LEFT)
         newbutton |= SDL_BUTTON(1);
-    if (button & MOAG_BUTTON_RIGHT)
+    if (button & BUTTON_RIGHT)
         newbutton |= SDL_BUTTON(2);
     return newbutton & SDL_GetMouseState(NULL, NULL);
 }
 
-void MOAG_GetMousePosition(int *x, int *y) {
+void GetMousePosition(int *x, int *y) {
     *x = _x;
     *y = _y;
 }
 
-int MOAG_IsQuitting(void) {
+int IsQuitting(void) {
     return _quitting;
+}
+
 }
 

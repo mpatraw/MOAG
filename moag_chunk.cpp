@@ -3,6 +3,9 @@
 #include "moag_net.h"
 #include <assert.h>
 
+namespace moag
+{
+
 // Implemented as a resizing circular buffer.
 Uint8 *_incoming = NULL;
 Uint32 _inFront = 0;
@@ -14,7 +17,7 @@ Uint8 *_outgoing = NULL;
 Uint32 _outLen = 0;
 Uint32 _outAlloc = 0;
 
-void MOAG_ChunkEnqueue8(Uint8 ch) {
+void ChunkEnqueue8(Uint8 ch) {
     if (!_outgoing) {
         _outAlloc = 4;
         _outgoing = (Uint8 *)malloc(_outAlloc);
@@ -29,7 +32,7 @@ void MOAG_ChunkEnqueue8(Uint8 ch) {
     _outLen += 1;
 }
 
-void MOAG_ChunkEnqueue16(Uint16 ch) {
+void ChunkEnqueue16(Uint16 ch) {
     if (!_outgoing) {
         _outAlloc = 4;
         _outgoing = (Uint8 *)malloc(_outAlloc);
@@ -40,11 +43,11 @@ void MOAG_ChunkEnqueue16(Uint16 ch) {
         _outgoing = (Uint8 *)realloc(_outgoing, _outAlloc);
     }
     
-    MOAG_Pack16(ch, &_outgoing[_outLen]);
+    Pack16(ch, &_outgoing[_outLen]);
     _outLen += 2;
 }
 
-void MOAG_ChunkEnqueue32(Uint32 ch) {
+void ChunkEnqueue32(Uint32 ch) {
     if (!_outgoing) {
         _outAlloc = 4;
         _outgoing = (Uint8 *)malloc(_outAlloc);
@@ -55,12 +58,12 @@ void MOAG_ChunkEnqueue32(Uint32 ch) {
         _outgoing = (Uint8 *)realloc(_outgoing, _outAlloc);
     }
     
-    MOAG_Pack32(ch, &_outgoing[_outLen]);
+    Pack32(ch, &_outgoing[_outLen]);
     _outLen += 4;
 }
 
 
-Uint8 MOAG_ChunkDequeue8() {
+Uint8 ChunkDequeue8() {
     Uint8 rv;
     
     assert(1 <= _inLen && "underflow");
@@ -78,11 +81,11 @@ Uint8 MOAG_ChunkDequeue8() {
     return rv;
 }
 
-Uint16 MOAG_ChunkDequeue16() {
+Uint16 ChunkDequeue16() {
     Uint16 rv;
     
     assert(2 <= _inLen && "underflow");
-    rv = MOAG_Unpack16(&_incoming[_inFront]);
+    rv = Unpack16(&_incoming[_inFront]);
     _inFront += 2;
     _inLen -= 2;
     
@@ -96,11 +99,11 @@ Uint16 MOAG_ChunkDequeue16() {
     return rv;
 }
 
-Uint32 MOAG_ChunkDequeue32() {
+Uint32 ChunkDequeue32() {
     Uint32 rv;
     
     assert(4 <= _inLen && "underflow");
-    rv = MOAG_Unpack32(&_incoming[_inFront]);
+    rv = Unpack32(&_incoming[_inFront]);
     _inFront += 4;
     _inLen -= 4;
     
@@ -114,19 +117,19 @@ Uint32 MOAG_ChunkDequeue32() {
     return rv;
 }
 
-Uint32 MOAG_IncomingChunkLength() {
+Uint32 IncomingChunkLength() {
     return _inLen;
 }
 
-Uint32 MOAG_OutgoingChunkLength() {
+Uint32 OutgoingChunkLength() {
     return _outLen;
 }
 
-int MOAG_SendChunk(MOAG_Connection con, Uint32 bytes, int flush) {
+int SendChunk(Connection con, Uint32 bytes, int flush) {
     if (bytes > _outLen)
         bytes = _outLen;
 
-    if (con && MOAG_SendRaw(con, _outgoing, bytes) == -1)
+    if (con && SendRaw(con, _outgoing, bytes) == -1)
         return -1;
     
     if (flush) {
@@ -142,7 +145,7 @@ int MOAG_SendChunk(MOAG_Connection con, Uint32 bytes, int flush) {
     return 0;
 }
 
-int MOAG_ReceiveChunk(MOAG_Connection con, Uint32 bytes) {
+int ReceiveChunk(Connection con, Uint32 bytes) {
     if (!_incoming) {
         _inAlloc = 4;
         _inLen = 0;
@@ -158,7 +161,7 @@ int MOAG_ReceiveChunk(MOAG_Connection con, Uint32 bytes) {
         _incoming = (Uint8 *)realloc(_incoming, _inAlloc);
     }
     
-    if (MOAG_ReceiveRaw(con, _incoming + _inLen, bytes) == -1)
+    if (ReceiveRaw(con, _incoming + _inLen, bytes) == -1)
         return -1;
 
     fflush(stdout);
@@ -167,4 +170,5 @@ int MOAG_ReceiveChunk(MOAG_Connection con, Uint32 bytes) {
     return 0;
 }
 
+}
 
