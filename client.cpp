@@ -7,7 +7,7 @@ const int MAX_CLIENTS = 8;
 const int MAX_BULLETS = 256;
 const int BUFLEN = 256;
 const int CHAT_LINES = 7;
-const int CHAT_EXPIRETIME = 14000;
+const int CHAT_EXPIRETIME = 18000;
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
@@ -264,11 +264,15 @@ void sendByte(char k){
 void update() {
     moag::ClientTick();
     moag::GrabEvents();
-    if(moag::IsKeyPressed(SDLK_ESCAPE) || moag::IsQuitting())
+
+    if(moag::IsQuitting() || (!typingStr && moag::IsKeyPressed(SDLK_ESCAPE))){
         moag::QuitMainLoop();
+        return;
+    }
 
     if(typingStr && !typingDone){
-        if(moag::IsKeyPressed(SDLK_LEFT)
+        if(moag::IsKeyPressed(SDLK_ESCAPE)
+            || moag::IsKeyPressed(SDLK_LEFT)
             || moag::IsKeyPressed(SDLK_RIGHT)
             || moag::IsKeyPressed(SDLK_UP)
             || moag::IsKeyPressed(SDLK_DOWN)){
@@ -277,6 +281,11 @@ void update() {
             return;
         }
         if(moag::IsKeyPressed(SDLK_RETURN)){
+            if(typingStr[0]=='\0'){
+                typingStr=NULL;
+                moag::StopTextInput();
+                return;
+            }
             typingDone=true;
             moag::StopTextInput();
             return;
@@ -450,6 +459,13 @@ void client_update(moag::Connection arg)
                 moag::ReceiveRaw(arg, tanks[id].name, len);
                 tanks[id].name[len]='\0';
                 validate_str(tanks[id].name);
+            } break;
+            case 3: { //server notice
+                char* line=new char[len+1];
+                moag::ReceiveRaw(arg, line, len);
+                line[len]='\0';
+                validate_str(line);
+                addChatLine(line);
             } break;
             default:
                 break;

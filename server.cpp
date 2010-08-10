@@ -6,6 +6,7 @@ const int MAX_CLIENTS = 8;
 const int MAX_BULLETS = 256;
 const float GRAVITY = 0.1;
 const int BOUNCER_BOUNCES = 11;
+const int RESPAWN_TIME = 120;
 
 const int WIDTH  = 800;
 const int HEIGHT = 600;
@@ -27,6 +28,8 @@ Bullet bullets[MAX_BULLETS];
 Crate crate;
 int spawns;
 
+void explode(int x, int y, int rad, char type);
+
 inline char landAt(int x, int y){
     if(x<0 || x>=WIDTH || y<0 || y>=HEIGHT)
         return -1;
@@ -41,8 +44,8 @@ inline void setLandAt(int x, int y, char to) {
 
 void spawnTank(int id){
     spawns++;
-    sprintf(tanks[id].name,"p%d",id);
     tanks[id].active=1;
+    tanks[id].spawntimer=0;
     tanks[id].x=(spawns*240)%(WIDTH-40)+20;
     tanks[id].y=60;
     //tanks[id].angle=35;
@@ -54,10 +57,11 @@ void spawnTank(int id){
     tanks[id].kUp=0;
     tanks[id].kDown=0;
     tanks[id].kFire=0;
+    explode(tanks[id].x,tanks[id].y-12, 12, 2);
 }
 
 void sendChat(int to, int id, char cmd, const char* msg, unsigned char len){
-    if(to<-1 || to>=MAX_CLIENTS || id<0 || id>=MAX_CLIENTS || !clients[id])
+    if(to<-1 || to>=MAX_CLIENTS || id<-1 || id>=MAX_CLIENTS || (id>=0 && !clients[id]))
         return;
     
     // Prepare chunk.
@@ -190,12 +194,24 @@ void sendCrate() {
     moag::SendChunk(NULL, -1, 1);
 }
 
+void killTank(int id){
+    tanks[id].x=-30;
+    tanks[id].y=-30;
+    tanks[id].spawntimer=RESPAWN_TIME;
+    sendTank(-1,id);
+}
+
 void spawnClient(int id){
+    sprintf(tanks[id].name,"p%d",id);
+    char notice[64]="* ";
+    strcat(notice,tanks[id].name);
+    strcat(notice," has connected");
+    sendChat(-1,-1,3,notice,strlen(notice));
+
     spawnTank(id);
     tanks[id].angle=35;
     tanks[id].facingLeft=0;
     sendLand(id,0,0,WIDTH,HEIGHT);
-    sendTank(id,-1);
     sendChat(-1,id,2,tanks[id].name,strlen(tanks[id].name));
     for(int i=0;i<MAX_CLIENTS;i++)
         if(i!=id && clients[i])
@@ -265,7 +281,7 @@ void explode(int x, int y, int rad, char type){
     if(type==0)
         for(int i=0;i<MAX_CLIENTS;i++)
             if(tanks[i].active && sqr(tanks[i].x-x)+sqr(tanks[i].y-3-y)<sqr(rad+4))
-                spawnTank(i);
+                killTank(i);
             
     sendLand(-1,x-rad,y-rad,rad*2,rad*2);
 }
@@ -320,6 +336,12 @@ void tankUpdate(int id){
     Tank& t=tanks[id];
     if(!t.active)
         return;
+    if(t.spawntimer>0){
+        if(--t.spawntimer<=0)
+            spawnTank(id);
+        else
+            return;
+    }
     // Movement
     t.lastx=t.x;
     t.lasty=t.y;
@@ -497,7 +519,7 @@ void crateUpdate(){
         const int seed=moag::GetTicks();
         crate.x=abs(seed*2387)%(WIDTH-40)+20;
         crate.y=30;
-        explode(crate.x,crate.y-12, 12, 0);
+        explode(crate.x,crate.y-12, 12, 2);
 
         const int PBABYNUKE=150;
         const int PNUKE=20;
@@ -570,13 +592,18 @@ void client_connect(moag::Connection arg) {
 
 void handleMsg(int id, const char* msg, int len){
     if(msg[0]=='/' && msg[1]=='n' && msg[2]==' '){
+        char notice[64]="* ";
+        strcat(notice,tanks[id].name);
         len-=3;
         if(len>15)
             len=15;
         for(int i=0;i<len;i++)
             tanks[id].name[i]=msg[i+3];
         tanks[id].name[len]='\0';
+        strcat(notice," is now known as ");
+        strcat(notice,tanks[id].name);
         sendChat(-1,id,2,tanks[id].name,strlen(tanks[id].name));
+        sendChat(-1,-1,3,notice,strlen(notice));
         return;
     }
     sendChat(-1,id,1,msg,len);

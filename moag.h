@@ -13,6 +13,7 @@
 struct Tank{
     int x,y,lastx,lasty;
     int angle,power;
+    int spawntimer;
     char active;
     char name[16];
     char bullet;
