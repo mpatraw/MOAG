@@ -381,16 +381,16 @@ void bulletDetonate(int b){
         explode(bullets[b].x,bullets[b].y, 150, 0);
         break;
     case 4: // dirt
-        explode(bullets[b].x,bullets[b].y, 45, 1);
+        explode(bullets[b].x,bullets[b].y, 80, 1);
         break;
     case 5: // super dirt
         explode(bullets[b].x,bullets[b].y, 300, 1);
         break;
     case 6: // collapse
-        explode(bullets[b].x,bullets[b].y, 60, 3);
+        explode(bullets[b].x,bullets[b].y, 120, 3);
         break;
     case 7: // liquid dirt
-        liquid(bullets[b].x,bullets[b].y, 2000);
+        liquid(bullets[b].x,bullets[b].y, 4000);
         break;
     default: break;
     }
@@ -436,10 +436,10 @@ void crateUpdate(){
         explode(crate.x,crate.y-12, 12, 0);
 
         if(r<30) crate.type=3; //nuke
-        else if(r<40) crate.type=5; //super dirt
-        else if(r<250) crate.type=2; //baby nuke
-        else if(r<500) crate.type=6; //collapse
-        else if(r<850) crate.type=7; //liquid dirt
+        else if(r<45) crate.type=5; //super dirt
+        else if(r<400) crate.type=2; //baby nuke
+        else if(r<600) crate.type=6; //collapse
+        else if(r<800) crate.type=7; //liquid dirt
         else crate.type=4; //dirt
     }
     if(landAt(crate.x,crate.y+1)==0)
