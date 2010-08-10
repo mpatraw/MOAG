@@ -345,24 +345,36 @@ void tankUpdate(int id){
     // Movement
     t.lastx=t.x;
     t.lasty=t.y;
+    bool grav=true;
     if(t.kLeft){
         t.facingLeft=1;
-        for(int i=0;i<8;i++)
-            if(landAt(t.x-1,t.y-i)==0){
-                if((t.x--)<=10)
-                    t.x=10;
-                t.y-=i;
-                break;
-            }
+        if(landAt(t.x-1,t.y)==0 && t.x>=10){
+            t.x--;
+        }else if(landAt(t.x-1,t.y-1)==0 && t.x>=10){
+            t.x--; t.y--;
+        }else if(landAt(t.x,t.y-1)==0 || landAt(t.x,t.y-2)==0){
+            grav=false; t.y--;
+        }else
+            grav=false;
     }else if(t.kRight){
         t.facingLeft=0;
-        for(int i=0;i<8;i++)
-            if(landAt(t.x+1,t.y-i)==0){
-                if((t.x++)>=WIDTH-10)
-                    t.x=WIDTH-10;
-                t.y-=i;
-                break;
-            }
+        if(landAt(t.x+1,t.y)==0 && t.x<WIDTH-10){
+            t.x++;
+        }else if(landAt(t.x+1,t.y-1)==0 && t.x<WIDTH-10){
+            t.x++; t.y--;
+        }else if(landAt(t.x,t.y-1)==0 || landAt(t.x,t.y-2)==0){
+            grav=false; t.y--;
+        }else
+            grav=false;
+    }
+    // Physics
+    if(t.y<20)
+        t.y=20;
+    if(grav){
+        if(landAt(t.x,t.y+1)==0)
+            t.y++;
+        if(landAt(t.x,t.y+1)==0)
+            t.y++;
     }
     // Pickup
     if(abs(t.x-crate.x)<14 && abs(t.y-crate.y)<14){
@@ -375,11 +387,6 @@ void tankUpdate(int id){
         t.angle++;
     else if(t.kDown && t.angle>1)
         t.angle--;
-    // Physics
-    if(landAt(t.x,t.y+1)==0)
-        t.y++;
-    if(landAt(t.x,t.y+1)==0)
-        t.y++;
     // Fire
     if(t.kFire){
         if(t.power<1000)
@@ -417,16 +424,16 @@ void bulletDetonate(int b){
         explode(bullets[b].x,bullets[b].y, 150, 0);
         break;
     case 4: // dirt
-        explode(bullets[b].x,bullets[b].y, 80, 1);
+        explode(bullets[b].x,bullets[b].y, 60, 1);
         break;
     case 5: // super dirt
-        explode(bullets[b].x,bullets[b].y, 300, 1);
+        explode(bullets[b].x,bullets[b].y, 250, 1);
         break;
     case 6: // collapse
         explode(bullets[b].x,bullets[b].y, 150, 3);
         break;
     case 7: // liquid dirt
-        liquid(ix, iy, 4000);
+        liquid(ix, iy, 3000);
         break;
     case 8: { // bouncer
         if(bullets[b].active>0)
