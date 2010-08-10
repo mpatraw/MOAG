@@ -297,12 +297,7 @@ void tankUpdate(int id){
     }
     // Pickup
     if(abs(t.x-crate.x)<14 && abs(t.y-crate.y)<14){
-        int r=(moag::GetTicks()*2387)%1024;
-        if(r<30) t.bullet=3; //nuke
-        else if(r<40) t.bullet=5; //super dirt
-        else if(r<200) t.bullet=2; //baby nuke
-        else if(r<700) t.bullet=6; //collapse
-        else t.bullet=4; //dirt
+        t.bullet=crate.type;
         crate.x=0;
         crate.y=0;
     }
@@ -372,15 +367,30 @@ void bulletUpdate(int b){
     for(int i=0;i<MAX_CLIENTS;i++)
         if(sqr(tanks[i].x-bullets[b].x)+sqr(tanks[i].y-3-bullets[b].y)<72){
             bulletDetonate(b);
-            break;
+            return;
         }    
+    if(sqr(crate.x-bullets[b].x)+sqr(crate.y-4-bullets[b].y)<30){
+        bulletDetonate(b);
+        fireBullet(crate.type, crate.x, crate.y-4, crate.x, crate.y-4, 90, 0.2);
+        crate.x=0;
+        crate.y=0;
+        return;
+    }    
 }
 
 void crateUpdate(){
     if(crate.x==0 && crate.y==0){
-        crate.x=(moag::GetTicks()*2387)%(WIDTH-10)+5;
-        crate.y=20;
+        const int seed=moag::GetTicks();
+        const int r=(seed*2387)%1024;
+        crate.x=(seed*2387)%(WIDTH-40)+20;
+        crate.y=30;
         explode(crate.x,crate.y-12, 12, 0);
+
+        if(r<30) crate.type=3; //nuke
+        else if(r<40) crate.type=5; //super dirt
+        else if(r<200) crate.type=2; //baby nuke
+        else if(r<700) crate.type=6; //collapse
+        else crate.type=4; //dirt
     }
     if(landAt(crate.x,crate.y+1)==0)
         crate.y++;
