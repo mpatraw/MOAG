@@ -6,6 +6,7 @@ const int MAX_CLIENTS = 8;
 const int MAX_BULLETS = 256;
 const float GRAVITY = 0.1;
 const int BOUNCER_BOUNCES = 11;
+const int TUNNELER_TUNNELINGS = 25;
 //const int RESPAWN_TIME = 120;
 const int RESPAWN_TIME = 10;
 
@@ -408,7 +409,7 @@ void bulletDetonate(int b){
     const float dy=bullets[b].vy/d;
     float hitx=bullets[b].fx;
     float hity=bullets[b].fy;
-    for(int i=20; i>0 && landAt((int)hitx,(int)hity); i--){
+    for(int i=40; i>0 && landAt((int)hitx,(int)hity); i--){
         hitx-=dx;
         hity-=dy;
     }
@@ -484,6 +485,13 @@ void bulletDetonate(int b){
         }
         explode(bullets[b].x,bullets[b].y, 16, 0);
     } break;
+    case 9: //tunneler
+        if(bullets[b].active>0)
+            bullets[b].active=-TUNNELER_TUNNELINGS;
+        bullets[b].active++;
+        explode(hitx,hity, 8, 0);
+        explode(hitx+8*dx,hity+8*dy, 8, 0);
+        break;
     default: break;
     }
     if(bullets[b].active>0)
@@ -507,7 +515,9 @@ void bulletUpdate(int b){
         return;
     }
     if(bullets[b].type==8 && bullets[b].active==1)
-        bullets[b].active=BOUNCER_BOUNCES;
+        bullets[b].active=-BOUNCER_BOUNCES;
+    if(bullets[b].type==9 && bullets[b].active==1)
+        bullets[b].active=-TUNNELER_TUNNELINGS;
     for(int i=0;i<MAX_CLIENTS;i++)
         if(sqr(tanks[i].x-bullets[b].x)+sqr(tanks[i].y-3-bullets[b].y)<72){
             bulletDetonate(b);
@@ -535,8 +545,10 @@ void crateUpdate(){
         const int PSUPERDIRT=10;
         const int PLIQUIDDIRT=75;
         const int PCOLLAPSE=75;
-        const int PBOUNCER=150;
-        const int TOTAL=PBABYNUKE+PNUKE+PDIRT+PSUPERDIRT+PLIQUIDDIRT+PCOLLAPSE+PBOUNCER;
+        const int PBOUNCER=100;
+        const int PTUNNELER=50;
+        const int TOTAL=PBABYNUKE+PNUKE+PDIRT+PSUPERDIRT+PLIQUIDDIRT+PCOLLAPSE
+                        +PBOUNCER+PTUNNELER;
         int r=abs(seed*2387)%TOTAL;
              if((r-=PBABYNUKE)<0)   crate.type=2;
         else if((r-=PNUKE)<0)       crate.type=3;
@@ -544,6 +556,7 @@ void crateUpdate(){
         else if((r-=PLIQUIDDIRT)<0) crate.type=7;
         else if((r-=PCOLLAPSE)<0)   crate.type=6;
         else if((r-=PBOUNCER)<0)    crate.type=8;
+        else if((r-=PTUNNELER)<0)   crate.type=9;
         else                        crate.type=4;
     }
     if(landAt(crate.x,crate.y+1)==0)
