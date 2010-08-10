@@ -6,7 +6,8 @@ const int MAX_CLIENTS = 8;
 const int MAX_BULLETS = 256;
 const float GRAVITY = 0.1;
 const int BOUNCER_BOUNCES = 11;
-const int RESPAWN_TIME = 120;
+//const int RESPAWN_TIME = 120;
+const int RESPAWN_TIME = 10;
 
 const int WIDTH  = 800;
 const int HEIGHT = 600;
@@ -48,8 +49,8 @@ void spawnTank(int id){
     tanks[id].spawntimer=0;
     tanks[id].x=(spawns*240)%(WIDTH-40)+20;
     tanks[id].y=60;
-    //tanks[id].angle=35;
-    //tanks[id].facingLeft=0;
+    tanks[id].angle=30;
+    tanks[id].facingLeft=0;
     tanks[id].power=0;
     tanks[id].bullet=1;
     tanks[id].kLeft=0;
