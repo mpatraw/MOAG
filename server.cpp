@@ -5,6 +5,7 @@
 const int MAX_CLIENTS = 8;
 const int MAX_BULLETS = 256;
 const float GRAVITY = 0.1;
+const int BOUNCER_BOUNCES = 11;
 
 const int WIDTH  = 800;
 const int HEIGHT = 600;
@@ -352,6 +353,11 @@ void tankUpdate(int id){
         t.angle++;
     else if(t.kDown && t.angle>1)
         t.angle--;
+    // Physics
+    if(landAt(t.x,t.y+1)==0)
+        t.y++;
+    if(landAt(t.x,t.y+1)==0)
+        t.y++;
     // Fire
     if(t.kFire){
         if(t.power<1000)
@@ -361,15 +367,23 @@ void tankUpdate(int id){
         t.bullet=1;
         t.power=0;
     }
-    // Physics
-    if(landAt(t.x,t.y+1)==0)
-        t.y++;
-    if(landAt(t.x,t.y+1)==0)
-        t.y++;
     sendTank(-1,id);
 }
 
 void bulletDetonate(int b){
+    float d=sqrt(sqr(bullets[b].vx)+sqr(bullets[b].vy));
+    if(d<0.001 && d>-0.001)
+        d=d<0?-1:1;
+    const float dx=bullets[b].vx/d;
+    const float dy=bullets[b].vy/d;
+    float hitx=bullets[b].fx;
+    float hity=bullets[b].fy;
+    for(int i=20; i>0 && landAt((int)hitx,(int)hity); i--){
+        hitx-=dx;
+        hity-=dy;
+    }
+    const int ix=(int)hitx;
+    const int iy=(int)hity;
     switch(bullets[b].type){
     case 1: // missile
         explode(bullets[b].x,bullets[b].y, 12, 0);
@@ -387,14 +401,63 @@ void bulletDetonate(int b){
         explode(bullets[b].x,bullets[b].y, 300, 1);
         break;
     case 6: // collapse
-        explode(bullets[b].x,bullets[b].y, 120, 3);
+        explode(bullets[b].x,bullets[b].y, 150, 3);
         break;
     case 7: // liquid dirt
-        liquid(bullets[b].x,bullets[b].y, 4000);
+        liquid(ix, iy, 4000);
         break;
+    case 8: { // bouncer
+        if(bullets[b].active>0)
+            bullets[b].active=-BOUNCER_BOUNCES;
+        bullets[b].active++;
+        if(landAt(ix,iy)==-1){
+            bullets[b].vx=-bullets[b].vx;
+            bullets[b].vy=-bullets[b].vy;
+            explode(bullets[b].x,bullets[b].y, 16, 0);
+            break;
+        }
+        bullets[b].fx=hitx;
+        bullets[b].fy=hity;
+        bullets[b].x=ix;
+        bullets[b].y=iy;
+        unsigned char hit=0;
+        if(landAt(ix-1,iy-1)) hit|=1<<7;
+        if(landAt(ix  ,iy-1)) hit|=1<<6;
+        if(landAt(ix+1,iy-1)) hit|=1<<5;
+        if(landAt(ix-1,iy  )) hit|=1<<4;
+        if(landAt(ix+1,iy  )) hit|=1<<3;
+        if(landAt(ix-1,iy+1)) hit|=1<<2;
+        if(landAt(ix  ,iy+1)) hit|=1<<1;
+        if(landAt(ix+1,iy+1)) hit|=1;
+        const float IRT2=0.70710678;
+        const float vx=bullets[b].vx;
+        const float vy=bullets[b].vy;
+        switch(hit){
+        case 0x07: case 0xe0: case 0x02: case 0x40:
+            bullets[b].vy=-vy; break;
+        case 0x94: case 0x29: case 0x10: case 0x08:
+            bullets[b].vx=-vx; break;
+        case 0x16: case 0x68: case 0x04: case 0x20:
+            bullets[b].vy=vx; bullets[b].vx=vy; break;
+        case 0xd0: case 0x0b: case 0x80: case 0x01:
+            bullets[b].vy=-vx; bullets[b].vx=-vy; break;
+        case 0x17: case 0xe8: case 0x06: case 0x60:
+            bullets[b].vx=+vx*IRT2+vy*IRT2; bullets[b].vy=-vy*IRT2+vx*IRT2; break;
+        case 0x96: case 0x69: case 0x14: case 0x28:
+            bullets[b].vx=-vx*IRT2+vy*IRT2; bullets[b].vy=+vy*IRT2+vx*IRT2; break;
+        case 0xf0: case 0x0f: case 0xc0: case 0x03:
+            bullets[b].vx=+vx*IRT2-vy*IRT2; bullets[b].vy=-vy*IRT2-vx*IRT2; break;
+        case 0xd4: case 0x2b: case 0x90: case 0x09:
+            bullets[b].vx=-vx*IRT2-vy*IRT2; bullets[b].vy=+vy*IRT2-vx*IRT2; break;
+        default:
+            bullets[b].vx=-vx; bullets[b].vy=-vy; break;
+        }
+        explode(bullets[b].x,bullets[b].y, 16, 0);
+    } break;
     default: break;
     }
-    bullets[b].active=0;
+    if(bullets[b].active>0)
+        bullets[b].active=0;
 }
 
 void bulletUpdate(int b){
@@ -413,6 +476,8 @@ void bulletUpdate(int b){
         bullets[b].active--;
         return;
     }
+    if(bullets[b].type==8 && bullets[b].active==1)
+        bullets[b].active=BOUNCER_BOUNCES;
     for(int i=0;i<MAX_CLIENTS;i++)
         if(sqr(tanks[i].x-bullets[b].x)+sqr(tanks[i].y-3-bullets[b].y)<72){
             bulletDetonate(b);
@@ -420,7 +485,7 @@ void bulletUpdate(int b){
         }    
     if(sqr(crate.x-bullets[b].x)+sqr(crate.y-4-bullets[b].y)<30){
         bulletDetonate(b);
-        fireBullet(crate.type, crate.x, crate.y-4, crate.x, crate.y-4, 90, 0.2);
+        fireBullet(crate.type, crate.x, crate.y-4, crate.x, crate.y-4, crate.type==8?(bullets[b].vx<0?135:45):90, 0.2);
         crate.x=0;
         crate.y=0;
         return;
@@ -430,17 +495,26 @@ void bulletUpdate(int b){
 void crateUpdate(){
     if(crate.x==0 && crate.y==0){
         const int seed=moag::GetTicks();
-        const int r=(seed*2387)&1023;
         crate.x=abs(seed*2387)%(WIDTH-40)+20;
         crate.y=30;
         explode(crate.x,crate.y-12, 12, 0);
 
-        if(r<30) crate.type=3; //nuke
-        else if(r<45) crate.type=5; //super dirt
-        else if(r<400) crate.type=2; //baby nuke
-        else if(r<600) crate.type=6; //collapse
-        else if(r<800) crate.type=7; //liquid dirt
-        else crate.type=4; //dirt
+        const int PBABYNUKE=150;
+        const int PNUKE=20;
+        const int PDIRT=100;
+        const int PSUPERDIRT=10;
+        const int PLIQUIDDIRT=75;
+        const int PCOLLAPSE=75;
+        const int PBOUNCER=150;
+        const int TOTAL=PBABYNUKE+PNUKE+PDIRT+PSUPERDIRT+PLIQUIDDIRT+PCOLLAPSE+PBOUNCER;
+        int r=abs(seed*2387)%TOTAL;
+             if((r-=PBABYNUKE)<0)   crate.type=2;
+        else if((r-=PNUKE)<0)       crate.type=3;
+        else if((r-=PSUPERDIRT)<0)  crate.type=5;
+        else if((r-=PLIQUIDDIRT)<0) crate.type=7;
+        else if((r-=PCOLLAPSE)<0)   crate.type=6;
+        else if((r-=PBOUNCER)<0)    crate.type=8;
+        else                        crate.type=4;
     }
     if(landAt(crate.x,crate.y+1)==0)
         crate.y++;
