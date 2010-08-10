@@ -45,9 +45,9 @@ void spawnTank(int id){
     tanks[id].x=(spawns*240)%(WIDTH-40)+20;
     tanks[id].y=60;
     //tanks[id].angle=35;
+    //tanks[id].facingLeft=0;
     tanks[id].power=0;
     tanks[id].bullet=1;
-    tanks[id].facingLeft=0;
     tanks[id].kLeft=0;
     tanks[id].kRight=0;
     tanks[id].kUp=0;
@@ -192,6 +192,7 @@ void sendCrate() {
 void spawnClient(int id){
     spawnTank(id);
     tanks[id].angle=35;
+    tanks[id].facingLeft=0;
     sendLand(id,0,0,WIDTH,HEIGHT);
     sendTank(id,-1);
     sendChat(-1,id,2,tanks[id].name,strlen(tanks[id].name));
@@ -229,7 +230,32 @@ void fireBullet(char type, int x, int y, int lastx, int lasty, float angle, floa
 inline int sqr(int n){ return n*n; }
 
 void explode(int x, int y, int rad, char type){
-    // type: 0=explode, 1=dirt, 2=clear dirt
+    // type: 0=explode, 1=dirt, 2=clear dirt, 3=collapse
+    if(type==3){
+        // collapse
+        for(int iy=-rad;iy<=rad;iy++)
+        for(int ix=-rad;ix<=rad;ix++)
+            if(ix*ix+iy*iy<rad*rad && landAt(x+ix,y+iy))
+                setLandAt(x+ix,y+iy,2);
+        int maxy=y+rad;
+        for(int iy=-rad;iy<=rad;iy++)
+        for(int ix=-rad;ix<=rad;ix++)
+            if(landAt(x+ix,y+iy)==2){
+                int count=0;
+                int yy;
+                for(yy=y+iy;yy<HEIGHT && landAt(x+ix,yy)!=1;yy++)
+                    if(landAt(x+ix,yy)==2){
+                        count++;
+                        setLandAt(x+ix,yy,0);
+                    }
+                for(;count>0;count--)
+                    setLandAt(x+ix,yy-count,1);
+                if(yy>maxy)
+                    maxy=yy;
+            }
+        sendLand(-1,x-rad,y-rad,rad*2,maxy-(y-rad));
+        return;
+    }
     char p=type==1?1:0;
     for(int iy=-rad;iy<=rad;iy++)
     for(int ix=-rad;ix<=rad;ix++)
@@ -272,9 +298,10 @@ void tankUpdate(int id){
     // Pickup
     if(abs(t.x-crate.x)<14 && abs(t.y-crate.y)<14){
         int r=(moag::GetTicks()*2387)%1024;
-        if(r<20) t.bullet=3; //nuke
-        else if(r<30) t.bullet=5; //super dirt
-        else if(r<200) t.bullet=2; //mini nuke
+        if(r<30) t.bullet=3; //nuke
+        else if(r<40) t.bullet=5; //super dirt
+        else if(r<200) t.bullet=2; //baby nuke
+        else if(r<700) t.bullet=6; //collapse
         else t.bullet=4; //dirt
         crate.x=0;
         crate.y=0;
@@ -313,10 +340,13 @@ void bulletDetonate(int b){
         explode(bullets[b].x,bullets[b].y, 150, 0);
         break;
     case 4: // dirt
-        explode(bullets[b].x,bullets[b].y, 30, 1);
+        explode(bullets[b].x,bullets[b].y, 45, 1);
         break;
     case 5: // super dirt
-        explode(bullets[b].x,bullets[b].y, 400, 1);
+        explode(bullets[b].x,bullets[b].y, 300, 1);
+        break;
+    case 6: // collapse
+        explode(bullets[b].x,bullets[b].y, 60, 3);
         break;
     default: break;
     }
