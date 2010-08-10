@@ -269,6 +269,52 @@ void explode(int x, int y, int rad, char type){
     sendLand(-1,x-rad,y-rad,rad*2,rad*2);
 }
 
+void liquid(int x, int y, int n){
+    if(x<0) x=0;
+    if(y<0) y=0;
+    if(x>=WIDTH) x=WIDTH-1;
+    if(y>=HEIGHT) y=HEIGHT-1;
+    int minx=WIDTH;
+    int miny=HEIGHT;
+    int maxx=0;
+    int maxy=0;
+    for(int i=0;i<n;i++){
+        if(y<0) break;
+        int nx=x;
+        if(landAt(x,y+1)==0) y++;
+        else if(landAt(x-1,y)==0) x--;
+        else if(landAt(x+1,y)==0) x++;
+        else
+            for(int i=x;i<WIDTH+1;i++){
+                if(nx==x && landAt(i,y-1)==0)
+                    nx=i;
+                if(landAt(i,y)==0){
+                    x=i; break;
+                }else if(landAt(i,y)!=3){
+                    for(int i=x;i>=-1;i--){
+                        if(nx==x && landAt(i,y-1)==0)
+                            nx=i;
+                        if(landAt(i,y)==0){
+                            x=i; break;
+                        }else if(landAt(i,y)!=3){
+                            y--; x=nx; break;
+                        }
+                    } break;
+                }
+            }
+        setLandAt(x,y,3);
+        if(x<minx) minx=x;
+        else if(x>maxx) maxx=x;
+        if(y<miny) miny=y;
+        else if(y>maxy) maxy=y;
+    }
+    for(int iy=miny;iy<=maxy;iy++)
+    for(int ix=minx;ix<=maxx;ix++)
+        if(landAt(ix,iy)==3)
+            setLandAt(ix,iy,1);
+    sendLand(-1,minx,miny,maxx-minx+1,maxy-miny+1);
+}
+
 void tankUpdate(int id){
     Tank& t=tanks[id];
     if(!t.active)
@@ -343,6 +389,9 @@ void bulletDetonate(int b){
     case 6: // collapse
         explode(bullets[b].x,bullets[b].y, 60, 3);
         break;
+    case 7: // liquid dirt
+        liquid(bullets[b].x,bullets[b].y, 2000);
+        break;
     default: break;
     }
     bullets[b].active=0;
@@ -388,8 +437,9 @@ void crateUpdate(){
 
         if(r<30) crate.type=3; //nuke
         else if(r<40) crate.type=5; //super dirt
-        else if(r<200) crate.type=2; //baby nuke
-        else if(r<700) crate.type=6; //collapse
+        else if(r<250) crate.type=2; //baby nuke
+        else if(r<500) crate.type=6; //collapse
+        else if(r<850) crate.type=7; //liquid dirt
         else crate.type=4; //dirt
     }
     if(landAt(crate.x,crate.y+1)==0)
