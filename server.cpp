@@ -353,7 +353,7 @@ void tankUpdate(int id){
             t.x--;
         }else if(landAt(t.x-1,t.y-1)==0 && t.x>=10){
             t.x--; t.y--;
-        }else if(landAt(t.x,t.y-1)==0 || landAt(t.x,t.y-2)==0){
+        }else if(landAt(t.x,t.y-1)==0 || landAt(t.x,t.y-2)==0 || landAt(t.x,t.y-3)==0){
             grav=false; t.y--;
         }else
             grav=false;
@@ -363,7 +363,7 @@ void tankUpdate(int id){
             t.x++;
         }else if(landAt(t.x+1,t.y-1)==0 && t.x<WIDTH-10){
             t.x++; t.y--;
-        }else if(landAt(t.x,t.y-1)==0 || landAt(t.x,t.y-2)==0){
+        }else if(landAt(t.x,t.y-1)==0 || landAt(t.x,t.y-2)==0 || landAt(t.x,t.y-3)==0){
             grav=false; t.y--;
         }else
             grav=false;
