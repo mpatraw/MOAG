@@ -430,8 +430,8 @@ void bulletUpdate(int b){
 void crateUpdate(){
     if(crate.x==0 && crate.y==0){
         const int seed=moag::GetTicks();
-        const int r=(seed*2387)%1024;
-        crate.x=(seed*2387)%(WIDTH-40)+20;
+        const int r=(seed*2387)&1023;
+        crate.x=abs(seed*2387)%(WIDTH-40)+20;
         crate.y=30;
         explode(crate.x,crate.y-12, 12, 0);
 
