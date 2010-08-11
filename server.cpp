@@ -7,10 +7,9 @@ const int MAX_BULLETS = 256;
 const float GRAVITY = 0.1;
 const int BOUNCER_BOUNCES = 11;
 const int TUNNELER_TUNNELINGS = 25;
-//const int RESPAWN_TIME = 120;
-const int RESPAWN_TIME = 10;
+const int RESPAWN_TIME = 40;
 const int LADDER_TIME = 60;
-const char LADDER_LENGTH = 40;
+const char LADDER_LENGTH = 64;
 
 const int WIDTH  = 800;
 const int HEIGHT = 600;
@@ -528,7 +527,7 @@ void bulletDetonate(int b){
         int y=bullets[b].y;
         for(;y<HEIGHT;y++) if(landAt(x,y)==0) break;
         for(;y<HEIGHT;y++) if(landAt(x,y)) break;
-        const int maxy=y+2;
+        const int maxy=y+1;
         y=bullets[b].y;
         for(;y>0;y--) if(landAt(x,y)==0) break;
         const int miny=y;
@@ -557,8 +556,10 @@ void bulletUpdate(int b){
         bullets[b].fy+=bullets[b].vy;
         bullets[b].x=(int)bullets[b].fx;
         bullets[b].y=(int)bullets[b].fy;
-        if(landAt(bullets[b].x,bullets[b].y)==1)
+        if(landAt(bullets[b].x,bullets[b].y)==1){
+            explode(bullets[b].x,bullets[b].y+LADDER_LENGTH-bullets[b].active, 1, 2);
             bulletDetonate(b);
+        }
         return;
     }
     bullets[b].fx+=bullets[b].vx;
