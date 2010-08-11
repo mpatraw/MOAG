@@ -6,7 +6,7 @@ const int MAX_CLIENTS = 8;
 const int MAX_BULLETS = 256;
 const float GRAVITY = 0.1;
 const int BOUNCER_BOUNCES = 11;
-const int TUNNELER_TUNNELINGS = 25;
+const int TUNNELER_TUNNELINGS = 20;
 const int RESPAWN_TIME = 40;
 const int LADDER_TIME = 60;
 const char LADDER_LENGTH = 64;
@@ -423,15 +423,16 @@ void tankUpdate(int id){
         char notice[64]="> ";
         switch(t.bullet){
         case  1: strcat(notice,"Missile"); break;
-        case  2: strcat(notice,"Nuke"); break;
+        case  2: strcat(notice,"Baby Nuke"); break;
         case  3: strcat(notice,"Nuke"); break;
-        case  4: strcat(notice,"Dirt"); break;
-        case  5: strcat(notice,"Dirt"); break;
+        case  4: strcat(notice,"Dirtball"); break;
+        case  5: strcat(notice,"Dirtball"); break;
         case  6: strcat(notice,"Collapse"); break;
         case  7: strcat(notice,"Liquid Dirt"); break;
         case  8: strcat(notice,"Bouncer"); break;
         case  9: strcat(notice,"Tunneler"); break;
         case 11: strcat(notice,"MIRV"); break;
+        case 13: strcat(notice,"Cluster Bomb"); break;
         default: strcat(notice,"???"); break;
         }
         sendChat(id,-1,3,notice,strlen(notice));
@@ -517,19 +518,19 @@ void bulletDetonate(int b){
         explode(bullets[b].x,bullets[b].y, 12, 0);
         break;
     case 2: // baby nuke
-        explode(bullets[b].x,bullets[b].y, 60, 0);
+        explode(bullets[b].x,bullets[b].y, 55, 0);
         break;
     case 3: // nuke
         explode(bullets[b].x,bullets[b].y, 150, 0);
         break;
     case 4: // dirt
-        explode(bullets[b].x,bullets[b].y, 60, 1);
+        explode(bullets[b].x,bullets[b].y, 55, 1);
         break;
     case 5: // super dirt
         explode(bullets[b].x,bullets[b].y, 300, 1);
         break;
     case 6: // collapse
-        explode(bullets[b].x,bullets[b].y, 150, 3);
+        explode(bullets[b].x,bullets[b].y, 120, 3);
         break;
     case 7: // liquid dirt
         liquid((int)hitx, (int)hity, 3000);
@@ -539,14 +540,16 @@ void bulletDetonate(int b){
             bullets[b].active=-BOUNCER_BOUNCES;
         bullets[b].active++;
         bounceBullet(b,hitx,hity);
+        bullets[b].vx*=0.9;
+        bullets[b].vy*=0.9;
         explode(bullets[b].x,bullets[b].y, 12, 0);
     } break;
     case 9: //tunneler
         if(bullets[b].active>0)
             bullets[b].active=-TUNNELER_TUNNELINGS;
         bullets[b].active++;
-        explode(hitx,hity, 8, 0);
-        explode(hitx+8*dx,hity+8*dy, 8, 0);
+        explode(hitx,hity, 9, 0);
+        explode(hitx+8*dx,hity+8*dy, 9, 0);
         break;
     case 10: { //ladder
         int x=bullets[b].x;
@@ -568,13 +571,20 @@ void bulletDetonate(int b){
         sendLand(-1,x-1,miny,3,maxy-miny+1);
     } break;
     case 11: //MIRV
-        explode(bullets[b].x,bullets[b].y, 12, 0);
         bounceBullet(b,hitx,hity);
+        explode(bullets[b].x,bullets[b].y, 12, 0);
         for(int i=-3;i<4;i++)
             fireBullet(12,bullets[b].x,bullets[b].y,bullets[b].vx+i,bullets[b].vy);
         break;
     case 12: //MIRV warhead
         explode(bullets[b].x,bullets[b].y, 30, 0);
+        break;
+    case 13: //cluster bomb
+        bounceBullet(b,hitx,hity);
+        explode(bullets[b].x,bullets[b].y, 20, 0);
+        for(int i=0;i<11;i++)
+            fireBullet(1,hitx,hity, 1.5*cosf(i*M_PI/5.5)+0.25*bullets[b].vx,
+                                    1.5*sinf(i*M_PI/5.5)+0.5*bullets[b].vy);
         break;
     default: break;
     }
@@ -635,23 +645,24 @@ void bulletUpdate(int b){
 void crateUpdate(){
     if(crate.x==0 && crate.y==0){
         const int seed=moag::GetTicks();
-        crate.x=abs(seed*2387)%(WIDTH-40)+20;
+        crate.x=abs(seed*14411)%(WIDTH-40)+20;
         crate.y=30;
         explode(crate.x,crate.y-12, 12, 2);
 
-        const int PBABYNUKE=150;
+        const int PBABYNUKE=100;
         const int PNUKE=20;
         const int PDIRT=75;
         const int PSUPERDIRT=15;
-        const int PLIQUIDDIRT=100;
-        const int PCOLLAPSE=75;
+        const int PLIQUIDDIRT=60;
+        const int PCOLLAPSE=60;
         const int PBOUNCER=100;
         const int PTUNNELER=75;
         const int PMIRV=40;
+        const int PCLUSTER=100;
         // add new ones here:
         const int TOTAL=PBABYNUKE+PNUKE+PDIRT+PSUPERDIRT+PLIQUIDDIRT+PCOLLAPSE
-                        +PBOUNCER+PTUNNELER+PMIRV;
-        int r=abs(seed*2387)%TOTAL;
+                        +PBOUNCER+PTUNNELER+PMIRV+PCLUSTER;
+        int r=abs(seed*12347)%TOTAL;
              if((r-=PBABYNUKE)<0)   crate.type=2;
         else if((r-=PNUKE)<0)       crate.type=3;
         else if((r-=PSUPERDIRT)<0)  crate.type=5;
@@ -660,6 +671,7 @@ void crateUpdate(){
         else if((r-=PBOUNCER)<0)    crate.type=8;
         else if((r-=PTUNNELER)<0)   crate.type=9;
         else if((r-=PMIRV)<0)       crate.type=11;
+        else if((r-=PCLUSTER)<0)    crate.type=13;
         else                        crate.type=4;
     }
     if(landAt(crate.x,crate.y+1)==0)
@@ -678,7 +690,7 @@ void initGame(){
         
     for (int y = 0; y < HEIGHT; ++y)
         for (int x = 0; x < WIDTH; ++x){
-            if (y < HEIGHT / 2)
+            if (y < HEIGHT / 3)
                 setLandAt(x, y, 0);
             else
                 setLandAt(x, y, 1);
