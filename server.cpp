@@ -413,6 +413,19 @@ void tankUpdate(int id){
         t.bullet=crate.type;
         crate.x=0;
         crate.y=0;
+        char notice[64]="> ";
+        switch(t.bullet){
+        case 1: strcat(notice,"Missile"); break;
+        case 2: strcat(notice,"Nuke"); break;
+        case 3: strcat(notice,"Nuke"); break;
+        case 4: strcat(notice,"Dirt"); break;
+        case 5: strcat(notice,"Dirt"); break;
+        case 6: strcat(notice,"Collapse"); break;
+        case 7: strcat(notice,"Liquid Dirt"); break;
+        case 8: strcat(notice,"Bouncer"); break;
+        case 9: strcat(notice,"Tunneler"); break;
+        }
+        sendChat(id,-1,3,notice,strlen(notice));
     }
     // Aim
     if(t.kUp && t.angle<90)
@@ -459,7 +472,7 @@ void bulletDetonate(int b){
         explode(bullets[b].x,bullets[b].y, 60, 1);
         break;
     case 5: // super dirt
-        explode(bullets[b].x,bullets[b].y, 250, 1);
+        explode(bullets[b].x,bullets[b].y, 300, 1);
         break;
     case 6: // collapse
         explode(bullets[b].x,bullets[b].y, 150, 3);
@@ -474,7 +487,7 @@ void bulletDetonate(int b){
         if(landAt(ix,iy)==-1){
             bullets[b].vx=-bullets[b].vx;
             bullets[b].vy=-bullets[b].vy;
-            explode(bullets[b].x,bullets[b].y, 16, 0);
+            explode(bullets[b].x,bullets[b].y, 12, 0);
             break;
         }
         bullets[b].fx=hitx;
@@ -513,7 +526,7 @@ void bulletDetonate(int b){
         default:
             bullets[b].vx=-vx; bullets[b].vy=-vy; break;
         }
-        explode(bullets[b].x,bullets[b].y, 16, 0);
+        explode(bullets[b].x,bullets[b].y, 12, 0);
     } break;
     case 9: //tunneler
         if(bullets[b].active>0)
@@ -602,12 +615,12 @@ void crateUpdate(){
 
         const int PBABYNUKE=150;
         const int PNUKE=20;
-        const int PDIRT=100;
-        const int PSUPERDIRT=10;
-        const int PLIQUIDDIRT=75;
+        const int PDIRT=75;
+        const int PSUPERDIRT=15;
+        const int PLIQUIDDIRT=100;
         const int PCOLLAPSE=75;
         const int PBOUNCER=100;
-        const int PTUNNELER=50;
+        const int PTUNNELER=75;
         const int TOTAL=PBABYNUKE+PNUKE+PDIRT+PSUPERDIRT+PLIQUIDDIRT+PCOLLAPSE
                         +PBOUNCER+PTUNNELER;
         int r=abs(seed*2387)%TOTAL;
