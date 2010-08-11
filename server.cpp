@@ -207,7 +207,7 @@ void killTank(int id){
 
 void spawnClient(int id){
     sprintf(tanks[id].name,"p%d",id);
-    char notice[64]="* ";
+    char notice[64]="  ";
     strcat(notice,tanks[id].name);
     strcat(notice," has connected");
     sendChat(-1,-1,3,notice,strlen(notice));
@@ -420,7 +420,9 @@ void tankUpdate(int id){
         t.bullet=crate.type;
         crate.x=0;
         crate.y=0;
-        char notice[64]="> ";
+        char notice[64]="* ";
+        strcat(notice,t.name);
+        strcat(notice," got ");
         switch(t.bullet){
         case  1: strcat(notice,"Missile"); break;
         case  2: strcat(notice,"Baby Nuke"); break;
@@ -435,7 +437,7 @@ void tankUpdate(int id){
         case 13: strcat(notice,"Cluster Bomb"); break;
         default: strcat(notice,"???"); break;
         }
-        sendChat(id,-1,3,notice,strlen(notice));
+        sendChat(-1,-1,3,notice,strlen(notice));
     }
     // Aim
     if(t.kUp && t.angle<90)
@@ -644,8 +646,9 @@ void bulletUpdate(int b){
 
 void crateUpdate(){
     if(crate.x==0 && crate.y==0){
-        const int seed=moag::GetTicks();
-        crate.x=abs(seed*14411)%(WIDTH-40)+20;
+        static int seed=99999;
+        seed=seed*13841+moag::GetTicks();
+        crate.x=abs(seed)%(WIDTH-40)+20;
         crate.y=30;
         explode(crate.x,crate.y-12, 12, 2);
 
@@ -658,11 +661,11 @@ void crateUpdate(){
         const int PBOUNCER=100;
         const int PTUNNELER=75;
         const int PMIRV=40;
-        const int PCLUSTER=100;
+        const int PCLUSTER=120;
         // add new ones here:
         const int TOTAL=PBABYNUKE+PNUKE+PDIRT+PSUPERDIRT+PLIQUIDDIRT+PCOLLAPSE
                         +PBOUNCER+PTUNNELER+PMIRV+PCLUSTER;
-        int r=abs(seed*12347)%TOTAL;
+        int r=abs(seed*12347+11863)%TOTAL;
              if((r-=PBABYNUKE)<0)   crate.type=2;
         else if((r-=PNUKE)<0)       crate.type=3;
         else if((r-=PSUPERDIRT)<0)  crate.type=5;
@@ -728,7 +731,7 @@ void client_connect(moag::Connection arg) {
 
 void handleMsg(int id, const char* msg, int len){
     if(msg[0]=='/' && msg[1]=='n' && msg[2]==' '){
-        char notice[64]="* ";
+        char notice[64]="  ";
         strcat(notice,tanks[id].name);
         len-=3;
         if(len>15)
