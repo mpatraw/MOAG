@@ -248,19 +248,26 @@ void launchLadder(int x, int y){
     bullets[i].vy=-1;
 }
 
-void fireBullet(char type, int x, int y, int lastx, int lasty, float angle, float vel){
+void fireBullet(char type, float x, float y, float vx, float vy){
     int i=0;
     while(bullets[i].active)
         if(++i>=MAX_BULLETS)
             return;
     bullets[i].active=4;
     bullets[i].type=type;
-    bullets[i].fx=(float)x+5.0*cosf(angle*M_PI/180);
-    bullets[i].fy=(float)y-5.0*sinf(angle*M_PI/180);
+    bullets[i].fx=x;
+    bullets[i].fy=y;
     bullets[i].x=(int)bullets[i].fx;
     bullets[i].y=(int)bullets[i].fy;
-    bullets[i].vx=x-lastx+vel*cosf(angle*M_PI/180.0);
-    bullets[i].vy=y-lasty-vel*sinf(angle*M_PI/180.0);
+    bullets[i].vx=vx;
+    bullets[i].vy=vy;
+}
+
+inline void fireBullet(char type, int x, int y, int lastx, int lasty, float angle, float vel){
+    fireBullet(type,(float)x+5.0*cosf(angle*M_PI/180),
+                    (float)y-5.0*sinf(angle*M_PI/180),
+                    x-lastx+vel*cosf(angle*M_PI/180.0),
+                    y-lasty-vel*sinf(angle*M_PI/180.0));
 }
 
 inline int sqr(int n){ return n*n; }
@@ -415,15 +422,17 @@ void tankUpdate(int id){
         crate.y=0;
         char notice[64]="> ";
         switch(t.bullet){
-        case 1: strcat(notice,"Missile"); break;
-        case 2: strcat(notice,"Nuke"); break;
-        case 3: strcat(notice,"Nuke"); break;
-        case 4: strcat(notice,"Dirt"); break;
-        case 5: strcat(notice,"Dirt"); break;
-        case 6: strcat(notice,"Collapse"); break;
-        case 7: strcat(notice,"Liquid Dirt"); break;
-        case 8: strcat(notice,"Bouncer"); break;
-        case 9: strcat(notice,"Tunneler"); break;
+        case  1: strcat(notice,"Missile"); break;
+        case  2: strcat(notice,"Nuke"); break;
+        case  3: strcat(notice,"Nuke"); break;
+        case  4: strcat(notice,"Dirt"); break;
+        case  5: strcat(notice,"Dirt"); break;
+        case  6: strcat(notice,"Collapse"); break;
+        case  7: strcat(notice,"Liquid Dirt"); break;
+        case  8: strcat(notice,"Bouncer"); break;
+        case  9: strcat(notice,"Tunneler"); break;
+        case 11: strcat(notice,"MIRV"); break;
+        default: strcat(notice,"???"); break;
         }
         sendChat(id,-1,3,notice,strlen(notice));
     }
@@ -444,6 +453,53 @@ void tankUpdate(int id){
     sendTank(-1,id);
 }
 
+void bounceBullet(int b, float hitx, float hity){
+    const int ix=(int)hitx;
+    const int iy=(int)hity;
+    if(landAt(ix,iy)==-1){
+        bullets[b].vx=-bullets[b].vx;
+        bullets[b].vy=-bullets[b].vy;
+        return;
+    }
+    bullets[b].fx=hitx;
+    bullets[b].fy=hity;
+    bullets[b].x=ix;
+    bullets[b].y=iy;
+    unsigned char hit=0;
+    if(landAt(ix-1,iy-1)) hit|=1<<7;
+    if(landAt(ix  ,iy-1)) hit|=1<<6;
+    if(landAt(ix+1,iy-1)) hit|=1<<5;
+    if(landAt(ix-1,iy  )) hit|=1<<4;
+    if(landAt(ix+1,iy  )) hit|=1<<3;
+    if(landAt(ix-1,iy+1)) hit|=1<<2;
+    if(landAt(ix  ,iy+1)) hit|=1<<1;
+    if(landAt(ix+1,iy+1)) hit|=1;
+    const float IRT2=0.70710678;
+    const float vx=bullets[b].vx;
+    const float vy=bullets[b].vy;
+    switch(hit){
+    case 0x00: break;
+    case 0x07: case 0xe0: case 0x02: case 0x40:
+        bullets[b].vy=-vy; break;
+    case 0x94: case 0x29: case 0x10: case 0x08:
+        bullets[b].vx=-vx; break;
+    case 0x16: case 0x68: case 0x04: case 0x20:
+        bullets[b].vy=vx; bullets[b].vx=vy; break;
+    case 0xd0: case 0x0b: case 0x80: case 0x01:
+        bullets[b].vy=-vx; bullets[b].vx=-vy; break;
+    case 0x17: case 0xe8: case 0x06: case 0x60:
+        bullets[b].vx=+vx*IRT2+vy*IRT2; bullets[b].vy=-vy*IRT2+vx*IRT2; break;
+    case 0x96: case 0x69: case 0x14: case 0x28:
+        bullets[b].vx=-vx*IRT2+vy*IRT2; bullets[b].vy=+vy*IRT2+vx*IRT2; break;
+    case 0xf0: case 0x0f: case 0xc0: case 0x03:
+        bullets[b].vx=+vx*IRT2-vy*IRT2; bullets[b].vy=-vy*IRT2-vx*IRT2; break;
+    case 0xd4: case 0x2b: case 0x90: case 0x09:
+        bullets[b].vx=-vx*IRT2-vy*IRT2; bullets[b].vy=+vy*IRT2-vx*IRT2; break;
+    default:
+        bullets[b].vx=-vx; bullets[b].vy=-vy; break;
+    }
+}
+
 void bulletDetonate(int b){
     float d=sqrt(sqr(bullets[b].vx)+sqr(bullets[b].vy));
     if(d<0.001 && d>-0.001)
@@ -456,8 +512,6 @@ void bulletDetonate(int b){
         hitx-=dx;
         hity-=dy;
     }
-    const int ix=(int)hitx;
-    const int iy=(int)hity;
     switch(bullets[b].type){
     case 1: // missile
         explode(bullets[b].x,bullets[b].y, 12, 0);
@@ -478,54 +532,13 @@ void bulletDetonate(int b){
         explode(bullets[b].x,bullets[b].y, 150, 3);
         break;
     case 7: // liquid dirt
-        liquid(ix, iy, 3000);
+        liquid((int)hitx, (int)hity, 3000);
         break;
     case 8: { // bouncer
         if(bullets[b].active>0)
             bullets[b].active=-BOUNCER_BOUNCES;
         bullets[b].active++;
-        if(landAt(ix,iy)==-1){
-            bullets[b].vx=-bullets[b].vx;
-            bullets[b].vy=-bullets[b].vy;
-            explode(bullets[b].x,bullets[b].y, 12, 0);
-            break;
-        }
-        bullets[b].fx=hitx;
-        bullets[b].fy=hity;
-        bullets[b].x=ix;
-        bullets[b].y=iy;
-        unsigned char hit=0;
-        if(landAt(ix-1,iy-1)) hit|=1<<7;
-        if(landAt(ix  ,iy-1)) hit|=1<<6;
-        if(landAt(ix+1,iy-1)) hit|=1<<5;
-        if(landAt(ix-1,iy  )) hit|=1<<4;
-        if(landAt(ix+1,iy  )) hit|=1<<3;
-        if(landAt(ix-1,iy+1)) hit|=1<<2;
-        if(landAt(ix  ,iy+1)) hit|=1<<1;
-        if(landAt(ix+1,iy+1)) hit|=1;
-        const float IRT2=0.70710678;
-        const float vx=bullets[b].vx;
-        const float vy=bullets[b].vy;
-        switch(hit){
-        case 0x07: case 0xe0: case 0x02: case 0x40:
-            bullets[b].vy=-vy; break;
-        case 0x94: case 0x29: case 0x10: case 0x08:
-            bullets[b].vx=-vx; break;
-        case 0x16: case 0x68: case 0x04: case 0x20:
-            bullets[b].vy=vx; bullets[b].vx=vy; break;
-        case 0xd0: case 0x0b: case 0x80: case 0x01:
-            bullets[b].vy=-vx; bullets[b].vx=-vy; break;
-        case 0x17: case 0xe8: case 0x06: case 0x60:
-            bullets[b].vx=+vx*IRT2+vy*IRT2; bullets[b].vy=-vy*IRT2+vx*IRT2; break;
-        case 0x96: case 0x69: case 0x14: case 0x28:
-            bullets[b].vx=-vx*IRT2+vy*IRT2; bullets[b].vy=+vy*IRT2+vx*IRT2; break;
-        case 0xf0: case 0x0f: case 0xc0: case 0x03:
-            bullets[b].vx=+vx*IRT2-vy*IRT2; bullets[b].vy=-vy*IRT2-vx*IRT2; break;
-        case 0xd4: case 0x2b: case 0x90: case 0x09:
-            bullets[b].vx=-vx*IRT2-vy*IRT2; bullets[b].vy=+vy*IRT2-vx*IRT2; break;
-        default:
-            bullets[b].vx=-vx; bullets[b].vy=-vy; break;
-        }
+        bounceBullet(b,hitx,hity);
         explode(bullets[b].x,bullets[b].y, 12, 0);
     } break;
     case 9: //tunneler
@@ -554,6 +567,15 @@ void bulletDetonate(int b){
         }
         sendLand(-1,x-1,miny,3,maxy-miny+1);
     } break;
+    case 11: //MIRV
+        explode(bullets[b].x,bullets[b].y, 12, 0);
+        bounceBullet(b,hitx,hity);
+        for(int i=-3;i<4;i++)
+            fireBullet(12,bullets[b].x,bullets[b].y,bullets[b].vx+i,bullets[b].vy);
+        break;
+    case 12: //MIRV warhead
+        explode(bullets[b].x,bullets[b].y, 30, 0);
+        break;
     default: break;
     }
     if(bullets[b].active>0)
@@ -596,14 +618,18 @@ void bulletUpdate(int b){
         if(sqr(tanks[i].x-bullets[b].x)+sqr(tanks[i].y-3-bullets[b].y)<72){
             bulletDetonate(b);
             return;
-        }    
+        }
     if(sqr(crate.x-bullets[b].x)+sqr(crate.y-4-bullets[b].y)<30){
         bulletDetonate(b);
-        fireBullet(crate.type, crate.x, crate.y-4, crate.x, crate.y-4, crate.type==8?(bullets[b].vx<0?135:45):90, 0.2);
+        fireBullet(crate.type, crate.x, crate.y-4, crate.type==8?(bullets[b].vx<0?-0.2:0.2):0, -0.2);
         crate.x=0;
         crate.y=0;
         return;
-    }    
+    }
+    if(bullets[b].type==11 && bullets[b].vy>0){
+        bulletDetonate(b);
+        return;
+    }
 }
 
 void crateUpdate(){
@@ -621,8 +647,10 @@ void crateUpdate(){
         const int PCOLLAPSE=75;
         const int PBOUNCER=100;
         const int PTUNNELER=75;
+        const int PMIRV=40;
+        // add new ones here:
         const int TOTAL=PBABYNUKE+PNUKE+PDIRT+PSUPERDIRT+PLIQUIDDIRT+PCOLLAPSE
-                        +PBOUNCER+PTUNNELER;
+                        +PBOUNCER+PTUNNELER+PMIRV;
         int r=abs(seed*2387)%TOTAL;
              if((r-=PBABYNUKE)<0)   crate.type=2;
         else if((r-=PNUKE)<0)       crate.type=3;
@@ -631,6 +659,7 @@ void crateUpdate(){
         else if((r-=PCOLLAPSE)<0)   crate.type=6;
         else if((r-=PBOUNCER)<0)    crate.type=8;
         else if((r-=PTUNNELER)<0)   crate.type=9;
+        else if((r-=PMIRV)<0)       crate.type=11;
         else                        crate.type=4;
     }
     if(landAt(crate.x,crate.y+1)==0)
