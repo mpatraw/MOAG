@@ -9,6 +9,8 @@ const int BOUNCER_BOUNCES = 11;
 const int TUNNELER_TUNNELINGS = 25;
 //const int RESPAWN_TIME = 120;
 const int RESPAWN_TIME = 10;
+const int LADDER_TIME = 60;
+const char LADDER_LENGTH = 40;
 
 const int WIDTH  = 800;
 const int HEIGHT = 600;
@@ -54,6 +56,7 @@ void spawnTank(int id){
     tanks[id].facingLeft=0;
     tanks[id].power=0;
     tanks[id].bullet=1;
+    tanks[id].ladder=LADDER_TIME;
     tanks[id].kLeft=0;
     tanks[id].kRight=0;
     tanks[id].kUp=0;
@@ -231,6 +234,21 @@ void disconnect_client(int c){
 
 
 
+void launchLadder(int x, int y){
+    int i=0;
+    while(bullets[i].active)
+        if(++i>=MAX_BULLETS)
+            return;
+    bullets[i].active=LADDER_LENGTH;
+    bullets[i].type=10;
+    bullets[i].x=x;
+    bullets[i].y=y;
+    bullets[i].fx=x;
+    bullets[i].fy=y;
+    bullets[i].vx=0;
+    bullets[i].vy=-1;
+}
+
 void fireBullet(char type, int x, int y, int lastx, int lasty, float angle, float vel){
     int i=0;
     while(bullets[i].active)
@@ -348,7 +366,19 @@ void tankUpdate(int id){
     t.lastx=t.x;
     t.lasty=t.y;
     bool grav=true;
-    if(t.kLeft){
+    if(t.ladder>=0 && (!t.kLeft || !t.kRight))
+        t.ladder=LADDER_TIME;
+    if(t.kLeft && t.kRight){
+        if(t.ladder>0){
+            if(landAt(t.x,t.y+1))
+                t.ladder--;
+            else
+                t.ladder=LADDER_TIME;
+        }else if(t.ladder==0){
+            launchLadder(t.x,t.y);
+            t.ladder=-1;
+        }
+    }else if(t.kLeft){
         t.facingLeft=1;
         if(landAt(t.x-1,t.y)==0 && t.x>=10){
             t.x--;
@@ -380,6 +410,7 @@ void tankUpdate(int id){
     }
     // Pickup
     if(abs(t.x-crate.x)<14 && abs(t.y-crate.y)<14){
+        t.ladder=LADDER_TIME;
         t.bullet=crate.type;
         crate.x=0;
         crate.y=0;
@@ -492,6 +523,25 @@ void bulletDetonate(int b){
         explode(hitx,hity, 8, 0);
         explode(hitx+8*dx,hity+8*dy, 8, 0);
         break;
+    case 10: { //ladder
+        int x=bullets[b].x;
+        int y=bullets[b].y;
+        for(;y<HEIGHT;y++) if(landAt(x,y)==0) break;
+        for(;y<HEIGHT;y++) if(landAt(x,y)) break;
+        const int maxy=y+2;
+        y=bullets[b].y;
+        for(;y>0;y--) if(landAt(x,y)==0) break;
+        const int miny=y;
+        for(;y<maxy;y+=2){
+            setLandAt(x-1,y,0);
+            setLandAt(x  ,y,1);
+            setLandAt(x+1,y,0);
+            setLandAt(x-1,y+1,1);
+            setLandAt(x  ,y+1,1);
+            setLandAt(x+1,y+1,1);
+        }
+        sendLand(-1,x-1,miny,3,maxy-miny+1);
+    } break;
     default: break;
     }
     if(bullets[b].active>0)
@@ -501,6 +551,16 @@ void bulletDetonate(int b){
 void bulletUpdate(int b){
     if(!bullets[b].active)
         return;
+    if(bullets[b].type==10){ //special (ladder)
+        bullets[b].active--;
+        bullets[b].fx+=bullets[b].vx;
+        bullets[b].fy+=bullets[b].vy;
+        bullets[b].x=(int)bullets[b].fx;
+        bullets[b].y=(int)bullets[b].fy;
+        if(landAt(bullets[b].x,bullets[b].y)==1)
+            bulletDetonate(b);
+        return;
+    }
     bullets[b].fx+=bullets[b].vx;
     bullets[b].fy+=bullets[b].vy;
     bullets[b].vy+=GRAVITY;
