@@ -1,7 +1,7 @@
 #ifndef CHUNK_H
 #define CHUNK_H
 
-#include <SDL/SDL_types.h>
+#include "SDL/SDL_types.h"
 #include "moag_net.h"
 
 namespace moag
