@@ -351,29 +351,6 @@ void client_update(moag::Connection arg)
         
         switch(byte) {
         case LAND_CHUNK: {
-            /*XXX DOESN'T WORK XXX
-            int x,y,w,h;
-            int xx, yy;
-            
-            moag::ReceiveChunk(arg, 8);
-            x = moag::ChunkDequeue16();
-            y = moag::ChunkDequeue16();
-            w = moag::ChunkDequeue16();
-            h = moag::ChunkDequeue16();
-            if(w<0) w=0;
-            if(h<0) h=0;
-            if(x<0 || y<0 || x+w>WIDTH || y+h>HEIGHT)
-                break;
-            
-            moag::ReceiveChunk(arg, w*h);
-            for (yy = y; yy < h + y; ++yy)
-                for (xx = x; xx < w + x; ++xx)
-                    setLandAt(xx, yy, moag::ChunkDequeue8());
-
-            printf("%d, %d: %d, %d\n", x, y, w, h);
-            printf("Size: %d\n", moag::IncomingChunkLength());
-            fflush(stdout);
-            redrawLand(x,y,w,h);*/
             char buf[8];
             moag::ReceiveRaw(arg, buf, 8);
             int x = moag::Unpack16(&buf[0]);
