@@ -1,0 +1,11 @@
+CPP=g++
+CPPFLAGS=-g -mwindows
+LIBS=-lmingw32 -lSDLmain -lSDL -lwinmm -lSDL_net -lSDL_ttf
+
+ENGINE_OBJS=moag_event.o moag_chunk.o moag_client.o moag_server.o moag_window.o moag_loop.o moag_net.o
+
+moag_client: $(ENGINE_OBJS) client.o
+	$(CPP) $(CPPFLAGS) -o $@ $^ $(LIBS)
+
+moag_server: $(ENGINE_OBJS) server.o
+	$(CPP) $(CPPFLAGS) -o $@ $^ $(LIBS)
