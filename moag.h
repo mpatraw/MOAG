@@ -20,6 +20,7 @@ struct Tank{
     char bullet;
     char facingLeft;
     char kLeft,kRight,kUp,kDown,kFire;
+    int kills, deaths;
 };
 
 struct Bullet{
@@ -27,6 +28,8 @@ struct Bullet{
     float fx,fy,vx,vy;
     char active;
     char type;
+
+    int origin;
 };
 
 struct Crate{

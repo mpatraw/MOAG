@@ -31,7 +31,7 @@ Bullet bullets[MAX_BULLETS];
 Crate crate;
 int spawns;
 
-void explode(int x, int y, int rad, char type);
+void explode(int x, int y, int rad, char type, int origin);
 
 inline char landAt(int x, int y){
     if(x<0 || x>=WIDTH || y<0 || y>=HEIGHT)
@@ -61,7 +61,7 @@ void spawnTank(int id){
     tanks[id].kUp=0;
     tanks[id].kDown=0;
     tanks[id].kFire=0;
-    explode(tanks[id].x,tanks[id].y-12, 12, 2);
+    explode(tanks[id].x,tanks[id].y-12, 12, 2, -1);
 }
 
 void sendChat(int to, int id, char cmd, const char* msg, unsigned char len){
@@ -198,11 +198,30 @@ void sendCrate() {
     moag::SendChunk(NULL, -1, 1);
 }
 
-void killTank(int id){
+void killTank(int id, int origin){
     tanks[id].x=-30;
     tanks[id].y=-30;
     tanks[id].spawntimer=RESPAWN_TIME;
     sendTank(-1,id);
+
+    const char *killername = "died by natural causes";
+    char killerbuff[128];
+    char buff[128];
+
+    if( origin >= 0 ) {
+        if( origin != id ) {
+            tanks[origin].kills++;
+            snprintf( killerbuff, sizeof killerbuff, "was killed by %s (%d, %d)", tanks[origin].name, tanks[origin].kills, tanks[origin].deaths );
+        } else {
+            snprintf( killerbuff, sizeof killerbuff, "committed suicide" );
+        }
+    } else {
+        strncpy( killerbuff, killername, sizeof killerbuff );
+        killerbuff[ sizeof killerbuff - 1 ] = '\0';
+    }
+    tanks[id].deaths++;
+    snprintf( buff, sizeof buff, "%s (%d, %d) %s", tanks[id].name, tanks[id].kills, tanks[id].deaths, killerbuff );
+    sendChat(-1,-1,3,buff,strlen(buff));
 }
 
 void spawnClient(int id){
@@ -211,6 +230,8 @@ void spawnClient(int id){
     strcat(notice,tanks[id].name);
     strcat(notice," has connected");
     sendChat(-1,-1,3,notice,strlen(notice));
+
+    tanks[id].deaths = tanks[id].kills = 0;
 
     spawnTank(id);
     tanks[id].angle=35;
@@ -248,7 +269,7 @@ void launchLadder(int x, int y){
     bullets[i].vy=-1;
 }
 
-void fireBullet(char type, float x, float y, float vx, float vy){
+void fireBullet(char type, float x, float y, float vx, float vy, int origin){
     int i=0;
     while(bullets[i].active)
         if(++i>=MAX_BULLETS)
@@ -261,18 +282,20 @@ void fireBullet(char type, float x, float y, float vx, float vy){
     bullets[i].y=(int)bullets[i].fy;
     bullets[i].vx=vx;
     bullets[i].vy=vy;
+    bullets[i].origin = origin;
 }
 
-inline void fireBullet(char type, int x, int y, int lastx, int lasty, float angle, float vel){
+inline void fireBullet(char type, int x, int y, int lastx, int lasty, float angle, float vel, int origin){
     fireBullet(type,(float)x+5.0*cosf(angle*M_PI/180),
                     (float)y-5.0*sinf(angle*M_PI/180),
                     x-lastx+vel*cosf(angle*M_PI/180.0),
-                    y-lasty-vel*sinf(angle*M_PI/180.0));
+                    y-lasty-vel*sinf(angle*M_PI/180.0),
+                    origin);
 }
 
 inline int sqr(int n){ return n*n; }
 
-void explode(int x, int y, int rad, char type){
+void explode(int x, int y, int rad, char type, int origin){
     // type: 0=explode, 1=dirt, 2=clear dirt, 3=collapse
     if(type==3){
         // collapse
@@ -304,10 +327,13 @@ void explode(int x, int y, int rad, char type){
     for(int ix=-rad;ix<=rad;ix++)
         if(ix*ix+iy*iy<rad*rad)
             setLandAt(x+ix,y+iy, p);
-    if(type==0)
-        for(int i=0;i<MAX_CLIENTS;i++)
-            if(tanks[i].active && sqr(tanks[i].x-x)+sqr(tanks[i].y-3-y)<sqr(rad+4))
-                killTank(i);
+    if(type==0) {
+        for(int i=0;i<MAX_CLIENTS;i++) {
+            if(tanks[i].active && sqr(tanks[i].x-x)+sqr(tanks[i].y-3-y)<sqr(rad+4)) {
+                killTank(i, origin);
+            }
+        }
+    }
             
     sendLand(-1,x-rad,y-rad,rad*2,rad*2);
 }
@@ -449,7 +475,7 @@ void tankUpdate(int id){
         if(t.power<1000)
             t.power+=10;
     }else if(t.power){
-        fireBullet(t.bullet, t.x, t.y-7, t.lastx, t.lasty-7, t.facingLeft?180-t.angle:t.angle, (float)t.power*0.01);
+        fireBullet(t.bullet, t.x, t.y-7, t.lastx, t.lasty-7, t.facingLeft?180-t.angle:t.angle, (float)t.power*0.01, id);
         t.bullet=1;
         t.power=0;
     }
@@ -517,22 +543,22 @@ void bulletDetonate(int b){
     }
     switch(bullets[b].type){
     case 1: // missile
-        explode(bullets[b].x,bullets[b].y, 12, 0);
+        explode(bullets[b].x,bullets[b].y, 12, 0, bullets[b].origin);
         break;
     case 2: // baby nuke
-        explode(bullets[b].x,bullets[b].y, 55, 0);
+        explode(bullets[b].x,bullets[b].y, 55, 0, bullets[b].origin);
         break;
     case 3: // nuke
-        explode(bullets[b].x,bullets[b].y, 150, 0);
+        explode(bullets[b].x,bullets[b].y, 150, 0, bullets[b].origin);
         break;
     case 4: // dirt
-        explode(bullets[b].x,bullets[b].y, 55, 1);
+        explode(bullets[b].x,bullets[b].y, 55, 1, bullets[b].origin);
         break;
     case 5: // super dirt
-        explode(bullets[b].x,bullets[b].y, 300, 1);
+        explode(bullets[b].x,bullets[b].y, 300, 1, bullets[b].origin);
         break;
     case 6: // collapse
-        explode(bullets[b].x,bullets[b].y, 120, 3);
+        explode(bullets[b].x,bullets[b].y, 120, 3, bullets[b].origin);
         break;
     case 7: // liquid dirt
         liquid((int)hitx, (int)hity, 3000);
@@ -544,14 +570,14 @@ void bulletDetonate(int b){
         bounceBullet(b,hitx,hity);
         bullets[b].vx*=0.9;
         bullets[b].vy*=0.9;
-        explode(bullets[b].x,bullets[b].y, 12, 0);
+        explode(bullets[b].x,bullets[b].y, 12, 0, bullets[b].origin);
     } break;
     case 9: //tunneler
         if(bullets[b].active>0)
             bullets[b].active=-TUNNELER_TUNNELINGS;
         bullets[b].active++;
-        explode(hitx,hity, 9, 0);
-        explode(hitx+8*dx,hity+8*dy, 9, 0);
+        explode(hitx,hity, 9, 0, bullets[b].origin);
+        explode(hitx+8*dx,hity+8*dy, 9, 0, bullets[b].origin);
         break;
     case 10: { //ladder
         int x=bullets[b].x;
@@ -574,19 +600,20 @@ void bulletDetonate(int b){
     } break;
     case 11: //MIRV
         bounceBullet(b,hitx,hity);
-        explode(bullets[b].x,bullets[b].y, 12, 0);
+        explode(bullets[b].x,bullets[b].y, 12, 0, bullets[b].origin);
         for(int i=-3;i<4;i++)
-            fireBullet(12,bullets[b].x,bullets[b].y,bullets[b].vx+i,bullets[b].vy);
+            fireBullet(12,bullets[b].x,bullets[b].y,bullets[b].vx+i,bullets[b].vy, bullets[b].origin);
         break;
     case 12: //MIRV warhead
-        explode(bullets[b].x,bullets[b].y, 30, 0);
+        explode(bullets[b].x,bullets[b].y, 30, 0, bullets[b].origin);
         break;
     case 13: //cluster bomb
         bounceBullet(b,hitx,hity);
-        explode(bullets[b].x,bullets[b].y, 20, 0);
+        explode(bullets[b].x,bullets[b].y, 20, 0, bullets[b].origin);
         for(int i=0;i<11;i++)
             fireBullet(1,hitx,hity, 1.5*cosf(i*M_PI/5.5)+0.25*bullets[b].vx,
-                                    1.5*sinf(i*M_PI/5.5)+0.5*bullets[b].vy);
+                                    1.5*sinf(i*M_PI/5.5)+0.5*bullets[b].vy,
+                                    bullets[b].origin);
         break;
     default: break;
     }
@@ -604,7 +631,7 @@ void bulletUpdate(int b){
         bullets[b].x=(int)bullets[b].fx;
         bullets[b].y=(int)bullets[b].fy;
         if(landAt(bullets[b].x,bullets[b].y)==1){
-            explode(bullets[b].x,bullets[b].y+LADDER_LENGTH-bullets[b].active, 1, 2);
+            explode(bullets[b].x,bullets[b].y+LADDER_LENGTH-bullets[b].active, 1, 2, bullets[b].origin);
             bulletDetonate(b);
         }
         return;
@@ -633,7 +660,7 @@ void bulletUpdate(int b){
         }
     if(sqr(crate.x-bullets[b].x)+sqr(crate.y-4-bullets[b].y)<30){
         bulletDetonate(b);
-        fireBullet(crate.type, crate.x, crate.y-4, crate.type==8?(bullets[b].vx<0?-0.2:0.2):0, -0.2);
+        fireBullet(crate.type, crate.x, crate.y-4, crate.type==8?(bullets[b].vx<0?-0.2:0.2):0, -0.2, bullets[b].origin);
         crate.x=0;
         crate.y=0;
         return;
@@ -650,7 +677,7 @@ void crateUpdate(){
         seed=seed*13841+moag::GetTicks();
         crate.x=abs(seed)%(WIDTH-40)+20;
         crate.y=30;
-        explode(crate.x,crate.y-12, 12, 2);
+        explode(crate.x,crate.y-12, 12, 2, -1);
 
         const int PBABYNUKE=100;
         const int PNUKE=20;
