@@ -177,6 +177,10 @@ namespace MoagServer {
 
 		broadcastName( user );
 
+		for( userlist_t::iterator i = users.begin(); i != users.end(); i++) {
+			broadcastName( *i ); // broadcasting is just laziness
+		}
+
 		state.enqueueAll();
 		sendChunksTo( user );
 
@@ -359,7 +363,7 @@ namespace MoagServer {
 		const char *str = msg.c_str();
 
 		moag::ChunkEnqueue8( MSG_CHUNK );
-		moag::ChunkEnqueue8( user->getId() );
+		moag::ChunkEnqueue8( user->getTankId() );
 		moag::ChunkEnqueue8( MSGTYPE_CHAT );
 		moag::ChunkEnqueue8( length );
 		for(int i=0;i<length;i++) {
@@ -375,7 +379,7 @@ namespace MoagServer {
 		const char *data = name.c_str();
 
 		moag::ChunkEnqueue8( MSG_CHUNK );
-		moag::ChunkEnqueue8( user->getId() );
+		moag::ChunkEnqueue8( user->getTankId() );
 		moag::ChunkEnqueue8( MSGTYPE_NICKCHANGE );
 
 		moag::ChunkEnqueue8( length );

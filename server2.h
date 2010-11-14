@@ -91,6 +91,7 @@ namespace MoagServer {
 			void markForDisconnection(void) { marked = true; }
 			bool markedForDisconnection(void) { return marked; }
 
+            int getTankId(void) const { return tank->getId(); }
             int getId(void) const { return id; }
             const std::string& getName(void) const { return name; }
 

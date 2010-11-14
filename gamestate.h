@@ -57,6 +57,8 @@ namespace MoagServer {
 			Tank(GameState&, int, int, int);
 			void enqueue(bool);
 
+			int getId(void) const { return id; }
+
 			void setUser(MoagUser*);
 			void update(void);
 
