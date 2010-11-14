@@ -104,7 +104,7 @@ namespace MoagServer {
 
 			virtual void update(void);
 			virtual void detonate(void);
-			virtual void enqueue(void);
+			virtual bool enqueue(bool);
 			virtual bool hitsTank(Tank*);
 
 			bool isDeletable(void) const { return deletable; }
@@ -150,7 +150,9 @@ namespace MoagServer {
 			// have trouble accessing them. Ah well, would be
 			// premature optimization anyway.
 			void setTerrain(int x, int y, tile_t v) {
-				assert( x >= 0 && x < width && y >= 0 && y < height );
+				if( !isOnMap(x,y) ) {
+					return;
+				}
 				terrain[ x + y * width ] = v;
 			}
 
@@ -163,7 +165,13 @@ namespace MoagServer {
 			}
 
 			tile_t getTerrain(int x, int y) const {
-				assert( x >= 0 && x < width && y >= 0 && y < height );
+				if( !isOnMap(x,y) ) {
+					const int pad = 200;
+					if( x < -pad || x > (pad +width) ) return TERRAIN_DIRT;
+					if( y >= height ) return TERRAIN_DIRT;
+					return TERRAIN_BLANK;
+				}
+
 				return terrain[ x + y * width ];
 			}
 

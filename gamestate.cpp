@@ -44,15 +44,27 @@ namespace MoagServer {
 	}
 
 	void GameState::enqueueTerrainRectangle(int x, int y, int w, int h) {
-		moag::ChunkEnqueue8( LAND_CHUNK );
-		moag::ChunkEnqueue16( x );
-		moag::ChunkEnqueue16( y );
-		moag::ChunkEnqueue16( w );
-		moag::ChunkEnqueue16( h );
-		for(int j=0;j<h;j++) {
-			for(int i=0;i<w;i++) {
-				int v = getTerrain(x+i, y+j);
-				moag::ChunkEnqueue8( v );
+		if( x < 0 ) {
+			w += x;
+			x = 0;
+		}
+		if( y < 0 ) {
+			h += y;
+			y = 0;
+		}
+		w = MIN( w, width - x );
+		h = MIN( h, height - y );
+		if( w > 0 && h > 0 ) {
+			moag::ChunkEnqueue8( LAND_CHUNK );
+			moag::ChunkEnqueue16( x );
+			moag::ChunkEnqueue16( y );
+			moag::ChunkEnqueue16( w );
+			moag::ChunkEnqueue16( h );
+			for(int j=0;j<h;j++) {
+				for(int i=0;i<w;i++) {
+					int v = getTerrain(x+i, y+j);
+					moag::ChunkEnqueue8( v );
+				}
 			}
 		}
 	}
@@ -295,20 +307,31 @@ namespace MoagServer {
         }
     }
 
-    void Bullet::enqueue(void) {
+    bool Bullet::enqueue(bool dry) {
         int x, y;
         getIntPosition( x, y );
-        moag::ChunkEnqueue16( x );
-        moag::ChunkEnqueue16( y );
+		if( state.isOnMap( x, y ) ) {
+			if( !dry ) {
+				moag::ChunkEnqueue16( x );
+				moag::ChunkEnqueue16( y );
+			}
+			return true;
+		}
+		return false;
     }
 
     void GameState::enqueueBullets(void) {
         using namespace std;
+		int count = 0;
         moag::ChunkEnqueue8( BULLET_CHUNK );
-        moag::ChunkEnqueue16( bullets.size() );
         for(bulletlist_t::iterator i = bullets.begin(); i != bullets.end(); i++) {
             Bullet *bullet = *i;
-            bullet->enqueue();
+			count += bullet->enqueue(true) ? 1 : 0;
+        }
+        moag::ChunkEnqueue16( count );
+        for(bulletlist_t::iterator i = bullets.begin(); i != bullets.end(); i++) {
+            Bullet *bullet = *i;
+			bullet->enqueue(false);
         }
     }
 
@@ -320,9 +343,12 @@ namespace MoagServer {
     void Bullet::detonate(void) {
 		const int radius = 12;
 		int x, y;
+		
 		getIntPosition( x, y );
+
 		state.fillCircle( x, y, radius, TERRAIN_BLANK );
 		state.killCircle( x, y, radius + 4, owner );
+
         deletable = true;
     }
 
@@ -336,7 +362,7 @@ namespace MoagServer {
 				setTerrain( x+i, y+j, v );
 			}
 		}
-		dirty_terrain.push_back( Rectangle(x-r,y-r,1+2*r,1+2*r) );
+		dirty_terrain.push_back( Rectangle( x-r, y-r, 2*r+1, 2*r+1 ) );
     }
 
 	void GameState::reportKill( int killerId, Tank *victim ) {
@@ -378,11 +404,6 @@ namespace MoagServer {
         using namespace std;
 
         getIntPosition( x, y );
-
-        if( !state.isOnMap( x, y ) ) {
-            deletable = true;
-            return;
-        }
 
         if( !state.isBlank( x, y ) ||
             state.hitsAnyTank( this ) ) {
