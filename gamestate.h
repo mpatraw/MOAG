@@ -85,12 +85,6 @@ namespace MoagServer {
 			typedef std::list<Rectangle> rectlist_t;
 			rectlist_t dirty_terrain;
 
-#if 0
-			int zone_width, zone_height;
-			int dirty_cols, dirty_rows, dirty_size;
-			int *dirty;
-#endif
-
 			int spawns;
 			
 			typedef std::vector<Tank*> tanklist_t;
@@ -120,13 +114,6 @@ namespace MoagServer {
 			// premature optimization anyway.
 			void setTerrain(int x, int y, tile_t v) {
 				assert( x >= 0 && x < width && y >= 0 && y < height );
-#if 0
-				if( terrain[ x + y * width ] != v ) {
-					const int dc = x / zone_width;
-					const int dr = y / zone_height;
-					dirty[ dc + dr * zone_width ] = 1;
-				}
-#endif
 				terrain[ x + y * width ] = v;
 			}
 

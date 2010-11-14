@@ -13,27 +13,12 @@ namespace MoagServer {
 		width( width ),
 		height( height ),
 		terrain( new char [width * height] ),
-#if 0
-		zone_width( 10 ),
-		zone_height( 10 ),
-		dirty_cols( (width + zone_width - 1) / zone_width ),
-		dirty_rows( (height + zone_height - 1) / zone_height ),
-		dirty_size( dirty_rows * dirty_cols ),
-		dirty( new int [dirty_rows * dirty_cols] ),
-#endif
 		tanks (1),
 		crate (0),
 		bullets (1),
 		dirty_terrain ()
 	{
 		initializeTerrain();
-
-#if 0
-		for(int i=0;i<dirty_size;i++) {
-			dirty[i] = 1;
-		}
-#endif
-
 
 	}
 
@@ -75,17 +60,6 @@ namespace MoagServer {
 			enqueueTerrainRectangle( dirty_terrain.front() );
 			dirty_terrain.pop_front();
 		}
-#if 0
-		for(int i=0;i<dirty_size;i++) if( dirty[i] ) {
-			int col = i % zone_width;
-			int row = i / zone_width;
-			int x = col * zone_width;
-			int y = row * zone_height;
-			int w = MIN( zone_width, width - x );
-			int h = MIN( zone_height, height - y );
-			enqueueTerrainRectangle( x, y, w, h );
-		}
-#endif
 	}
 
 	void GameState::enqueueAllTerrain(void) {
