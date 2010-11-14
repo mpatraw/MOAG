@@ -227,7 +227,7 @@ namespace MoagServer {
                    kFire = user->getKey( INPUT_FIRE ),
                    kLadder = user->getKey( INPUT_LEFT ) && user->getKey( INPUT_RIGHT );
         if( kLadder ) {
-            // blah.
+            // TODO
             dirty = true;
         } else if( kLeft ) {
             grav = updateHorizontalMovement( -1 );
