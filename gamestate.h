@@ -41,8 +41,10 @@ namespace MoagServer {
 			GameState& state;
 
 			int x, y;
+			double lastX, lastY;
 			bool facingLeft;
 			int angle;
+			double firepower;
 
 			MoagUser *user;
 
@@ -59,18 +61,53 @@ namespace MoagServer {
 
 			int getId(void) const { return id; }
 
+			void teleport(int,int);
+
 			void setUser(MoagUser*);
 			void update(void);
 
 			bool isDirty(void) const { return dirty; }
 
 			static Tank* spawn(int);
+
+			int getX() const { return x; }
+			int getY() const { return y; }
+
+			void fire(double);
 	};
 
 	struct Crate {
 	};
 
-	struct Bullet {
+
+
+	class Bullet {
+		protected:
+			GameState& state;
+
+			double fx, fy;
+			double vx, vy;
+
+			bool deletable;
+
+			void getIntPosition(int&, int&);
+
+			double getSquaredDistanceTo(double, double);
+
+			int owner;
+
+		public:
+			Bullet(GameState&, double, double, double, double);
+			virtual ~Bullet(void) {};
+
+			void setOwner( MoagUser* );
+
+			virtual void update(void);
+			virtual void detonate(void);
+			virtual void enqueue(void);
+			virtual bool hitsTank(Tank*);
+
+			bool isDeletable(void) const { return deletable; }
 	};
 
 	typedef char tile_t;
@@ -89,7 +126,7 @@ namespace MoagServer {
 			
 			typedef std::vector<Tank*> tanklist_t;
 			typedef std::vector<Crate*> cratelist_t;
-			typedef std::vector<Bullet*> bulletlist_t;
+			typedef std::list<Bullet*> bulletlist_t;
 
 			tanklist_t tanks;
 			bulletlist_t bullets;
@@ -117,6 +154,10 @@ namespace MoagServer {
 				terrain[ x + y * width ] = v;
 			}
 
+			bool isOnMap(int x, int y) const {
+				return ( x >= 0 && x < width && y >= 0 && y < height );
+			}
+
 			bool isBlank(int x, int y) const {
 				return getTerrain(x,y) == TERRAIN_BLANK;
 			}
@@ -129,7 +170,6 @@ namespace MoagServer {
 			// these are for compatibility with a finite client
 			// for as long as possible
 			int getLeastFreeTankId(void);
-			int getLeastFreeBulletId(void);
 
 			// placeholders to be replaced by Lua updating
 
@@ -142,9 +182,25 @@ namespace MoagServer {
 			void enqueueDirty(void);
 
 			Tank *spawnTank(void);
+			void respawn(Tank*);
 
 			void update(void);
 
+			double getGravity(void) { return 0.1; }
+			double getFirepowerPerTick(void) { return 0.1; }
+			double getMaxFirepower(void) { return 10.0; }
+
+			void enqueueBullets(void);
+			void deleteBullets(void);
+
+			bool hitsAnyTank( Bullet* );
+
+			void addBullet(Bullet* );
+
+			void fillCircle( int, int, int, tile_t );
+			void killCircle( int, int, int, int );
+
+			void reportKill( int, Tank* );
     };
 
 };
