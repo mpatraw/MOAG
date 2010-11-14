@@ -10,7 +10,7 @@
 #include "moag_server.h"
 #include "moag_window.h"
 
-struct Tank{
+struct Tank {
     int x,y,lastx,lasty;
     int angle,power;
     int spawntimer;

@@ -27,34 +27,42 @@ void CloseServer() {
     SDL_Quit();
 }
 
-ServerCallback _clientConnect = NULL;
-ServerCallback _serverUpdate = NULL;
+CallbackObject *_clientConnect = 0;
+CallbackObject *_serverUpdate = 0;
 
-void SetServerCallback(ServerCallback cb, int type) {
+void SetServerCallback(CallbackObject * cb, int type) {
     switch (type) {
-    case CB_CLIENT_CONNECT:
-        _clientConnect = cb;
-        break;
-    case CB_SERVER_UPDATE:
-        _serverUpdate = cb;
-        break;
-    default:
-        break;
+        case CB_CLIENT_CONNECT:
+            _clientConnect = cb;
+            break;
+        case CB_SERVER_UPDATE:
+            _serverUpdate = cb;
+            break;
+        default:
+            break;
     }
 }
 
 void ServerTick() {
-    if (_serverUpdate)
-        _serverUpdate(_server);
-
-    moag::Connection con = moag::AcceptClient(_server);
-
-    if (con) {
-        if (_clientConnect)
-            _clientConnect(con);
-        else
-            moag::Disconnect(con);
+    if (_serverUpdate) {
+        (*_serverUpdate)(_server);
     }
+
+    moag::Connection con;
+    do {
+        con = moag::AcceptClient(_server);
+
+        if( con ) {
+            if (_clientConnect) {
+                int rv = (*_clientConnect)(con);
+                if( rv ) {
+                    moag::Disconnect( con );
+                }
+            } else {
+                moag::Disconnect(con);
+            }
+        }
+    } while( con );
 }
 
 }

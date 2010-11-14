@@ -46,20 +46,23 @@ Connection ListenOn(int port) {
 
 Connection AcceptClient(Connection server) {
     TCPsocket con = SDLNet_TCP_Accept(server);
-    if (con)
+    if (con) {
         SDLNet_TCP_AddSocket(_socketSet, con);
+    }
     return con;
 }
 
 Connection ConnectTo(const char *host, int port) {
     IPaddress ip;
     
-    if (SDLNet_ResolveHost(&ip, host, port) == -1)
+    if (SDLNet_ResolveHost(&ip, host, port) == -1) {
         return NULL;
+    }
     
     TCPsocket con = SDLNet_TCP_Open(&ip);
-    if (con)
+    if (con) {
         SDLNet_TCP_AddSocket(_socketSet, con);
+    }
     
     return con;
 }

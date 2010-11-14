@@ -13,11 +13,14 @@ enum
     CB_SERVER_UPDATE
 };
 
-typedef void (*ServerCallback) (moag::Connection arg);
+class CallbackObject {
+	public:
+		virtual int operator()(Connection) = 0;
+};
 
 int OpenServer(int port, int maxConnections);
 void CloseServer(void);
-void SetServerCallback(ServerCallback cb, int type);
+void SetServerCallback(CallbackObject* cb, int type);
 void ServerTick(void);
 
 }
