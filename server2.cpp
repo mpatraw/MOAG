@@ -431,6 +431,25 @@ namespace MoagServer {
 			sendChunksTo( user );
 		}
 	}
+
+	moag::Connection MoagUser::getConnection(void) {
+		return conn;
+	}
+	void MoagUser::markForDisconnection(void) {
+		marked = true;
+	}
+	bool MoagUser::markedForDisconnection(void) {
+		return marked;
+	}
+	int MoagUser::getTankId(void) const {
+		return tank->getId();
+	}
+	int MoagUser::getId(void) const {
+		return id;
+	}
+	const std::string& MoagUser::getName(void) const {
+		return name;
+	}
 };
 
 int main(int argc, char*argv[]) {

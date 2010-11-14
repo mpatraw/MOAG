@@ -85,15 +85,14 @@ namespace MoagServer {
 		public:
 			MoagUser( Server&, moag::Connection, Tank* );
 
-			moag::Connection getConnection(void) { return conn; }
-
             void markForDisconnectionError(const std::string&);
-			void markForDisconnection(void) { marked = true; }
-			bool markedForDisconnection(void) { return marked; }
 
-            int getTankId(void) const { return tank->getId(); }
-            int getId(void) const { return id; }
-            const std::string& getName(void) const { return name; }
+			moag::Connection getConnection(void);
+			void markForDisconnection(void);
+			bool markedForDisconnection(void);
+            int getTankId(void) const;
+            int getId(void) const;
+            const std::string& getName(void) const;
 
             void handleCommand(char *);
             void changeNickname( const std::string& );

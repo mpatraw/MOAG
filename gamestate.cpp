@@ -10,6 +10,61 @@
 #include <cmath>
 
 namespace MoagServer {
+	Rectangle::Rectangle( int x, int y, int w, int h ) :
+		x(x), y(y), w(w), h(h)
+	{
+	}
+
+	int Tank::getId(void) const {
+		return id;
+	}
+	bool Tank::isDirty(void) const {
+		return dirty;
+	}
+	int Tank::getX() const {
+		return x;
+	}
+	int Tank::getY() const {
+		return y;
+	}
+
+	bool Bullet::isDeletable(void) const {
+		return deletable;
+	}
+
+	int GameState::getWidth(void) const {
+		return width;
+	}
+	int GameState::getHeight(void) const {
+		return height;
+	}
+
+	tile_t GameState::getTerrain(int x, int y) const {
+		if( !isOnMap(x,y) ) {
+			const int pad = 200;
+			if( x < -pad || x > (pad +width) ) return TERRAIN_DIRT;
+			if( y >= height ) return TERRAIN_DIRT;
+			return TERRAIN_BLANK;
+		}
+
+		return terrain[ x + y * width ];
+	}
+
+	bool GameState::isOnMap(int x, int y) const {
+		return ( x >= 0 && x < width && y >= 0 && y < height );
+	}
+
+	bool GameState::isBlank(int x, int y) const {
+		return getTerrain(x,y) == TERRAIN_BLANK;
+	}
+
+	void GameState::setTerrain(int x, int y, tile_t v) {
+		if( !isOnMap(x,y) ) {
+			return;
+		}
+		terrain[ x + y * width ] = v;
+	}
+
 	GameState::GameState(Server& server, const int width, const int height) :
 		server( server ),
 		width( width ),
@@ -438,9 +493,5 @@ namespace MoagServer {
     {
         state.addBullet( this );
     }
-
-
-
-
 
 };

@@ -28,11 +28,7 @@ namespace MoagServer {
 	struct Rectangle {
 		int x, y, w, h;
 
-		Rectangle( int x, int y, int w, int h ) :
-			x(x), y(y), w(w), h(h)
-		{
-		}
-
+		Rectangle(int,int,int,int);
 	};
 
 	class Tank {
@@ -59,27 +55,25 @@ namespace MoagServer {
 			Tank(GameState&, int, int, int);
 			void enqueue(bool);
 
-			int getId(void) const { return id; }
+			int getId(void) const;
 
 			void teleport(int,int);
 
 			void setUser(MoagUser*);
 			void update(void);
 
-			bool isDirty(void) const { return dirty; }
+			bool isDirty(void) const;
 
 			static Tank* spawn(int);
 
-			int getX() const { return x; }
-			int getY() const { return y; }
+			int getX() const;
+			int getY() const;
 
 			void fire(double);
 	};
 
 	struct Crate {
 	};
-
-
 
 	class Bullet {
 		protected:
@@ -107,7 +101,7 @@ namespace MoagServer {
 			virtual bool enqueue(bool);
 			virtual bool hitsTank(Tank*);
 
-			bool isDeletable(void) const { return deletable; }
+			bool isDeletable(void) const;
 	};
 
 	typedef char tile_t;
@@ -139,41 +133,16 @@ namespace MoagServer {
 			void enqueueTerrainRectangle(Rectangle&);
 
 		public:
-			int getWidth(void) const { return width; }
-			int getHeight(void) const { return height; }
-
+			int getWidth(void) const;
+			int getHeight(void) const;
 
 			GameState(Server&, const int, const int);
 			~GameState(void);
 
-			// I'd make these inline, but then I suppose Lua would
-			// have trouble accessing them. Ah well, would be
-			// premature optimization anyway.
-			void setTerrain(int x, int y, tile_t v) {
-				if( !isOnMap(x,y) ) {
-					return;
-				}
-				terrain[ x + y * width ] = v;
-			}
-
-			bool isOnMap(int x, int y) const {
-				return ( x >= 0 && x < width && y >= 0 && y < height );
-			}
-
-			bool isBlank(int x, int y) const {
-				return getTerrain(x,y) == TERRAIN_BLANK;
-			}
-
-			tile_t getTerrain(int x, int y) const {
-				if( !isOnMap(x,y) ) {
-					const int pad = 200;
-					if( x < -pad || x > (pad +width) ) return TERRAIN_DIRT;
-					if( y >= height ) return TERRAIN_DIRT;
-					return TERRAIN_BLANK;
-				}
-
-				return terrain[ x + y * width ];
-			}
+			bool isOnMap(int x, int y) const;
+			bool isBlank(int x, int y) const;
+			void setTerrain(int x, int y, tile_t v);
+			tile_t getTerrain(int x, int y) const;
 
 			// these are for compatibility with a finite client
 			// for as long as possible
@@ -194,10 +163,6 @@ namespace MoagServer {
 
 			void update(void);
 
-			double getGravity(void) { return 0.1; }
-			double getFirepowerPerTick(void) { return 0.1; }
-			double getMaxFirepower(void) { return 10.0; }
-
 			void enqueueBullets(void);
 			void deleteBullets(void);
 
@@ -209,6 +174,11 @@ namespace MoagServer {
 			void killCircle( int, int, int, int );
 
 			void reportKill( int, Tank* );
+
+			double getGravity(void) { return 0.1; }
+			double getFirepowerPerTick(void) { return 0.1; }
+			double getMaxFirepower(void) { return 10.0; }
+
     };
 
 };
