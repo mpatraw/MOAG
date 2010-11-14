@@ -84,6 +84,8 @@ namespace MoagServer {
 			MoagTicker ticker;
 			MoagGreeter greeter;
 
+            int tickCount;
+
 			bool doQuit;
 
 			typedef std::vector< MoagUser* > userlist_t;
@@ -93,7 +95,7 @@ namespace MoagServer {
 			Server(const int, const int);
 			~Server(void);
 
-			void run(void);
+			void run(const int);
 
             void broadcastName( MoagUser* );
 
@@ -108,6 +110,8 @@ namespace MoagServer {
 			void sendNoticeTo( const std::string&, MoagUser* );
 
 			void broadcastChatMessage( MoagUser*, const std::string& );
+
+            void didTick(void);
 	};
 
 };

@@ -60,6 +60,7 @@ namespace MoagServer {
 	int MoagTicker::operator()(moag::Connection con) {
 		server.activitySweep();
 		server.disconnectSweep();
+		server.didTick();
 		return 0;
 	}
 
@@ -68,15 +69,57 @@ namespace MoagServer {
 		return server.userConnected( con );
 	}
 
-	void Server::run(void) {
-		while( !doQuit ) {
-			moag::ServerTick();
+	Uint32 SdlServerTickCallback( Uint32 delay, void *param ) {
+		static bool first_tick = true;
+		static Uint32 last_tick;
+		static int compensation = 0;
+		intptr_t target = reinterpret_cast<intptr_t>(param);
+		int rv = target;
+		using namespace std;
+
+		Uint32 now = SDL_GetTicks();
+		if( !first_tick ) {
+			int real = now - last_tick;
+			int diff = real - (target - compensation);
+			rv -= diff;
+			rv = MAX( 1, rv );
+			compensation = diff;
+		} else {
+			first_tick = false;
 		}
+		last_tick = now;
+
+		moag::ServerTick();
+
+		return rv;
+	}
+
+	void Server::run(const int freq) {
+		double ms = 1000.0 / freq;
+		int ims = (int)(0.5 + ms);
+
+		double efrm = 1000.0 / (double) ims;
+
+		using namespace std;
+
+		cout << "Running server with delay: " << ims << " milliseconds (expected frame rate: " << efrm << ")" << endl;
+
+		intptr_t target = ims;
+
+		SDL_TimerID id = SDL_AddTimer( ims, SdlServerTickCallback, reinterpret_cast<void*>(target) );
+		while( !doQuit ) {
+			SDL_Delay( 1000 );
+			int ticks = tickCount;
+			tickCount = 0;
+			cerr << "debug: ticked " << ticks << " times this second" << endl;
+		}
+		SDL_RemoveTimer( id );
 	}
 
 	Server::Server(const int port, const int maxClients) :
 		ticker( MoagTicker( *this ) ),
 		greeter( MoagGreeter( *this ) ),
+		tickCount( 0 ),
 		doQuit( false ),
 		users ()
 	{
@@ -256,6 +299,10 @@ namespace MoagServer {
 		}
 	}
 
+	void Server::didTick(void) {
+		++tickCount;
+	}
+
 	void Server::disconnectSweep(void) {
 		for(userlist_t::iterator i = users.begin(); i != users.end(); ) {
 			if( (*i)->markedForDisconnection() ) {
@@ -334,7 +381,7 @@ int main(int argc, char*argv[]) {
 
 		cout << "Server running.." << endl;
 
-		server.run();
+		server.run(65);
 
 		cout << "Goodbye!" << endl;
 	}
