@@ -1,10 +1,15 @@
 #ifndef H_SERVER2
 #define H_SERVER2
 
+#define MIN(a,b) (((a)>(b))?(b):(a))
+#define MAX(a,b) (((a)<(b))?(b):(a))
+
 #include "moag_server.h"
 
 #include <vector>
 #include <string>
+
+#include "gamestate.h"
 
 enum {
     C2SM_PRESS_LEFT = 1,
@@ -18,6 +23,22 @@ enum {
     C2SM_PRESS_FIRE,
     C2SM_RELEASE_FIRE,
     C2SM_CHAT_MESSAGE
+};
+
+typedef enum {
+	INPUT_LEFT = 1,
+	INPUT_RIGHT,
+	INPUT_DOWN,
+	INPUT_UP,
+	INPUT_FIRE
+} input_key_t;
+
+enum {
+	LAND_CHUNK = 1,
+	TANK_CHUNK,
+	BULLET_CHUNK,
+	MSG_CHUNK,
+	CRATE_CHUNK
 };
 
 namespace MoagServer {
@@ -59,8 +80,10 @@ namespace MoagServer {
                  keypressUp,
                  keypressFire;
 
+			Tank *tank;
+
 		public:
-			MoagUser( Server&, moag::Connection );
+			MoagUser( Server&, moag::Connection, Tank* );
 
 			moag::Connection getConnection(void) { return conn; }
 
@@ -74,15 +97,18 @@ namespace MoagServer {
             void handleCommand(char *);
             void changeNickname( const std::string& );
 
-
             void handleMessage(void);
             void handleActivity(void);
+
+			bool getKey( input_key_t ) const;
 	};
 
 	class Server {
 		private:
 			MoagTicker ticker;
 			MoagGreeter greeter;
+
+			GameState state;
 
             int tickCount;
 
@@ -92,7 +118,7 @@ namespace MoagServer {
 			userlist_t users;
 
 		public:
-			Server(const int, const int);
+			Server(const int, const int, const int, const int);
 			~Server(void);
 
 			void run(const int);
@@ -112,6 +138,9 @@ namespace MoagServer {
 			void broadcastChatMessage( MoagUser*, const std::string& );
 
             void didTick(void);
+			void stepGame(void);
+
+			void shutdown(void);
 	};
 
 };

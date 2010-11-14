@@ -1,7 +1,6 @@
 #include "server2.h"
 
 #include "moag_chunk.h"
-#include "moag.h"
 
 #include <stdexcept>
 
@@ -9,10 +8,24 @@
 
 #include <sstream>
 
+#include "SDL/SDL.h"
+#include "SDL/SDL_net.h"
+
+/* Note that we do NOT include moag.h, as we'll be replacing
+   the structures contained therein with similarly-named ones.
+   They're not completely equivalent; notably there's now
+   a more significant split between a User and a Tank.
+   The client won't generally need all these structures, just
+   enough to put the thing on the screen -- which is often
+   just id, sprite, position (but for tank also e.g. facing).
+   */
+
+#define DEBUG_PUBLIC_SHUTDOWN
+
 #define MOAG_FLUSH_CHUNKS() moag::SendChunk(0, -1, 1)
 
-#define MIN(a,b) (((a)>(b))?(b):(a))
-#define MAX(a,b) (((a)<(b))?(b):(a))
+#define TERRAIN_WIDTH 800
+#define TERRAIN_HEIGHT 600
 
 #ifndef UINT32_MAX
 #define UINT32_MAX ((Uint32)-1)
@@ -26,17 +39,19 @@
 
 #define MAX_CLIENTS 8
 
-
-enum {
-	LAND_CHUNK = 1,
-	TANK_CHUNK,
-	BULLET_CHUNK,
-	MSG_CHUNK,
-	CRATE_CHUNK
-};
-
 namespace MoagServer {
 	int MoagUser::nextUserId = 1;
+
+	bool MoagUser::getKey( input_key_t key ) const {
+		switch( key ) {
+			case INPUT_LEFT: return keypressLeft;
+			case INPUT_RIGHT: return keypressRight;
+			case INPUT_DOWN: return keypressDown;
+			case INPUT_UP: return keypressUp;
+			case INPUT_FIRE: return keypressFire;
+			default: return false;
+		}
+	}
 
 	MoagTicker::MoagTicker( Server& server ) :
 		server ( server )
@@ -48,16 +63,18 @@ namespace MoagServer {
 	{
 	}
 
-	MoagUser::MoagUser( Server& server, moag::Connection conn ) :
+	MoagUser::MoagUser( Server& server, moag::Connection conn, Tank *tank ) :
 		server( server ),
 		conn( conn ),
 		name( "AfghanCap" ),
 		id( nextUserId++ ),
-		marked( false )
+		marked( false ),
+		tank ( tank )
 	{
 	}
 
 	int MoagTicker::operator()(moag::Connection con) {
+		server.stepGame();
 		server.activitySweep();
 		server.disconnectSweep();
 		server.didTick();
@@ -111,17 +128,24 @@ namespace MoagServer {
 			SDL_Delay( 1000 );
 			int ticks = tickCount;
 			tickCount = 0;
+#ifdef DEBUG_TIME
 			cerr << "debug: ticked " << ticks << " times this second" << endl;
+#endif
 		}
 		SDL_RemoveTimer( id );
 	}
 
-	Server::Server(const int port, const int maxClients) :
+	void Server::shutdown(void) {
+		doQuit = true;
+	}
+
+	Server::Server(const int port, const int maxClients, const int width, const int height) :
 		ticker( MoagTicker( *this ) ),
 		greeter( MoagGreeter( *this ) ),
 		tickCount( 0 ),
 		doQuit( false ),
-		users ()
+		users (),
+		state ( GameState( *this, width, height ) )
 	{
 		if( moag::OpenServer( port, maxClients ) == -1 ) {
 			throw std::runtime_error( "failed to open server -- port bound?" );
@@ -134,6 +158,7 @@ namespace MoagServer {
 	Server::~Server(void) {
 		for( userlist_t::iterator i = users.begin(); i != users.end(); ) {
 			MoagUser *user = *i;
+			moag::Disconnect( user->getConnection() );
 			delete user;
 			i = users.erase( i );
 		}
@@ -141,7 +166,9 @@ namespace MoagServer {
 	}
 
 	int Server::userConnected(moag::Connection conn) {
-		MoagUser *user = new MoagUser( *this, conn );
+		Tank *tank = state.spawnTank();
+		MoagUser *user = new MoagUser( *this, conn, tank );
+		tank->setUser( user );
 
 		broadcastNotice( "A challenger appears!" );
 		sendNoticeTo( "Welcome to MOAG!", user );
@@ -149,6 +176,9 @@ namespace MoagServer {
 		users.push_back( user );
 
 		broadcastName( user );
+
+		state.enqueueAll();
+		sendChunksTo( user );
 
 		return 0;
 	}
@@ -197,6 +227,10 @@ namespace MoagServer {
 		if( !strcmp( cmd, "n" ) || !strcmp( cmd, "nick" ) ) {
 			const char *nick = strtok( 0, "" );
 			changeNickname( nick );
+#ifdef DEBUG_PUBLIC_SHUTDOWN
+		} else if( !strcmp( cmd, "shutdown" ) ) {
+			server.shutdown();
+#endif
 		} else {
 			server.sendNoticeTo( ": unknown command.", this );
 		}
@@ -352,6 +386,29 @@ namespace MoagServer {
 		broadcastChunks();
 	}
 
+	void Server::stepGame(void) {
+		/* Gospel code updates in this order:
+				crateUpdate
+				(send crate)
+				for each tank:
+					tankUpdate
+					(send tank)
+				for each bullet:
+					bulletUpdate
+				(send bullets)
+				for each client: // activity sweep
+					update user input
+
+			Terrain updates are done along the way, which probably
+			means only during bullet updates.
+		*/
+
+		state.update();
+
+		state.enqueueDirty();
+		broadcastChunks();
+	}
+
 	void Server::sendNoticeTo( const std::string& msg, MoagUser *user ) {
 		int length = MIN( 255, msg.length() );
 		const char *str = msg.c_str();
@@ -376,12 +433,28 @@ int main(int argc, char*argv[]) {
 	using namespace MoagServer;
 	using namespace std;
 
+
 	try {
-		Server server (8080, MAX_CLIENTS);
+#if 0
+		if( SDL_Init(0) == -1 ) {
+			throw std::runtime_error( "failed to initialize SDL" );
+		}
+
+		if( SDLNet_Init() == -1 ) {
+			throw std::runtime_error( "failed to initialize SDL_net" );
+		}
+#endif
+
+		Server server (8080, MAX_CLIENTS, TERRAIN_WIDTH, TERRAIN_HEIGHT);
 
 		cout << "Server running.." << endl;
 
 		server.run(65);
+
+#if 0
+		SDLNet_Quit();
+		SDL_Quit();
+#endif
 
 		cout << "Goodbye!" << endl;
 	}

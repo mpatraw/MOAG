@@ -16,5 +16,5 @@ moag_client: $(ENGINE_OBJS) client.o
 moag_server: $(ENGINE_OBJS) server.o
 	$(CPP) $(CPPFLAGS) -o $@ $^ $(LIBS)
 
-moag_server2: $(ENGINE_OBJS) server2.o
+moag_server2: $(ENGINE_OBJS) server2.o gamestate.o
 	$(CPP) $(CPPFLAGS) -o $@ $^ $(LIBS)
