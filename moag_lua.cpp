@@ -131,8 +131,6 @@ namespace MoagScript {
 	}
 
 	LuaReference::~LuaReference(void) {
-		using namespace std;
-		cerr << "blah deleting ref" << endl;
 		luaL_unref( lua.getLua(), LUA_REGISTRYINDEX, index );
 	}
 
