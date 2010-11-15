@@ -13,8 +13,7 @@ namespace MoagScript {
 
 			server->shutdown();
 
-			lua.pushValue( 42 );
-			return 1;
+			return 0;
 		}
 
 		int broadcastNotice( lua_State* l ) {
@@ -27,8 +26,7 @@ namespace MoagScript {
 
 			server->broadcastNotice( message );
 
-			lua.pushValue( 42 );
-			return 1;
+			return 0;
 		}
 
 		int sendNoticeTo( lua_State* l ) {
@@ -41,9 +39,8 @@ namespace MoagScript {
 			Server *server = static_cast<Server*>( lua.popUserData() );
 
 			server->sendNoticeTo( message, user );
-
-			lua.pushValue( 42 );
-			return 1;
+			
+			return 0;
 		}
 
 		int changeUserNickname( lua_State* l ) {
@@ -56,9 +53,7 @@ namespace MoagScript {
 
 			user->changeNickname( nick );
 
-			lua.pushValue( 42 );
-
-			return 1;
+			return 0;
 		}
 
 		int setUserNickname( lua_State* l ) {
@@ -71,23 +66,7 @@ namespace MoagScript {
 
 			user->setNickname( nick );
 
-			lua.pushValue( 42 );
-
-			return 1;
-		}
-
-		int testFunction( lua_State* l ) {
-			LuaInstance lua ( l );
-			
-				// Popping must be done in reverse order.
-			std::string beta = lua.popString();
-			std::string alpha = lua.popString();
-
-			std::ostringstream oss;
-			oss << alpha << "-" << beta;
-			lua.pushValue( oss.str() );
-
-			return 1;
+			return 0;
 		}
 	}
 
@@ -101,8 +80,6 @@ namespace MoagScript {
 		lua.exportFunction( "change_user_nickname", setUserNickname );
 
 		lua.exportFunction( "shutdown_server", shutdownServer );
-
-		lua.exportFunction( "test_c_function", testFunction );
 	}
 
 }
