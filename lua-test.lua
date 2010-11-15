@@ -3,7 +3,9 @@ luafunc_helloworld = function()
 end
 
 luafunc_add = function(a,b)
-	return a + b;
+	return a + b
 end
 
-print( 42 )
+luafunc_div = function(a,b)
+	return a / b
+end
