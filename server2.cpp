@@ -11,6 +11,8 @@
 #include "SDL/SDL.h"
 #include "SDL/SDL_net.h"
 
+#include "server_lua.h"
+
 /* Note that we do NOT include moag.h, as we'll be replacing
    the structures contained therein with similarly-named ones.
    They're not completely equivalent; notably there's now
@@ -69,21 +71,33 @@ namespace MoagServer {
 		name( "AfghanCap" ),
 		id( nextUserId++ ),
 		marked( false ),
-		tank ( tank )
+		keypressLeft ( false ),
+		keypressRight ( false ),
+		keypressDown ( false ),
+		keypressUp ( false ),
+		keypressFire ( false ),
+		tank ( tank ),
+		sob ( MoagScript::LuaCall( server.getLuaInstance(), "create_moag_user" )
+                ( this )( id ).getReference() )
 	{
 	}
 
 	int MoagTicker::operator()(moag::Connection con) {
+		server.acquireMutex();
 		server.stepGame();
 		server.activitySweep();
 		server.disconnectSweep();
 		server.didTick();
+		server.releaseMutex();
 		return 0;
 	}
 
 	int MoagGreeter::operator()(moag::Connection con) {
 		using namespace std;
-		return server.userConnected( con );
+		server.acquireMutex();
+		int rv = server.userConnected( con );
+		server.releaseMutex();
+		return rv;
 	}
 
 	Uint32 SdlServerTickCallback( Uint32 delay, void *param ) {
@@ -126,7 +140,9 @@ namespace MoagServer {
 		SDL_TimerID id = SDL_AddTimer( ims, SdlServerTickCallback, reinterpret_cast<void*>(target) );
 		while( !doQuit ) {
 			SDL_Delay( 1000 );
+#ifdef DEBUG_TIME
 			int ticks = tickCount;
+#endif
 			tickCount = 0;
 #ifdef DEBUG_TIME
 			cerr << "debug: ticked " << ticks << " times this second" << endl;
@@ -139,20 +155,34 @@ namespace MoagServer {
 		doQuit = true;
 	}
 
-	Server::Server(const int port, const int maxClients, const int width, const int height) :
+	Server::Server( MoagScript::LuaInstance& lua, const int port, const int maxClients, const int width, const int height) :
 		ticker( MoagTicker( *this ) ),
 		greeter( MoagGreeter( *this ) ),
+		state ( GameState( *this, width, height ) ),
 		tickCount( 0 ),
 		doQuit( false ),
 		users (),
-		state ( GameState( *this, width, height ) )
+        lua ( lua )
 	{
+
+		MoagScript::LuaCall( lua, "initialize_server" )( this ).discard();
+
 		if( moag::OpenServer( port, maxClients ) == -1 ) {
 			throw std::runtime_error( "failed to open server -- port bound?" );
 		}
 
+		pthread_mutex_init( &mutex, 0 );
+
 		moag::SetServerCallback( &ticker, moag::CB_SERVER_UPDATE );
 		moag::SetServerCallback( &greeter, moag::CB_CLIENT_CONNECT );
+	}
+
+	void Server::acquireMutex(void) {
+		pthread_mutex_lock( &mutex );
+	}
+
+	void Server::releaseMutex(void) {
+		pthread_mutex_unlock( &mutex );
 	}
 
 	Server::~Server(void) {
@@ -163,15 +193,14 @@ namespace MoagServer {
 			i = users.erase( i );
 		}
 		moag::CloseServer();
+
+		pthread_mutex_destroy( &mutex );
 	}
 
 	int Server::userConnected(moag::Connection conn) {
 		Tank *tank = state.spawnTank();
 		MoagUser *user = new MoagUser( *this, conn, tank );
 		tank->setUser( user );
-
-		broadcastNotice( "A challenger appears!" );
-		sendNoticeTo( "Welcome to MOAG!", user );
 
 		users.push_back( user );
 
@@ -205,7 +234,9 @@ namespace MoagServer {
 
 	void Server::broadcastChunks(void) {
 		for(userlist_t::iterator i = users.begin(); i != users.end(); i++) {
+			using namespace std;
 			int rv = moag::SendChunk( (*i)->getConnection(), moag::SEND_ALL, 0 );
+			
 			if( rv == -1 ) {
 				(*i)->markForDisconnection();
 			}
@@ -213,15 +244,20 @@ namespace MoagServer {
 		MOAG_FLUSH_CHUNKS();
 	}
 
+	void MoagUser::setNickname( const std::string& nickname ) {
+		name = nickname;
+		server.broadcastName( this );
+	}
+
 	void MoagUser::changeNickname( const std::string& nickname ) {
 		using namespace std;
 		std::string oldNickname = name;
-		name = nickname;
+
+		setNickname( name );
 
 		std::ostringstream oss;
 		oss << ": " << oldNickname << " is now known as " << nickname << ".";
 		server.broadcastNotice( oss.str() );
-		server.broadcastName( this );
 	}
 
 	void MoagUser::handleCommand(char *buff) {
@@ -250,7 +286,7 @@ namespace MoagServer {
 		int length = moag::ChunkDequeue8();
 		char buff[256]; // safe since length field is 8-bit
 
-		if( length < 0 || length >= sizeof buff ) {
+		if( length < 0 || length >= (int) sizeof buff ) {
 			markForDisconnectionError( "message buffer overflow or invalid length field" );
 			return;
 		}
@@ -268,15 +304,11 @@ namespace MoagServer {
 			buff[i] = moag::ChunkDequeue8();
 		}
 
-		if( buff[0] == '/' ) {
-			handleCommand( &buff[1] );
-		} else {
-			server.broadcastChatMessage( this, std::string( buff ) );
-		}
+		MoagScript::LuaCall( server.getLuaInstance(), "handle_console" )
+			.refarg( *sob )( std::string( buff ) ).discard();
 	}
 
 	void MoagUser::handleActivity(void) {
-
 		if( moag::ReceiveChunk( conn, 1 ) == -1 ) {
 			markForDisconnection();
 			return;
@@ -436,6 +468,8 @@ namespace MoagServer {
 		return conn;
 	}
 	void MoagUser::markForDisconnection(void) {
+		using namespace std;
+		cerr << "disconnecting user " << conn << endl;
 		marked = true;
 	}
 	bool MoagUser::markedForDisconnection(void) {
@@ -450,25 +484,29 @@ namespace MoagServer {
 	const std::string& MoagUser::getName(void) const {
 		return name;
 	}
+
+	MoagUser::~MoagUser(void) {
+		using namespace std;
+		cerr << "destroying user " << conn << endl;
+		MoagScript::LuaCall( server.getLuaInstance(), "destroy_moag_user" )
+			.refarg( *sob ).discard();
+		delete tank;
+	}
 };
 
 int main(int argc, char*argv[]) {
 	using namespace MoagServer;
 	using namespace std;
-
+    using namespace MoagScript;
 
 	try {
-#if 0
-		if( SDL_Init(0) == -1 ) {
-			throw std::runtime_error( "failed to initialize SDL" );
-		}
+        LuaInstance lua;
 
-		if( SDLNet_Init() == -1 ) {
-			throw std::runtime_error( "failed to initialize SDL_net" );
-		}
-#endif
+        exportAllServer( lua );
 
-		Server server (8080, MAX_CLIENTS, TERRAIN_WIDTH, TERRAIN_HEIGHT);
+        lua.runFile( "moag-default.lua" );
+
+		Server server (lua, 8080, MAX_CLIENTS, TERRAIN_WIDTH, TERRAIN_HEIGHT);
 
 		cout << "Server running.." << endl;
 

@@ -4,12 +4,16 @@
 #define MIN(a,b) (((a)>(b))?(b):(a))
 #define MAX(a,b) (((a)<(b))?(b):(a))
 
+#include <pthread.h>
+
 #include "moag_server.h"
 
 #include <vector>
 #include <string>
 
 #include "gamestate.h"
+
+#include "moag_lua.h"
 
 enum {
     C2SM_PRESS_LEFT = 1,
@@ -69,8 +73,8 @@ namespace MoagServer {
             Server& server;
 
 			moag::Connection conn;
-            int id;
             std::string name;
+            int id;
 
 			bool marked;
 
@@ -82,8 +86,11 @@ namespace MoagServer {
 
 			Tank *tank;
 
+			MoagScript::LuaAutoReference sob;
+
 		public:
 			MoagUser( Server&, moag::Connection, Tank* );
+			~MoagUser(void);
 
             void markForDisconnectionError(const std::string&);
 
@@ -96,6 +103,7 @@ namespace MoagServer {
 
             void handleCommand(char *);
             void changeNickname( const std::string& );
+            void setNickname( const std::string& );
 
             void handleMessage(void);
             void handleActivity(void);
@@ -117,9 +125,18 @@ namespace MoagServer {
 			typedef std::vector< MoagUser* > userlist_t;
 			userlist_t users;
 
+			MoagScript::LuaInstance& lua;
+
+			pthread_mutex_t mutex;
+
 		public:
-			Server(const int, const int, const int, const int);
+			Server(MoagScript::LuaInstance&, const int, const int, const int, const int);
 			~Server(void);
+
+			void acquireMutex(void);
+			void releaseMutex(void);
+
+			MoagScript::LuaInstance& getLuaInstance(void) { return lua; }
 
 			void run(const int);
 

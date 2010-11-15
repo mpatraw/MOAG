@@ -53,6 +53,8 @@ namespace MoagServer {
 
 		public:
 			Tank(GameState&, int, int, int);
+			~Tank(void);
+
 			void enqueue(bool);
 
 			int getId(void) const;
@@ -114,7 +116,6 @@ namespace MoagServer {
 			tile_t *terrain;
 
 			typedef std::list<Rectangle> rectlist_t;
-			rectlist_t dirty_terrain;
 
 			int spawns;
 			
@@ -123,9 +124,10 @@ namespace MoagServer {
 			typedef std::list<Bullet*> bulletlist_t;
 
 			tanklist_t tanks;
+			Crate *crate;
 			bulletlist_t bullets;
 
-			Crate *crate;
+			rectlist_t dirty_terrain;
 
 			void initializeTerrain(void);
 
@@ -172,6 +174,8 @@ namespace MoagServer {
 
 			void fillCircle( int, int, int, tile_t );
 			void killCircle( int, int, int, int );
+
+			void killTank(int);
 
 			void reportKill( int, Tank* );
 

@@ -51,7 +51,11 @@ namespace MoagServer {
 	}
 
 	bool GameState::isOnMap(int x, int y) const {
-		return ( x >= 0 && x < width && y >= 0 && y < height );
+		if(x < 0) return false;
+		if(x >= width) return false;
+		if(y < 0 ) return false;
+		if(y >= height) return false;
+		return true;
 	}
 
 	bool GameState::isBlank(int x, int y) const {
@@ -70,6 +74,7 @@ namespace MoagServer {
 		width( width ),
 		height( height ),
 		terrain( new char [width * height] ),
+		spawns ( 0 ),
 		tanks (1),
 		crate (0),
 		bullets (0),
@@ -87,6 +92,7 @@ namespace MoagServer {
 	}
 
 	void GameState::initializeTerrain(void) {
+		memset( terrain, 0, width * height );
 		for(int x=0;x<width;x++) {
 			for(int y=0;y<height;y++) {
 				if( y < (height/3) ) {
@@ -135,10 +141,17 @@ namespace MoagServer {
 		enqueueTerrainRectangle( 0, 0, width, height );
 	}
 
+	void GameState::killTank(int id) {
+		tanks[id]->teleport( -3000, -3000 ); // outside the map
+		tanks[id]->enqueue(true);
+		server.broadcastChunks();
+		tanks[id] = 0;
+	}
+
 	int GameState::getLeastFreeTankId(void) {
 		int id = 0;
 		do {
-			if( id >= tanks.size() ) {
+			if( id >= (int) tanks.size() ) {
 				tanks.resize( 2 * tanks.size() );
 			}
 			if( !tanks[id] ) break;
@@ -159,6 +172,10 @@ namespace MoagServer {
         firepower ( 0 ),
 		dirty ( true )
 	{
+	}
+
+	Tank::~Tank(void) {
+		state.killTank( id );
 	}
 
 	void Tank::enqueue( bool broadcast ) {
