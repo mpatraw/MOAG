@@ -468,8 +468,6 @@ namespace MoagServer {
 		return conn;
 	}
 	void MoagUser::markForDisconnection(void) {
-		using namespace std;
-		cerr << "disconnecting user " << conn << endl;
 		marked = true;
 	}
 	bool MoagUser::markedForDisconnection(void) {
@@ -487,7 +485,6 @@ namespace MoagServer {
 
 	MoagUser::~MoagUser(void) {
 		using namespace std;
-		cerr << "destroying user " << conn << endl;
 		MoagScript::LuaCall( server.getLuaInstance(), "destroy_moag_user" )
 			.refarg( *sob ).discard();
 		delete tank;
@@ -499,12 +496,22 @@ int main(int argc, char*argv[]) {
 	using namespace std;
     using namespace MoagScript;
 
+	int scriptsLoaded = 0;
+
 	try {
         LuaInstance lua;
 
         exportAllServer( lua );
 
-        lua.runFile( "moag-default.lua" );
+		for(int i=1;i<argc;i++) {
+			cout << "Loading: " << argv[i] << "..";
+			lua.runFile( argv[i] );
+			cout << " done." << endl;
+			++scriptsLoaded;
+		}
+		if( scriptsLoaded < 1 ) {
+			throw std::runtime_error( "no scripts loaded" );
+		}
 
 		Server server (lua, 8080, MAX_CLIENTS, TERRAIN_WIDTH, TERRAIN_HEIGHT);
 
