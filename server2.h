@@ -89,7 +89,7 @@ namespace MoagServer {
 			MoagScript::LuaAutoReference sob;
 
 		public:
-			MoagUser( Server&, moag::Connection, Tank* );
+			MoagUser( Server&, moag::Connection );
 			~MoagUser(void);
 
             void markForDisconnectionError(const std::string&);
@@ -109,6 +109,8 @@ namespace MoagServer {
             void handleActivity(void);
 
 			bool getKey( input_key_t ) const;
+
+			void setTank( Tank* );
 	};
 
 	class Server {

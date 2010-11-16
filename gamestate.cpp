@@ -208,6 +208,11 @@ namespace MoagServer {
 		y = 60;
 		tank->teleport( x, y );
 	}
+
+	Tank * GameState::spawnTankAt(int x, int y) {
+		int id = getLeastFreeTankId();
+		return tanks[id] = new Tank(*this,id,x,y);
+	}
 	
 	Tank * GameState::spawnTank(void) {
 		int x = ((spawns++) * 240) % (width-40) + 20;

@@ -65,7 +65,7 @@ namespace MoagServer {
 	{
 	}
 
-	MoagUser::MoagUser( Server& server, moag::Connection conn, Tank *tank ) :
+	MoagUser::MoagUser( Server& server, moag::Connection conn ) :
 		server( server ),
 		conn( conn ),
 		name( "AfghanCap" ),
@@ -76,10 +76,16 @@ namespace MoagServer {
 		keypressDown ( false ),
 		keypressUp ( false ),
 		keypressFire ( false ),
-		tank ( tank ),
+		tank ( 0 ),
 		sob ( MoagScript::LuaCall( server.getLuaInstance(), "create_moag_user" )
                 ( this )( id ).getReference() )
 	{
+	}
+
+	void MoagUser::setTank( Tank *tank ) {
+		this->tank = tank;
+		tank->setUser( this );
+		server.broadcastName( this );
 	}
 
 	int MoagTicker::operator()(moag::Connection con) {
@@ -198,20 +204,23 @@ namespace MoagServer {
 	}
 
 	int Server::userConnected(moag::Connection conn) {
-		Tank *tank = state.spawnTank();
-		MoagUser *user = new MoagUser( *this, conn, tank );
-		tank->setUser( user );
-
-		users.push_back( user );
-
-		broadcastName( user );
-
-		for( userlist_t::iterator i = users.begin(); i != users.end(); i++) {
-			broadcastName( *i ); // broadcasting is just laziness
-		}
+		MoagUser *user = new MoagUser( *this, conn );
 
 		state.enqueueAll();
 		sendChunksTo( user );
+
+		users.push_back( user );
+
+		user->setTank( state.spawnTank() ); // script should do this
+
+		// script should have set the name, which triggers broadcasting all around
+
+		// lazy solution to tell user about all the established
+		// players -- just broadcast everyone to everyone
+		for(userlist_t::iterator i = users.begin(); i != users.end(); i++) {
+			broadcastName( *i );
+		}
+
 
 		return 0;
 	}
@@ -406,20 +415,22 @@ namespace MoagServer {
 	}
 
 	void Server::broadcastName( MoagUser *user ) {
-		const std::string& name = user->getName();
-		int length = name.length();
-		const char *data = name.c_str();
+		if( user->getTankId() != -1 ) {
+			const std::string& name = user->getName();
+			int length = name.length();
+			const char *data = name.c_str();
 
-		moag::ChunkEnqueue8( MSG_CHUNK );
-		moag::ChunkEnqueue8( user->getTankId() );
-		moag::ChunkEnqueue8( MSGTYPE_NICKCHANGE );
+			moag::ChunkEnqueue8( MSG_CHUNK );
+			moag::ChunkEnqueue8( user->getTankId() );
+			moag::ChunkEnqueue8( MSGTYPE_NICKCHANGE );
 
-		moag::ChunkEnqueue8( length );
-		for(int i=0;i<length;i++) {
-			moag::ChunkEnqueue8( data[i] );
+			moag::ChunkEnqueue8( length );
+			for(int i=0;i<length;i++) {
+				moag::ChunkEnqueue8( data[i] );
+			}
+
+			broadcastChunks();
 		}
-
-		broadcastChunks();
 	}
 
 	void Server::stepGame(void) {
@@ -474,6 +485,7 @@ namespace MoagServer {
 		return marked;
 	}
 	int MoagUser::getTankId(void) const {
+		if( !tank ) return -1;
 		return tank->getId();
 	}
 	int MoagUser::getId(void) const {

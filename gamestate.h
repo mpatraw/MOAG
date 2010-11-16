@@ -160,6 +160,7 @@ namespace MoagServer {
 			void enqueueAll(void);
 			void enqueueDirty(void);
 
+			Tank *spawnTankAt(int,int);
 			Tank *spawnTank(void);
 			void respawn(Tank*);
 
