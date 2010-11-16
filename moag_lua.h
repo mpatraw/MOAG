@@ -28,6 +28,8 @@ namespace MoagScript {
 
 			lua_State * getLua(void);
 
+			void addPackagePath( std::string );
+
 			LuaInstance& runFile( std::string );
 
 			LuaInstance& pushGlobal( std::string );

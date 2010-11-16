@@ -3,6 +3,8 @@ moagScriptVersion = "0.0.1"
 
 AdminPassphrase = "so much tea"
 
+require ("moag-standard-console" )
+
 serverPointer = nil
 totalPlayersConnected = 0
 connectedUsers = {}

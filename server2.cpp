@@ -500,6 +500,8 @@ int main(int argc, char*argv[]) {
 
 	try {
         LuaInstance lua;
+		
+		lua.addPackagePath( "./script/?.lua" );
 
         exportAllServer( lua );
 

@@ -183,5 +183,14 @@ namespace MoagScript {
 		return lua.popReference();
 	}
 
+	void LuaInstance::addPackagePath( std::string path ) {
+		pushGlobal( "package" );
+		lua_getfield( lua, -1, "path" );
+		std::string newpath = std::string(lua_tostring( lua, -1 )) + ";" + path;
+		lua_pop( lua, 1 );
+		lua_pushstring( lua, newpath.c_str() );
+		lua_setfield( lua, -2, "path" );
+		lua_pop( lua, 1 );
+	}
 }
 
