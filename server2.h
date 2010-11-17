@@ -22,8 +22,6 @@
 #include <vector>
 #include <string>
 
-#include "gamestate.h"
-
 #include "moag_lua.h"
 
 #include "moag_shallow.h"
@@ -106,9 +104,6 @@ namespace MoagServer {
 
             void handleMessage(void);
             void handleActivity(void);
-
-
-			void setTank( Tank* );
 	};
 
 	class Server {
