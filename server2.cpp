@@ -36,19 +36,6 @@
 namespace MoagServer {
 	int MoagUser::nextUserId = 1;
 
-#if 0
-	bool MoagUser::getKey( input_key_t key ) const {
-		switch( key ) {
-			case INPUT_LEFT: return keypressLeft;
-			case INPUT_RIGHT: return keypressRight;
-			case INPUT_DOWN: return keypressDown;
-			case INPUT_UP: return keypressUp;
-			case INPUT_FIRE: return keypressFire;
-			default: return false;
-		}
-	}
-#endif
-
 	MoagTicker::MoagTicker( Server& server ) :
 		server ( server )
 	{
@@ -62,29 +49,13 @@ namespace MoagServer {
 	MoagUser::MoagUser( Server& server, moag::Connection conn ) :
 		server( server ),
 		conn( conn ),
-//		name( "AfghanCap" ),
 		id( nextUserId++ ),
 		marked( false ),
-#if 0
-		keypressLeft ( false ),
-		keypressRight ( false ),
-		keypressDown ( false ),
-		keypressUp ( false ),
-		keypressFire ( false ),
-#endif
 		keytable ( server.getLuaInstance().makeTable() ),
 		sob ( MoagScript::LuaCall( server.getLuaInstance(), "create_moag_user" )
                 ( this )( id ).refarg(*keytable).getReference() )
 	{
 	}
-
-#if 0
-	void MoagUser::setTank( Tank *tank ) {
-		this->tank = tank;
-		tank->setUser( this );
-		server.broadcastName( this );
-	}
-#endif
 
 	int MoagTicker::operator()(moag::Connection con) {
 		server.acquireMutex();
@@ -175,7 +146,7 @@ namespace MoagServer {
 		bulletQ ( MoagShallow::BulletQueueManager( width, height ) )
 	{
 
-		MoagScript::LuaCall( lua, "initialize_server" )( this ).discard();
+		MoagScript::LuaCall( lua, "initialize_server" )( this )(width)(height).discard();
 
 		if( moag::OpenServer( port, maxClients ) == -1 ) {
 			throw std::runtime_error( "failed to open server -- port bound?" );
@@ -253,19 +224,6 @@ namespace MoagServer {
 
 		users.push_back( user );
 
-#if 0
-		// user->setTank( state.spawnTank() ); // script should do this
-
-		// script should have set the name, which triggers broadcasting all around
-
-		// lazy solution to tell user about all the established
-		// players -- just broadcast everyone to everyone
-		for(userlist_t::iterator i = users.begin(); i != users.end(); i++) {
-			broadcastName( *i );
-		}
-#endif
-
-
 		return 0;
 	}
 
@@ -296,39 +254,6 @@ namespace MoagServer {
 		}
 		MOAG_FLUSH_CHUNKS();
 	}
-
-#if 0
-	void MoagUser::setNickname( const std::string& nickname ) {
-		name = nickname;
-	}
-
-	void MoagUser::changeNickname( const std::string& nickname ) {
-		using namespace std;
-		std::string oldNickname = name;
-
-		setNickname( name );
-
-		std::ostringstream oss;
-		oss << ": " << oldNickname << " is now known as " << nickname << ".";
-		server.broadcastNotice( oss.str() );
-	}
-
-	void MoagUser::handleCommand(char *buff) {
-		// note that the argument is NOT a const char, must be
-		// modifiable
-		const char *cmd = strtok( buff, " " );
-		if( !strcmp( cmd, "n" ) || !strcmp( cmd, "nick" ) ) {
-			const char *nick = strtok( 0, "" );
-			changeNickname( nick );
-#ifdef DEBUG_PUBLIC_SHUTDOWN
-		} else if( !strcmp( cmd, "shutdown" ) ) {
-			server.shutdown();
-#endif
-		} else {
-			server.sendNoticeTo( ": unknown command.", this );
-		}
-	}
-#endif
 
 	void MoagUser::handleMessage(void) {
 
@@ -445,42 +370,6 @@ namespace MoagServer {
 		sendNoticeTo( msg, 0 );
 	}
 
-#if 0
-	void Server::broadcastChatMessage( MoagUser *user, const std::string& msg ) {
-		int length = MIN( 255, msg.length() );
-		const char *str = msg.c_str();
-
-		moag::ChunkEnqueue8( MSG_CHUNK );
-		moag::ChunkEnqueue8( user->getId() );
-		moag::ChunkEnqueue8( MSGTYPE_CHAT );
-		moag::ChunkEnqueue8( length );
-		for(int i=0;i<length;i++) {
-			moag::ChunkEnqueue8( str[i] );
-		}
-
-		broadcastChunks();
-	}
-
-	void Server::broadcastName( MoagUser *user ) {
-		if( user->getTankId() != -1 ) {
-			const std::string& name = user->getName();
-			int length = name.length();
-			const char *data = name.c_str();
-
-			moag::ChunkEnqueue8( MSG_CHUNK );
-			moag::ChunkEnqueue8( user->getTankId() );
-			moag::ChunkEnqueue8( MSGTYPE_NICKCHANGE );
-
-			moag::ChunkEnqueue8( length );
-			for(int i=0;i<length;i++) {
-				moag::ChunkEnqueue8( data[i] );
-			}
-
-			broadcastChunks();
-		}
-	}
-#endif
-
 	void Server::stepGame(void) {
 		/* Gospel code updates in this order:
 				crateUpdate
@@ -532,18 +421,6 @@ namespace MoagServer {
 	bool MoagUser::markedForDisconnection(void) {
 		return marked;
 	}
-#if 0
-	int MoagUser::getTankId(void) const {
-		if( !tank ) return -1;
-		return tank->getId();
-	}
-	int MoagUser::getId(void) const {
-		return id;
-	}
-	const std::string& MoagUser::getName(void) const {
-		return name;
-	}
-#endif
 
 	MoagUser::~MoagUser(void) {
 		using namespace std;
@@ -585,11 +462,6 @@ int main(int argc, char*argv[]) {
 		cout << "Server running.." << endl;
 
 		server.run(65);
-
-#if 0
-		SDLNet_Quit();
-		SDL_Quit();
-#endif
 
 		cout << "Goodbye!" << endl;
 	}

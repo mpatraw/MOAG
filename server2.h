@@ -89,15 +89,8 @@ namespace MoagServer {
             int id;
 
 			bool marked;
-#if 0
-			bool keypressLeft,
-                 keypressRight,
-                 keypressDown,
-                 keypressUp,
-                 keypressFire;
-#endif
-			MoagScript::LuaAutoReference keytable;
 
+			MoagScript::LuaAutoReference keytable;
 			MoagScript::LuaAutoReference sob;
 
 
@@ -110,17 +103,6 @@ namespace MoagServer {
 			moag::Connection getConnection(void);
 			void markForDisconnection(void);
 			bool markedForDisconnection(void);
-#if 0
-            int getTankId(void) const;
-            int getId(void) const;
-            const std::string& getName(void) const;
-
-            void handleCommand(char *);
-            void changeNickname( const std::string& );
-            void setNickname( const std::string& );
-
-			bool getKey( input_key_t ) const;
-#endif
 
             void handleMessage(void);
             void handleActivity(void);
@@ -180,11 +162,6 @@ namespace MoagServer {
 
 			void broadcastNotice( const std::string& );
 			void sendNoticeTo( const std::string&, MoagUser* );
-
-#if 0
-            void broadcastName( MoagUser* );
-			void broadcastChatMessage( MoagUser*, const std::string& );
-#endif
 
             void didTick(void);
 			void stepGame(void);
