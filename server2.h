@@ -4,6 +4,17 @@
 #define MIN(a,b) (((a)>(b))?(b):(a))
 #define MAX(a,b) (((a)<(b))?(b):(a))
 
+#ifndef UINT32_MAX
+#define UINT32_MAX ((Uint32)-1)
+#endif
+
+#define MSGORIGIN_NONE -1
+
+#define MSGTYPE_CHAT 1
+#define MSGTYPE_NICKCHANGE 2
+#define MSGTYPE_NOTICE 3
+
+
 #include <pthread.h>
 
 #include "moag_server.h"
@@ -14,6 +25,8 @@
 #include "gamestate.h"
 
 #include "moag_lua.h"
+
+#include "moag_shallow.h"
 
 enum {
     C2SM_PRESS_LEFT = 1,
@@ -84,8 +97,6 @@ namespace MoagServer {
                  keypressUp,
                  keypressFire;
 
-			Tank *tank;
-
 			MoagScript::LuaAutoReference sob;
 
 		public:
@@ -97,8 +108,10 @@ namespace MoagServer {
 			moag::Connection getConnection(void);
 			void markForDisconnection(void);
 			bool markedForDisconnection(void);
+#if 0
             int getTankId(void) const;
             int getId(void) const;
+#endif
             const std::string& getName(void) const;
 
             void handleCommand(char *);
@@ -118,8 +131,6 @@ namespace MoagServer {
 			MoagTicker ticker;
 			MoagGreeter greeter;
 
-			GameState state;
-
             int tickCount;
 
 			bool doQuit;
@@ -129,11 +140,19 @@ namespace MoagServer {
 
 			MoagScript::LuaInstance& lua;
 
+			typedef std::vector< MoagShallow::TankState* > tanklist_t;
+			MoagShallow::TerrainState terrain;
+			tanklist_t tanks;
+			MoagShallow::BulletQueueManager bulletQ;
+
 			pthread_mutex_t mutex;
 
 		public:
 			Server(MoagScript::LuaInstance&, const int, const int, const int, const int);
 			~Server(void);
+
+			void enqueueAll(void);
+			void enqueueDirtyForBroadcast(void);
 
 			void acquireMutex(void);
 			void releaseMutex(void);
@@ -141,8 +160,6 @@ namespace MoagServer {
 			MoagScript::LuaInstance& getLuaInstance(void) { return lua; }
 
 			void run(const int);
-
-            void broadcastName( MoagUser* );
 
 			int userConnected( moag::Connection );
 
@@ -154,7 +171,10 @@ namespace MoagServer {
 			void broadcastNotice( const std::string& );
 			void sendNoticeTo( const std::string&, MoagUser* );
 
+#if 0
+            void broadcastName( MoagUser* );
 			void broadcastChatMessage( MoagUser*, const std::string& );
+#endif
 
             void didTick(void);
 			void stepGame(void);

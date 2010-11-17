@@ -29,16 +29,6 @@
 #define TERRAIN_WIDTH 800
 #define TERRAIN_HEIGHT 600
 
-#ifndef UINT32_MAX
-#define UINT32_MAX ((Uint32)-1)
-#endif
-
-#define MSGORIGIN_NONE -1
-
-#define MSGTYPE_CHAT 1
-#define MSGTYPE_NICKCHANGE 2
-#define MSGTYPE_NOTICE 3
-
 #define MAX_CLIENTS 8
 
 namespace MoagServer {
@@ -76,17 +66,18 @@ namespace MoagServer {
 		keypressDown ( false ),
 		keypressUp ( false ),
 		keypressFire ( false ),
-		tank ( 0 ),
 		sob ( MoagScript::LuaCall( server.getLuaInstance(), "create_moag_user" )
                 ( this )( id ).getReference() )
 	{
 	}
 
+#if 0
 	void MoagUser::setTank( Tank *tank ) {
 		this->tank = tank;
 		tank->setUser( this );
 		server.broadcastName( this );
 	}
+#endif
 
 	int MoagTicker::operator()(moag::Connection con) {
 		server.acquireMutex();
@@ -164,11 +155,13 @@ namespace MoagServer {
 	Server::Server( MoagScript::LuaInstance& lua, const int port, const int maxClients, const int width, const int height) :
 		ticker( MoagTicker( *this ) ),
 		greeter( MoagGreeter( *this ) ),
-		state ( GameState( *this, width, height ) ),
 		tickCount( 0 ),
 		doQuit( false ),
 		users (),
-        lua ( lua )
+        lua ( lua ),
+		terrain ( MoagShallow::TerrainState( width, height ) ),
+		tanks (),
+		bulletQ ( MoagShallow::BulletQueueManager( width, height ) )
 	{
 
 		MoagScript::LuaCall( lua, "initialize_server" )( this ).discard();
@@ -198,20 +191,43 @@ namespace MoagServer {
 			delete user;
 			i = users.erase( i );
 		}
+		for( tanklist_t::iterator i = tanks.begin(); i != tanks.end(); ) {
+			delete *i;
+			i = tanks.erase( i );
+		}
 		moag::CloseServer();
 
 		pthread_mutex_destroy( &mutex );
 	}
 
+	void Server::enqueueDirtyForBroadcast(void) {
+		terrain.enqueueDirty();
+		for( tanklist_t::iterator i = tanks.begin(); i != tanks.end(); i++) {
+			if( (*i)->dirty ) {
+				(*i)->enqueue();
+				(*i)->dirty = false;
+			}
+		}
+		bulletQ.enqueue();
+	}
+
+	void Server::enqueueAll(void) {
+		terrain.enqueueAll();
+		for( tanklist_t::iterator i = tanks.begin(); i != tanks.end(); i++) {
+			(*i)->enqueue();
+		}
+	}
+
 	int Server::userConnected(moag::Connection conn) {
 		MoagUser *user = new MoagUser( *this, conn );
 
-		state.enqueueAll();
+		enqueueAll();
 		sendChunksTo( user );
 
 		users.push_back( user );
 
-		user->setTank( state.spawnTank() ); // script should do this
+#if 0
+		// user->setTank( state.spawnTank() ); // script should do this
 
 		// script should have set the name, which triggers broadcasting all around
 
@@ -220,6 +236,7 @@ namespace MoagServer {
 		for(userlist_t::iterator i = users.begin(); i != users.end(); i++) {
 			broadcastName( *i );
 		}
+#endif
 
 
 		return 0;
@@ -255,7 +272,6 @@ namespace MoagServer {
 
 	void MoagUser::setNickname( const std::string& nickname ) {
 		name = nickname;
-		server.broadcastName( this );
 	}
 
 	void MoagUser::changeNickname( const std::string& nickname ) {
@@ -399,12 +415,13 @@ namespace MoagServer {
 		sendNoticeTo( msg, 0 );
 	}
 
+#if 0
 	void Server::broadcastChatMessage( MoagUser *user, const std::string& msg ) {
 		int length = MIN( 255, msg.length() );
 		const char *str = msg.c_str();
 
 		moag::ChunkEnqueue8( MSG_CHUNK );
-		moag::ChunkEnqueue8( user->getTankId() );
+		moag::ChunkEnqueue8( user->getId() );
 		moag::ChunkEnqueue8( MSGTYPE_CHAT );
 		moag::ChunkEnqueue8( length );
 		for(int i=0;i<length;i++) {
@@ -432,6 +449,7 @@ namespace MoagServer {
 			broadcastChunks();
 		}
 	}
+#endif
 
 	void Server::stepGame(void) {
 		/* Gospel code updates in this order:
@@ -450,9 +468,9 @@ namespace MoagServer {
 			means only during bullet updates.
 		*/
 
-		state.update();
+		MoagScript::LuaCall( getLuaInstance(), "update" ).discard();
 
-		state.enqueueDirty();
+		enqueueDirtyForBroadcast();
 		broadcastChunks();
 	}
 
@@ -484,6 +502,7 @@ namespace MoagServer {
 	bool MoagUser::markedForDisconnection(void) {
 		return marked;
 	}
+#if 0
 	int MoagUser::getTankId(void) const {
 		if( !tank ) return -1;
 		return tank->getId();
@@ -491,6 +510,7 @@ namespace MoagServer {
 	int MoagUser::getId(void) const {
 		return id;
 	}
+#endif
 	const std::string& MoagUser::getName(void) const {
 		return name;
 	}
@@ -499,7 +519,6 @@ namespace MoagServer {
 		using namespace std;
 		MoagScript::LuaCall( server.getLuaInstance(), "destroy_moag_user" )
 			.refarg( *sob ).discard();
-		delete tank;
 	}
 };
 
