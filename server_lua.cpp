@@ -32,7 +32,7 @@ namespace MoagScript {
 			assert( tank );
 
 			tank->name = name;
-			tank->dirty = true;
+			tank->dirty = tank->nameDirty = true;
 
 			return 0;
 		}

@@ -56,13 +56,14 @@ create_moag_user = function( userptr, id )
 	rv.name = string.format( "player%d", totalPlayersConnected )
 	print( serverPointer )
 	rv.tankId = next_tank_id()
-	rv.tank = make_tank( serverPointer, rv.tankId, string.format( "%s's little tank", rv.name ) )
+	rv.tank = make_tank( serverPointer, rv.tankId, "mytank" )
 	print( "tank:" )
 	print( rv.tank )
 	rv.change_nick = function(s)
+		oldname = rv.name
 		rv.name = s
-		set_tank_name( rv, string.format( "%s's little tank", s ) )
-		broadcast_notice( serverPointer, string.format( ": %s is now known as %s", oldname, newname ) )
+		set_tank_name( rv.tank, string.format( "%s", s ) )
+		broadcast_notice( serverPointer, string.format( ": %s is now known as %s", oldname, s ) )
 	end
 
 	set_tank_pos( rv.tank, 320, 200 )

@@ -192,9 +192,7 @@ namespace MoagServer {
 
 	void Server::deleteTank(MoagShallow::TankState *tank) {
 		using namespace std;
-		cerr << "list has " << tanks.size() << " tanks " << tanks[0] << " rm " << tank << endl;
 		tanks.erase( std::find( tanks.begin(), tanks.end(), tank ));
-		cerr << "list has " << tanks.size() << " tanks after disarmament" << endl;
 
 		tank->x = -9000;
 		tank->y = -9000;
@@ -229,10 +227,7 @@ namespace MoagServer {
 	void Server::enqueueDirtyForBroadcast(void) {
 		terrain.enqueueDirty();
 		for( tanklist_t::iterator i = tanks.begin(); i != tanks.end(); i++) {
-			if( (*i)->dirty ) {
-				(*i)->enqueue();
-				(*i)->dirty = false;
-			}
+			(*i)->enqueueDirty();
 		}
 		bulletQ.enqueue();
 	}
@@ -240,6 +235,7 @@ namespace MoagServer {
 	void Server::enqueueAll(void) {
 		terrain.enqueueAll();
 		for( tanklist_t::iterator i = tanks.begin(); i != tanks.end(); i++) {
+			(*i)->enqueueName();
 			(*i)->enqueue();
 		}
 	}
