@@ -6,6 +6,8 @@
 
 #include <iostream>
 
+#include <algorithm>
+
 #include <sstream>
 
 #include "SDL/SDL.h"
@@ -58,7 +60,7 @@ namespace MoagServer {
 	MoagUser::MoagUser( Server& server, moag::Connection conn ) :
 		server( server ),
 		conn( conn ),
-		name( "AfghanCap" ),
+//		name( "AfghanCap" ),
 		id( nextUserId++ ),
 		marked( false ),
 		keypressLeft ( false ),
@@ -152,6 +154,10 @@ namespace MoagServer {
 		doQuit = true;
 	}
 
+	void Server::prepareBullet(int x, int y) {
+		bulletQ.prepareBullet( x, y );
+	}
+
 	Server::Server( MoagScript::LuaInstance& lua, const int port, const int maxClients, const int width, const int height) :
 		ticker( MoagTicker( *this ) ),
 		greeter( MoagGreeter( *this ) ),
@@ -182,6 +188,26 @@ namespace MoagServer {
 
 	void Server::releaseMutex(void) {
 		pthread_mutex_unlock( &mutex );
+	}
+
+	void Server::deleteTank(MoagShallow::TankState *tank) {
+		using namespace std;
+		cerr << "list has " << tanks.size() << " tanks " << tanks[0] << " rm " << tank << endl;
+		tanks.erase( std::find( tanks.begin(), tanks.end(), tank ));
+		cerr << "list has " << tanks.size() << " tanks after disarmament" << endl;
+
+		tank->x = -9000;
+		tank->y = -9000;
+		tank->enqueue();
+		broadcastChunks();
+
+		delete tank;
+	}
+
+	MoagShallow::TankState * Server::makeTank(int id, std::string name) {
+		MoagShallow::TankState *rv = new MoagShallow::TankState( id, name );
+		tanks.push_back( rv );
+		return rv;
 	}
 
 	Server::~Server(void) {
@@ -270,6 +296,7 @@ namespace MoagServer {
 		MOAG_FLUSH_CHUNKS();
 	}
 
+#if 0
 	void MoagUser::setNickname( const std::string& nickname ) {
 		name = nickname;
 	}
@@ -300,6 +327,7 @@ namespace MoagServer {
 			server.sendNoticeTo( ": unknown command.", this );
 		}
 	}
+#endif
 
 	void MoagUser::handleMessage(void) {
 
@@ -510,10 +538,10 @@ namespace MoagServer {
 	int MoagUser::getId(void) const {
 		return id;
 	}
-#endif
 	const std::string& MoagUser::getName(void) const {
 		return name;
 	}
+#endif
 
 	MoagUser::~MoagUser(void) {
 		using namespace std;

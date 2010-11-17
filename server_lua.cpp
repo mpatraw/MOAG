@@ -2,8 +2,105 @@
 
 #include <sstream>
 
+#include <cassert>
+
 namespace MoagScript {
 	namespace Exports {
+		int putBullet( lua_State *l ) {
+			using namespace MoagServer;
+			using namespace MoagShallow;
+
+			LuaInstance lua ( l );
+
+			int y = lua.popInteger();
+			int x = lua.popInteger();
+			Server *server = static_cast<Server*>( lua.popUserData() );
+			assert( server );
+
+			server->prepareBullet( x, y );
+
+			return 0;
+		}
+
+		int setTankName( lua_State *l ) {
+			using namespace MoagServer;
+			using namespace MoagShallow;
+
+			LuaInstance lua ( l );
+			std::string name = lua.popString();
+			TankState *tank = static_cast<TankState*>( lua.popUserData() );
+			assert( tank );
+
+			tank->name = name;
+			tank->dirty = true;
+
+			return 0;
+		}
+
+		int setTankAngle( lua_State *l ) {
+			using namespace MoagServer;
+			using namespace MoagShallow;
+
+			LuaInstance lua ( l );
+			int angle = lua.popInteger();
+			TankState *tank = static_cast<TankState*>( lua.popUserData() );
+			assert( tank );
+
+			if( tank->angle != angle ) {
+				tank->angle = angle;
+				tank->dirty = true;
+			}
+
+			return 0;
+		}
+
+		int setTankPos( lua_State *l ) {
+			using namespace MoagServer;
+			using namespace MoagShallow;
+
+			LuaInstance lua ( l );
+			int y = lua.popInteger();
+			int x = lua.popInteger();
+			TankState *tank = static_cast<TankState*>( lua.popUserData() );
+
+			if( tank->x != x || tank->y != y ) {
+				tank->x = x;
+				tank->y = y;
+				tank->dirty = true;
+			}
+
+			return 0;
+		}
+
+		int deleteTank( lua_State *l ) {
+			using namespace MoagServer;
+			using namespace MoagShallow;
+
+			LuaInstance lua ( l );
+			TankState *tank = static_cast<TankState*>( lua.popUserData() );
+			Server *server = static_cast<Server*>( lua.popUserData() );
+
+			server->deleteTank( tank );
+
+			return 0;
+		}
+
+		int makeTank( lua_State *l ) {
+			using namespace MoagServer;
+			using namespace MoagShallow;
+
+			LuaInstance lua ( l );
+			std::string name = lua.popString();
+			int id = lua.popInteger();
+			Server *server = static_cast<Server*>( lua.popUserData() );
+
+			TankState *rv = server->makeTank( id, name );
+
+			lua.pushValue( rv );
+
+			return 1;
+		}
+
 		int getTerrainHeight( lua_State *l ) {
 			using namespace MoagServer;
 
@@ -144,6 +241,7 @@ namespace MoagScript {
 			return 0;
 		}
 
+#if 0
 		int changeUserNickname( lua_State* l ) {
 			using namespace MoagServer;
 			
@@ -169,6 +267,7 @@ namespace MoagScript {
 
 			return 0;
 		}
+#endif
 	}
 
 	void exportAllServer( LuaInstance& lua ) {
@@ -177,8 +276,10 @@ namespace MoagScript {
 		lua.exportFunction( "send_notice_to", sendNoticeTo );
 		lua.exportFunction( "broadcast_notice", broadcastNotice );
 
+#if 0
 		lua.exportFunction( "set_user_nickname", setUserNickname );
 		lua.exportFunction( "change_user_nickname", setUserNickname );
+#endif
 
 		lua.exportFunction( "set_terrain_at", setTerrainAt );
 		lua.exportFunction( "mark_terrain_dirty", markTerrainDirty );
@@ -186,6 +287,14 @@ namespace MoagScript {
 		lua.exportFunction( "get_terrain_width", getTerrainWidth );
 		lua.exportFunction( "get_terrain_height", getTerrainHeight );
 		lua.exportFunction( "terrain_fill_circle", terrainFillCircle );
+
+		lua.exportFunction( "make_tank", makeTank );
+		lua.exportFunction( "delete_tank", deleteTank );
+		lua.exportFunction( "set_tank_angle", setTankAngle );
+		lua.exportFunction( "set_tank_pos", setTankPos );
+		lua.exportFunction( "set_tank_name", setTankName );
+
+		lua.exportFunction( "put_bullet", putBullet );
 
 		lua.exportFunction( "shutdown_server", shutdownServer );
 	}

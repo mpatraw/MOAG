@@ -40,7 +40,7 @@ namespace MoagScript {
 			LuaInstance& pushValue( void* );
 			LuaInstance& pushValue( LuaReference& );
 
-			LuaInstance& call(int, int);
+			LuaInstance& call(int, int, std::string = "unknown");
 
 			void exportFunction( std::string, lua_CFunction );
 
@@ -52,6 +52,8 @@ namespace MoagScript {
 			std::string popString(void);
 			LuaReference* popReference(void);
 			void * popUserData(void);
+
+			void dumpStack(std::string = "no reason");
 	};
 
 	class LuaReference {

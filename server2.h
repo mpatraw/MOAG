@@ -86,7 +86,6 @@ namespace MoagServer {
             Server& server;
 
 			moag::Connection conn;
-            std::string name;
             int id;
 
 			bool marked;
@@ -111,12 +110,12 @@ namespace MoagServer {
 #if 0
             int getTankId(void) const;
             int getId(void) const;
-#endif
             const std::string& getName(void) const;
 
             void handleCommand(char *);
             void changeNickname( const std::string& );
             void setNickname( const std::string& );
+#endif
 
             void handleMessage(void);
             void handleActivity(void);
@@ -169,6 +168,11 @@ namespace MoagServer {
 			void broadcastChunks(void);
 			void activitySweep(void);
 			void disconnectSweep(void);
+
+			void prepareBullet(int,int);
+
+			MoagShallow::TankState* makeTank(int,std::string);
+			void deleteTank(MoagShallow::TankState*);
 
 			void broadcastNotice( const std::string& );
 			void sendNoticeTo( const std::string&, MoagUser* );

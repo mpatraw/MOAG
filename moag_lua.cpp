@@ -4,8 +4,39 @@
 #include <iostream>
 
 namespace MoagScript {
+	void LuaInstance::dumpStack(std::string reason) {
+		using namespace std;
+
+		int i;
+		int top = lua_gettop(lua);
+
+		cerr << "Dumping stack: " << reason << endl;
+		cerr << "Stack size: " << top << endl;
+
+		for (i = 1; i <= top; i++) {
+			int t = lua_type(lua, i);
+			cerr << "\t";
+			switch (t) {
+				case LUA_TSTRING:
+					cerr << "string: " << lua_tostring( lua, i ) << endl;
+					break;
+				case LUA_TBOOLEAN:
+					cerr << "bool: " << lua_toboolean( lua, i ) << endl;
+					break;
+				case LUA_TNUMBER:
+					cerr << "number: " << lua_tonumber( lua, i ) << endl;
+					break;
+				default:
+					cerr << lua_typename( lua, t ) << endl;
+					break;
+			}
+		}
+		cerr << "[end of stack]" << endl;
+	}
+
 	void* LuaInstance::popUserData(void) {
 		void *rv = lua_touserdata( lua, -1 );
+		lua_pop( lua, 1 );
 		return rv;
 	}
 
@@ -52,8 +83,11 @@ namespace MoagScript {
 		return popReference();
 	}
 
-	LuaInstance& LuaInstance::call(int noArgs, int noResults) {
+	LuaInstance& LuaInstance::call(int noArgs, int noResults, std::string fname) {
 		int errorHandlerIndex = 0;
+#ifdef DEBUG_LUA_LL
+		dumpStack( "calling " + fname);
+#endif
 		int rv = lua_pcall( lua, noArgs, noResults, errorHandlerIndex );
 		if( rv ) {
             std::string errmsg = popString();
@@ -64,6 +98,9 @@ namespace MoagScript {
                 default: throw std::runtime_error( "lua internal unknown error: " + errmsg );
             }
 		}
+#ifdef DEBUG_LUA_LL
+		dumpStack( "called"  + fname );
+#endif
 		return *this;
 	}
 
@@ -153,6 +190,7 @@ namespace MoagScript {
 		argcount( 0 ),
 		results( 1 )
 	{
+		using namespace std;
 		lua.pushGlobal( fname );
 	}
 
@@ -166,6 +204,7 @@ namespace MoagScript {
 
 	void LuaCall::discard(void) {
 		lua.call( argcount, results );
+		lua.pop();
 	}
 
 	int LuaCall::getInteger(void) {

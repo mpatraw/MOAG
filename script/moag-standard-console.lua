@@ -24,9 +24,7 @@ change_name = function( player, newname )
 	if invalid_nick( newname ) then
 		send_notice_to( serverPointer, player.userPointer, ": invalid nick -- " .. invalid_nick( newname ) )
 	else
-		player.name = newname
-		set_user_nickname( player.userPointer, player.name )
-		broadcast_notice( serverPointer, string.format( ": %s is now known as %s", oldname, newname ) )
+		player.change_nick( newname )
 	end
 end
 
