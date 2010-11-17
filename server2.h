@@ -151,6 +151,8 @@ namespace MoagServer {
 			Server(MoagScript::LuaInstance&, const int, const int, const int, const int);
 			~Server(void);
 
+			MoagShallow::TerrainState& getTerrainState(void);
+
 			void enqueueAll(void);
 			void enqueueDirtyForBroadcast(void);
 

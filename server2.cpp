@@ -520,6 +520,10 @@ namespace MoagServer {
 		MoagScript::LuaCall( server.getLuaInstance(), "destroy_moag_user" )
 			.refarg( *sob ).discard();
 	}
+
+	MoagShallow::TerrainState& Server::getTerrainState(void) {
+		return terrain;
+	}
 };
 
 int main(int argc, char*argv[]) {

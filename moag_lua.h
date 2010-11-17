@@ -47,6 +47,7 @@ namespace MoagScript {
 			LuaReference* globalReference( std::string );
 
 			void pop(void);
+			int popInteger(void);
 			double popNumber(void);
 			std::string popString(void);
 			LuaReference* popReference(void);
@@ -90,6 +91,7 @@ namespace MoagScript {
 			};
 
 			void discard(void);
+			int getInteger(void);
 			double getNumber(void);
 			std::string getString(void);
 			LuaReference* getReference(void);

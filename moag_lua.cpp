@@ -35,6 +35,12 @@ namespace MoagScript {
 		lua_pop( lua, 1 );
 	}
 
+	int LuaInstance::popInteger(void) {
+		int rv = lua_tointeger( lua, -1 );
+		lua_pop( lua, 1 );
+		return rv;
+	}
+
 	double LuaInstance::popNumber(void) {
 		double rv = lua_tonumber( lua, -1 );
 		lua_pop( lua, 1 );
@@ -161,6 +167,12 @@ namespace MoagScript {
 	void LuaCall::discard(void) {
 		lua.call( argcount, results );
 	}
+
+	int LuaCall::getInteger(void) {
+		lua.call( argcount, results );
+		return lua.popInteger();
+	}
+
 
 	double LuaCall::getNumber(void) {
 		lua.call( argcount, results );
