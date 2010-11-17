@@ -36,6 +36,7 @@ namespace MoagScript {
 
 			LuaInstance& pushValue( double );
 			LuaInstance& pushValue( int );
+			LuaInstance& pushValue( bool );
 			LuaInstance& pushValue( std::string );
 			LuaInstance& pushValue( void* );
 			LuaInstance& pushValue( LuaReference& );
@@ -44,11 +45,13 @@ namespace MoagScript {
 
 			void exportFunction( std::string, lua_CFunction );
 
+			LuaReference* makeTable(void);
 			LuaReference* globalReference( std::string );
 
 			void pop(void);
 			int popInteger(void);
 			double popNumber(void);
+			bool popBoolean(void);
 			std::string popString(void);
 			LuaReference* popReference(void);
 			void * popUserData(void);
@@ -65,6 +68,9 @@ namespace MoagScript {
 			~LuaReference(void);
 
 			void push(void);
+
+				// for tables
+			void setBoolean( std::string, bool );
 	};
 
 	typedef std::auto_ptr<LuaReference> LuaAutoReference;
@@ -98,6 +104,7 @@ namespace MoagScript {
 			std::string getString(void);
 			LuaReference* getReference(void);
 			void * getUserData(void);
+			bool getBoolean(void);
 	};
 };
 

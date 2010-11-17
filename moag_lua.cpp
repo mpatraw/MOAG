@@ -72,10 +72,21 @@ namespace MoagScript {
 		return rv;
 	}
 
+	bool LuaInstance::popBoolean(void) {
+		bool rv = lua_toboolean( lua, -1 );
+		lua_pop( lua, 1 );
+		return rv;
+	}
+
 	double LuaInstance::popNumber(void) {
 		double rv = lua_tonumber( lua, -1 );
 		lua_pop( lua, 1 );
 		return rv;
+	}
+
+	LuaReference * LuaInstance::makeTable() {
+		lua_newtable( lua );
+		return popReference();
 	}
 
 	LuaReference * LuaInstance::globalReference( std::string name ) {
@@ -101,6 +112,11 @@ namespace MoagScript {
 #ifdef DEBUG_LUA_LL
 		dumpStack( "called"  + fname );
 #endif
+		return *this;
+	}
+
+	LuaInstance& LuaInstance::pushValue( bool value ) {
+		lua_pushboolean( lua, value );
 		return *this;
 	}
 
@@ -212,6 +228,10 @@ namespace MoagScript {
 		return lua.popInteger();
 	}
 
+	bool LuaCall::getBoolean(void) {
+		lua.call( argcount, results );
+		return lua.popBoolean();
+	}
 
 	double LuaCall::getNumber(void) {
 		lua.call( argcount, results );
@@ -242,6 +262,14 @@ namespace MoagScript {
 		lua_pushstring( lua, newpath.c_str() );
 		lua_setfield( lua, -2, "path" );
 		lua_pop( lua, 1 );
+	}
+
+	void LuaReference::setBoolean( std::string name, bool value) {
+		push();
+		lua.pushValue( name );
+		lua.pushValue( value );
+		lua_settable( lua.getLua(), -3 );
+		lua_pop( lua.getLua(), 1 );
 	}
 }
 

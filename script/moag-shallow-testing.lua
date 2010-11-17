@@ -13,10 +13,39 @@ tankIds = {}
 
 t = 0.0
 
+update_user = function(player)
+	x = player.x
+	y = player.y
+	a = player.angle
+	-- angles are encoded somewhat weirdly; you can face straight right, but
+	-- never straight left. TODO convert to a somewhat more standard
+	-- interpretation when we touch the client.
+	if player.keys.left then
+		x = x - 1
+		if a > 0 then a = - a end
+	end
+	if player.keys.right then
+		x = x + 1
+		if a < 0 then a = - a end
+	end
+	if player.keys.up then y = y - 1 end
+	if player.keys.down then y = y + 1 end
+	player.x = x
+	player.y = y
+	player.angle = a
+	set_tank_pos( player.tank, player.x, player.y )
+	set_tank_angle( player.tank, player.angle )
+end
 
 update = function()
 	t = t + 0.01
-	put_bullet( serverPointer, 320 + 50 * math.cos( t ), 320 + 50 * math.sin( t ) )
+	for i,v in ipairs( connectedUsers ) do update_user( v ) end
+	sunx = 320 + 50 * math.cos( t )
+	suny = 320 + 50 * math.sin( t )
+	moonx = sunx + 10 * math.cos( 40 * t )
+	moony = suny + 10 * math.sin( 40 * t )
+	put_bullet( serverPointer, sunx, suny )
+	put_bullet( serverPointer, moonx, moony )
 end
 
 next_tank_id = function()
@@ -35,8 +64,6 @@ free_tank_id = function(id)
 end
 
 initialize_server = function( srvptr )
-	print( "initialized with server pointer:" )
-	print( srvptr )
 	serverPointer = srvptr
 
 	w = get_terrain_width( serverPointer )
@@ -46,27 +73,29 @@ initialize_server = function( srvptr )
 
 end
 
-create_moag_user = function( userptr, id )
+create_moag_user = function( userptr, id, keys )
     rv = {}
 
 	totalPlayersConnected = totalPlayersConnected + 1
 	table.insert( connectedUsers, rv )
 
+	rv.keys = keys
 	rv.userPointer = userptr
 	rv.name = string.format( "player%d", totalPlayersConnected )
-	print( serverPointer )
 	rv.tankId = next_tank_id()
-	rv.tank = make_tank( serverPointer, rv.tankId, "mytank" )
-	print( "tank:" )
-	print( rv.tank )
+	rv.tank = make_tank( serverPointer, rv.tankId, rv.name )
 	rv.change_nick = function(s)
 		oldname = rv.name
 		rv.name = s
-		set_tank_name( rv.tank, string.format( "%s", s ) )
+		set_tank_name( rv.tank, s )
 		broadcast_notice( serverPointer, string.format( ": %s is now known as %s", oldname, s ) )
 	end
 
-	set_tank_pos( rv.tank, 320, 200 )
+	rv.x = 320
+	rv.y = 200
+	rv.angle = 1
+
+	set_tank_pos( rv.tank, rv.x, rv.y )
 
 	send_notice_to( serverPointer, userptr, string.format( "Welcome to MOAG, %s! %d users online.", rv.name, # connectedUsers ) )
 	send_notice_to( serverPointer, userptr, string.format( "This is MOAG/%s version %s.", moagScriptName, moagScriptVersion ) )
@@ -77,8 +106,6 @@ end
 
 destroy_moag_user = function( player )
 	free_tank_id( player.tankId )
-	print( "deletin'")
-	print ( player.tank )
 	delete_tank( serverPointer, player.tank )
 	for k,v in ipairs( connectedUsers ) do
 		if v == player then

@@ -10,7 +10,7 @@ invalid_nick = function( nick )
 		return "too long"
 	else
 		for ch in nick:gmatch"." do
-			if string.find( validChars, ch ) == nil then
+			if string.find( validChars, ch, 1, true ) == nil then
 				return string.format( "invalid character: '%s'", ch )
 			end
 		end

@@ -89,14 +89,17 @@ namespace MoagServer {
             int id;
 
 			bool marked;
-
+#if 0
 			bool keypressLeft,
                  keypressRight,
                  keypressDown,
                  keypressUp,
                  keypressFire;
+#endif
+			MoagScript::LuaAutoReference keytable;
 
 			MoagScript::LuaAutoReference sob;
+
 
 		public:
 			MoagUser( Server&, moag::Connection );
@@ -115,12 +118,13 @@ namespace MoagServer {
             void handleCommand(char *);
             void changeNickname( const std::string& );
             void setNickname( const std::string& );
+
+			bool getKey( input_key_t ) const;
 #endif
 
             void handleMessage(void);
             void handleActivity(void);
 
-			bool getKey( input_key_t ) const;
 
 			void setTank( Tank* );
 	};

@@ -36,6 +36,7 @@
 namespace MoagServer {
 	int MoagUser::nextUserId = 1;
 
+#if 0
 	bool MoagUser::getKey( input_key_t key ) const {
 		switch( key ) {
 			case INPUT_LEFT: return keypressLeft;
@@ -46,6 +47,7 @@ namespace MoagServer {
 			default: return false;
 		}
 	}
+#endif
 
 	MoagTicker::MoagTicker( Server& server ) :
 		server ( server )
@@ -63,13 +65,16 @@ namespace MoagServer {
 //		name( "AfghanCap" ),
 		id( nextUserId++ ),
 		marked( false ),
+#if 0
 		keypressLeft ( false ),
 		keypressRight ( false ),
 		keypressDown ( false ),
 		keypressUp ( false ),
 		keypressFire ( false ),
+#endif
+		keytable ( server.getLuaInstance().makeTable() ),
 		sob ( MoagScript::LuaCall( server.getLuaInstance(), "create_moag_user" )
-                ( this )( id ).getReference() )
+                ( this )( id ).refarg(*keytable).getReference() )
 	{
 	}
 
@@ -363,36 +368,37 @@ namespace MoagServer {
 			return;
 		}
 		int c2sm_type = moag::ChunkDequeue8();
+		using namespace std;
 		switch( c2sm_type ) {
 			case C2SM_RELEASE_LEFT:
-				keypressLeft = false;
+				keytable->setBoolean( "left", false );
 				break;
 			case C2SM_RELEASE_RIGHT:
-				keypressRight = false;
+				keytable->setBoolean( "right", false );
 				break;
 			case C2SM_RELEASE_UP:
-				keypressUp = false;
+				keytable->setBoolean( "up", false );
 				break;
 			case C2SM_RELEASE_DOWN:
-				keypressDown = false;
+				keytable->setBoolean( "down", false );
 				break;
 			case C2SM_RELEASE_FIRE:
-				keypressFire = false;
+				keytable->setBoolean( "fire", false );
 				break;
 			case C2SM_PRESS_LEFT:
-				keypressLeft = true;
+				keytable->setBoolean( "left", true );
 				break;
 			case C2SM_PRESS_RIGHT:
-				keypressRight = true;
+				keytable->setBoolean( "right", true );
 				break;
 			case C2SM_PRESS_UP:
-				keypressUp = true;
+				keytable->setBoolean( "up", true );
 				break;
 			case C2SM_PRESS_DOWN:
-				keypressDown = true;
+				keytable->setBoolean( "down", true );
 				break;
 			case C2SM_PRESS_FIRE:
-				keypressFire = true;
+				keytable->setBoolean( "fire", true );
 				break;
 			case C2SM_CHAT_MESSAGE:
 				handleMessage();
