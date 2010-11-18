@@ -19,6 +19,65 @@ totalSpawns = 0
 connectedUsers = {}
 tankIds = {}
 allBullets = {}
+crateSingleton = nil
+
+Weapons = {}
+
+make_weapon = function( name, bullet_creator, frequency )
+    local rv = {}
+    rv.name = name
+    rv.bullet_creator = bullet_creator
+	rv.frequency = frequency
+    Weapons[ name ] = rv
+end
+
+create_super_dirtball = function(player, x, y, vx, vy)
+	local rv = create_normal_bullet(player, x, y, vx, vy)
+	rv.explode_radius = 300
+	rv.fill_with = 1
+	return rv
+end
+
+create_dirtball = function(player, x, y, vx, vy)
+	local rv = create_normal_bullet(player, x, y, vx, vy)
+	rv.explode_radius = 55
+	rv.fill_with = 1
+	return rv
+end
+
+create_nuke = function(player, x, y, vx, vy)
+	local rv = create_normal_bullet(player, x, y, vx, vy)
+	rv.explode_radius = 150
+	return rv
+end
+
+create_baby_nuke = function(player, x, y, vx, vy)
+	local rv = create_normal_bullet(player, x, y, vx, vy)
+	rv.explode_radius = 55
+	return rv
+end
+
+create_normal_bullet = function(player, x, y, vx, vy)
+    local rv = {}
+    rv.x = x
+    rv.y = y
+    rv.vx = vx
+    rv.vy = vy
+    rv.explode_radius = 12
+    rv.fill_with = 0
+    rv.radius = 0.5 -- bullets 0.5, tanks 8, crates 5 is close to original
+    rv.update = generic_update_bullet
+    rv.apply_physics = generic_apply_bullet_physics
+    rv.detonate = generic_bullet_detonate
+    rv.owner = player
+    return rv
+end
+
+make_weapon( "nuke", create_nuke, 20 )
+make_weapon( "baby nuke", create_baby_nuke, 100 )
+make_weapon( "dirtball", create_dirtball, 75 )
+make_weapon( "super dirtball", create_super_dirtball, 15 )
+make_weapon( "missile", create_normal_bullet, 0 )
 
 is_opaque = function(x,y)
 	local x = math.floor(0.5 + x)
@@ -157,10 +216,6 @@ apply_physics = function(obj, ax, ay, transition)
 	end end
 end
 
-generic_bullet_hits_tank = function(bullet, user)
-	user.kill( bullet.owner )
-end
-
 generic_apply_bullet_physics = function(bullet)
 	apply_physics( bullet, 0, 0.1, function(i,j) end )
 end
@@ -203,12 +258,22 @@ create_ladder = function(player, x, y, vx, vy)
 	return rv
 end
 
+scan_around = function(center, radius)
+    for i,v in ipairs(connectedUsers) do
+        if closer_than( center, v, radius ) then
+            return true
+        end
+    end
+    if closer_than( center, crateSingleton, radius ) then
+        return true
+    end
+    return false
+end
+
 generic_update_bullet = function(bullet)
     local detonate = false
-    for i,v in ipairs(connectedUsers) do
-        if closer_than( bullet, v, 0 ) then
-			detonate = true
-        end
+    if scan_around( bullet, 0 ) then
+        detonate = true
     end
     if is_opaque( bullet.x, bullet.y ) then
         detonate = true
@@ -221,85 +286,26 @@ generic_update_bullet = function(bullet)
     return not detonate
 end
 
+destroy_around = function(center, radius, owner)
+    for i,v in ipairs(connectedUsers) do
+        if closer_than( center, v, radius ) then
+            v.kill( owner )
+        end
+    end
+    if closer_than( center, crateSingleton, radius ) then
+        destroy_crate( owner, crateSingleton )
+    end
+	terrain_fill_circle( serverPointer, center.x, center.y, radius, 0)
+end
+
 generic_bullet_detonate = function(bullet)
-	if bullet.fill_with == 0 then
-		for i,v in ipairs(connectedUsers) do
-			if closer_than( bullet, v, bullet.explode_radius ) then
-				bullet.hits_tank( bullet, v )
-			end
-		end
-	end
-	terrain_fill_circle( serverPointer, bullet.x, bullet.y, bullet.explode_radius, bullet.fill_with)
+    if bullet.fill_with == 0 then
+        destroy_around( bullet, bullet.explode_radius, bullet.owner )
+    else
+        terrain_fill_circle( serverPointer, bullet.x, bullet.y, bullet.explode_radius, bullet.fill_with)
+    end
 end
 
-create_super_dirtball = function(player, x, y, vx, vy)
-	local rv = create_normal_bullet(player, x, y, vx, vy)
-	rv.explode_radius = 300
-	rv.fill_with = 1
-	return rv
-end
-
-create_dirtball = function(player, x, y, vx, vy)
-	local rv = create_normal_bullet(player, x, y, vx, vy)
-	rv.explode_radius = 55
-	rv.fill_with = 1
-	return rv
-end
-
-create_nuke = function(player, x, y, vx, vy)
-	local rv = create_normal_bullet(player, x, y, vx, vy)
-	rv.explode_radius = 150
-	return rv
-end
-
-create_baby_nuke = function(player, x, y, vx, vy)
-	local rv = create_normal_bullet(player, x, y, vx, vy)
-	rv.explode_radius = 55
-	return rv
-end
-
-create_stairway_to_heaven = function(player, x, y, vx, vy)
-	local rv = create_normal_bullet(player, x, y, vx, vy)
-	delayedEffects = {}
-	rv.update = function( bullet )
-		local detonate = false
-		apply_physics( bullet, 0, standardGravity, function(i,j)
-			if detonate or is_opaque(i,j) then
-				detonate = true
-			else
-				table.insert( delayedEffects, {i,j + 10} )
-			end
-		end )
-		if detonate then
-			for i,v in ipairs( delayedEffects ) do
-				terrain_fill_circle( serverPointer,
-									 delayedEffects[i][0],
-									 delayedEffects[i][1],
-									 5.0,
-									 1 )
-			end
-		end
-		return not detonate
-	end
-	return rv
-end
-
-create_normal_bullet = function(player, x, y, vx, vy)
-    local rv = {}
-    rv.x = x
-    rv.y = y
-    rv.vx = vx
-    rv.vy = vy
-    rv.explode_radius = 12
-    rv.fill_with = 0
-    rv.radius = 0.5 -- bullets 0.5, tanks 8, crates 5 is close to original
-    rv.update = generic_update_bullet
-    rv.hits_tank = generic_bullet_hits_tank
-    rv.apply_physics = generic_apply_bullet_physics
-    rv.detonate = generic_bullet_detonate
-    rv.owner = player
-    return rv
-end
 
 update_user = function(i)
     local player = connectedUsers[i]
@@ -309,6 +315,9 @@ update_user = function(i)
 	update_user_fire( player )
 	set_tank_pos( player.tank, player.x, player.y )
 	set_tank_angle( player.tank, player.angle )
+    if closer_than( player, crateSingleton, 0 ) then
+        collect_crate( player, crateSingleton )
+    end
 end
 
 update_bullet = function(i)
@@ -323,6 +332,7 @@ end
 update = function()
 	for i,v in ipairs( connectedUsers ) do update_user( i ) end
 	for i,v in ipairs( allBullets ) do update_bullet( i ) end
+    update_crate()
 end
 
 next_tank_id = function()
@@ -338,6 +348,70 @@ end
 
 free_tank_id = function(id)
 	tankIds[id] = false
+end
+
+get_random_crate_weapon = function()
+	local total = 0
+	for name, weapon in pairs( Weapons ) do
+		total = total + weapon.frequency
+	end
+	total = math.random( total - 1 )
+	for name, weapon in pairs( Weapons ) do
+		total = total - weapon.frequency
+		if total < 0 then
+			return weapon
+		end
+	end
+end
+
+create_crate = function()
+	crateSingleton = {}
+	crateSingleton.hidden = true
+    crateSingleton.radius = 5 -- assume a frictionless spherical crate
+	return rv
+end
+
+respawn_crate = function()
+	local c = crateSingleton
+	c.hidden = false
+	c.x = math.random( terrainWidth - 40 ) + 20
+	c.y = 30
+	c.contents = get_random_crate_weapon()
+	terrain_fill_circle( serverPointer, c.x, c.y-12, 12, 0 )
+	move_crate_to( serverPointer, c.x, c.y )
+end
+
+destroy_crate = function(player, crate)
+	local vx = 0 -- oh come on sf :P (TODO special casing the bouncer)
+    local vy = -0.2
+    local weapon = crate.contents
+	local bullet = weapon.bullet_creator( player, 
+                                          crate.x,
+                                          crate.y - 4,
+                                          vx,
+                                          vy )
+    broadcast_notice( serverPointer, string.format( ": %s destroyed a crate containing %s!", player.name, weapon.name ) )
+	despawn_crate()
+    table.insert( allBullets, bullet )
+end
+
+collect_crate = function(player, crate)
+    local weapon = crate.contents
+    player.current_weapon = weapon
+    broadcast_notice( serverPointer, string.format( ": %s picked up %s!", player.name, weapon.name ) )
+    despawn_crate()
+end
+
+update_crate = function()
+    local crate = crateSingleton
+	if is_blank( crate.x, crate.y + 1 ) then
+		crate.y = crate.y + 1
+		move_crate_to( serverPointer, crate.x, crate.y )
+	end
+end
+
+despawn_crate = function()
+	respawn_crate()
 end
 
 initialize_server = function( srvptr, width, height )
@@ -356,18 +430,19 @@ initialize_server = function( srvptr, width, height )
 
 	terrain_fill_circle( serverPointer, width/2, height/2, 200, 1 )
 	terrain_fill_circle( serverPointer, width/2, height/2, 180, 0 )
+
+	create_crate()
+	respawn_crate()
 end
+
 
 ConsoleCommands.select_weapon = function(player, arg)
 --	if not require_admin( player ) then return end
 	local weapons = {}
-	weapons["nuke"] = create_nuke
-	weapons["baby nuke"] = create_baby_nuke
-	weapons["dirtball"] = create_dirtball
-	weapons["super dirtball"] = create_super_dirtball
-	weapons["normal bullet"] = create_normal_bullet
+    for name,weapon in pairs( Weapons ) do
+        weapons[ name ] = weapon.bullet_creator
+    end
 	weapons["ladder"] = create_ladder
-	weapons["stairway to heaven"] = create_stairway_to_heaven
 	if weapons[ arg ] then
 		player.current_weapon = weapons[ arg ]
 	else
@@ -398,10 +473,11 @@ create_moag_user = function( userptr, id, keys )
 	rv.deaths = 0
 	rv.kills = 0
     rv.radius = 8
-	rv.current_weapon = create_normal_bullet
+	rv.current_weapon = Weapons.missile
 
 	rv.fire = function()
-		fire_bullet_from_tank( rv, rv.current_weapon )
+		fire_bullet_from_tank( rv, rv.current_weapon.bullet_creator )
+        rv.current_weapon = Weapons.missile
 	end
 
 	rv.launchLadder = function()
