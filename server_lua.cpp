@@ -164,6 +164,38 @@ namespace MoagScript {
 			return 0;
 		}
 
+		int hideCrate( lua_State *l ) {
+			using namespace MoagServer;
+			using namespace MoagShallow;
+
+			LuaInstance lua ( l );
+
+			Server *server = static_cast<Server*>( lua.popUserData() );
+
+			CrateState& cs = server->getCrateState();
+			cs.hide();
+
+			return 0;
+		}
+
+		int moveCrateTo( lua_State *l ) {
+			using namespace MoagServer;
+			using namespace MoagShallow;
+
+			LuaInstance lua ( l );
+
+			int y = lua.popInteger();
+			int x = lua.popInteger();
+			Server *server = static_cast<Server*>( lua.popUserData() );
+
+			CrateState& cs = server->getCrateState();
+			cs.x = x;
+			cs.y = y;
+			cs.dirty = true;
+
+			return 0;
+		}
+
 
 		int setTerrainAt( lua_State *l ) {
 			using namespace MoagServer;
@@ -293,6 +325,9 @@ namespace MoagScript {
 		lua.exportFunction( "set_tank_angle", setTankAngle );
 		lua.exportFunction( "set_tank_pos", setTankPos );
 		lua.exportFunction( "set_tank_name", setTankName );
+
+		lua.exportFunction( "move_crate_to", moveCrateTo );
+		lua.exportFunction( "hide_crate", hideCrate );
 
 		lua.exportFunction( "put_bullet", putBullet );
 

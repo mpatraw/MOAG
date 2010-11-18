@@ -122,6 +122,7 @@ namespace MoagServer {
 
 			typedef std::vector< MoagShallow::TankState* > tanklist_t;
 			MoagShallow::TerrainState terrain;
+			MoagShallow::CrateState crate;
 			tanklist_t tanks;
 			MoagShallow::BulletQueueManager bulletQ;
 
@@ -132,6 +133,7 @@ namespace MoagServer {
 			~Server(void);
 
 			MoagShallow::TerrainState& getTerrainState(void);
+			MoagShallow::CrateState& getCrateState(void);
 
 			void enqueueAll(void);
 			void enqueueDirtyForBroadcast(void);

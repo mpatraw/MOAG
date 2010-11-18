@@ -1,8 +1,10 @@
+ConsoleCommands = {}
+
 invalid_nick = function( nick )
-	l = string.len( nick )
-	lowLimit = 2
-	highLimit = 15
-	validChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	local l = string.len( nick )
+	local lowLimit = 2
+	local highLimit = 15
+	local validChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 	if l < lowLimit then
 		return "too short"
@@ -20,7 +22,7 @@ invalid_nick = function( nick )
 end
 
 change_name = function( player, newname )
-	oldname = player.name
+	local oldname = player.name
 	if invalid_nick( newname ) then
 		send_notice_to( serverPointer, player.userPointer, ": invalid nick -- " .. invalid_nick( newname ) )
 	else
@@ -49,16 +51,21 @@ require_admin = function( player )
 	end
 end
 
+ConsoleCommands.n = change_name
+ConsoleCommands.nick = change_name
+
+ConsoleCommands.admin = identify_as_admin
+
+ConsoleCommands.shutdown = function(player, args)
+	if require_admin( player ) then
+		shutdown_server( serverPointer )
+	end
+end
+
 handle_command = function( player, cmd, args )
 	cmd = string.lower( cmd )
-	if cmd == "n" or cmd == "nick" then
-		change_name( player, args )
-	elseif cmd == "admin" then
-		identify_as_admin( player, args )
-	elseif cmd == "shutdown" then
-		if require_admin( player ) then
-			shutdown_server( serverPointer )
-		end
+	if ConsoleCommands[ cmd ] then
+		ConsoleCommands[ cmd ]( player, args )
 	else
 		send_notice_to( serverPointer, player.userPointer, string.format( ": unknown command '%s'", cmd ) )
 	end
@@ -66,15 +73,15 @@ end
 
 handle_console = function( player, message )
 	if string.find( message, "/" ) == 1 then
-		cmdline = string.sub( message, 2 )
-		spacepos = string.find( cmdline, " " )
+		local cmdline = string.sub( message, 2 )
+		local spacepos = string.find( cmdline, " " )
 		if spacepos == nil then
 			handle_command( player, cmdline )
 		else
 			handle_command( player, string.sub( cmdline, 1, spacepos - 1), string.sub( cmdline, spacepos + 1 ) )
 		end
 	else
-		fullMessage = string.format( "<%s> %s", player.name, message )
+		local fullMessage = string.format( "<%s> %s", player.name, message )
 		broadcast_notice( serverPointer, fullMessage )
 	end
 end

@@ -12,6 +12,7 @@ terrainWidth = 0
 terrainHeight = 0
 serverPointer = nil
 totalPlayersConnected = 0
+standardGravity = 0.1
 
 totalSpawns = 0
 
@@ -108,7 +109,7 @@ update_user_fire = function(player)
 	if player.keys.fire then
 		player.firepower = math.min( 10, player.firepower + 0.1 )
 	elseif player.firepower > 0 then
-		fire_bullet_from_tank( player, create_normal_bullet )
+		player.fire()
 		player.firepower = 0
 	end
 end
@@ -137,14 +138,31 @@ closer_than = function(alpha, beta, limit)
     return (dx*dx + dy*dy) < (mr*mr)
 end
 
+apply_physics = function(obj, ax, ay, transition)
+	local x0 = math.floor(0.5+obj.x)
+	local y0 = math.floor(0.5+obj.y)
+	obj.x = obj.x + obj.vx
+	obj.y = obj.y + obj.vy
+	obj.vx = obj.vx + ax
+	obj.vy = obj.vy + ay
+	local rv = {}
+	local dx = x0 - math.floor(0.5+obj.x)
+	local dy = y0 - math.floor(0.5+obj.y)
+	local dxs
+	if dx < 0 then dxs = -1 else dxs = 1 end
+	local dys
+	if dy < 0 then dys = -1 else dys = 1 end
+	for i=x0,x0+dx,dxs do for j=y0,y0+dy,dys do
+		transition( i, j )
+	end end
+end
+
 generic_bullet_hits_tank = function(bullet, user)
 	user.kill( bullet.owner )
 end
 
 generic_apply_bullet_physics = function(bullet)
-    bullet.x = bullet.x + bullet.vx
-    bullet.y = bullet.y + bullet.vy
-    bullet.vy = bullet.vy + 0.1
+	apply_physics( bullet, 0, 0.1, function(i,j) end )
 end
 
 create_ladder = function(player, x, y, vx, vy)
@@ -189,8 +207,7 @@ generic_update_bullet = function(bullet)
     local detonate = false
     for i,v in ipairs(connectedUsers) do
         if closer_than( bullet, v, 0 ) then
-            bullet.hits_tank( bullet, v )
-            detonate = true
+			detonate = true
         end
     end
     if is_opaque( bullet.x, bullet.y ) then
@@ -205,29 +222,66 @@ generic_update_bullet = function(bullet)
 end
 
 generic_bullet_detonate = function(bullet)
-   terrain_fill_circle( serverPointer, bullet.x, bullet.y, bullet.explode_radius, bullet.fill_with)
+	if bullet.fill_with == 0 then
+		for i,v in ipairs(connectedUsers) do
+			if closer_than( bullet, v, bullet.explode_radius ) then
+				bullet.hits_tank( bullet, v )
+			end
+		end
+	end
+	terrain_fill_circle( serverPointer, bullet.x, bullet.y, bullet.explode_radius, bullet.fill_with)
 end
 
 create_super_dirtball = function(player, x, y, vx, vy)
-	local rv = create_normal_bullet(x, y, vx, vy)
+	local rv = create_normal_bullet(player, x, y, vx, vy)
 	rv.explode_radius = 300
 	rv.fill_with = 1
+	return rv
 end
 
 create_dirtball = function(player, x, y, vx, vy)
-	local rv = create_normal_bullet(x, y, vx, vy)
+	local rv = create_normal_bullet(player, x, y, vx, vy)
 	rv.explode_radius = 55
 	rv.fill_with = 1
+	return rv
 end
 
 create_nuke = function(player, x, y, vx, vy)
-	local rv = create_normal_bullet(x, y, vx, vy)
+	local rv = create_normal_bullet(player, x, y, vx, vy)
 	rv.explode_radius = 150
+	return rv
 end
 
 create_baby_nuke = function(player, x, y, vx, vy)
-	local rv = create_normal_bullet(x, y, vx, vy)
+	local rv = create_normal_bullet(player, x, y, vx, vy)
 	rv.explode_radius = 55
+	return rv
+end
+
+create_stairway_to_heaven = function(player, x, y, vx, vy)
+	local rv = create_normal_bullet(player, x, y, vx, vy)
+	delayedEffects = {}
+	rv.update = function( bullet )
+		local detonate = false
+		apply_physics( bullet, 0, standardGravity, function(i,j)
+			if detonate or is_opaque(i,j) then
+				detonate = true
+			else
+				table.insert( delayedEffects, {i,j + 10} )
+			end
+		end )
+		if detonate then
+			for i,v in ipairs( delayedEffects ) do
+				terrain_fill_circle( serverPointer,
+									 delayedEffects[i][0],
+									 delayedEffects[i][1],
+									 5.0,
+									 1 )
+			end
+		end
+		return not detonate
+	end
+	return rv
 end
 
 create_normal_bullet = function(player, x, y, vx, vy)
@@ -304,6 +358,25 @@ initialize_server = function( srvptr, width, height )
 	terrain_fill_circle( serverPointer, width/2, height/2, 180, 0 )
 end
 
+ConsoleCommands.select_weapon = function(player, arg)
+--	if not require_admin( player ) then return end
+	local weapons = {}
+	weapons["nuke"] = create_nuke
+	weapons["baby nuke"] = create_baby_nuke
+	weapons["dirtball"] = create_dirtball
+	weapons["super dirtball"] = create_super_dirtball
+	weapons["normal bullet"] = create_normal_bullet
+	weapons["ladder"] = create_ladder
+	weapons["stairway to heaven"] = create_stairway_to_heaven
+	if weapons[ arg ] then
+		player.current_weapon = weapons[ arg ]
+	else
+		player.current_weapon = create_normal_bullet
+	end
+end
+
+ConsoleCommands.weapon = ConsoleCommands.select_weapon
+
 create_moag_user = function( userptr, id, keys )
     local rv = {}
 
@@ -325,12 +398,16 @@ create_moag_user = function( userptr, id, keys )
 	rv.deaths = 0
 	rv.kills = 0
     rv.radius = 8
+	rv.current_weapon = create_normal_bullet
+
+	rv.fire = function()
+		fire_bullet_from_tank( rv, rv.current_weapon )
+	end
 
 	rv.launchLadder = function()
 		rv.laddersLeft = rv.laddersLeft - 1
 		local ladder = create_ladder( rv, rv.x, rv.y, 0, -1 )
 		table.insert( allBullets, ladder )
-		broadcast_notice( serverPointer, string.format( ": %s launched a ladder!", rv.name ) )
 	end
 
 	rv.spawn = function()

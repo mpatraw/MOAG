@@ -142,6 +142,7 @@ namespace MoagServer {
 		users (),
         lua ( lua ),
 		terrain ( MoagShallow::TerrainState( width, height ) ),
+		crate (),
 		tanks (),
 		bulletQ ( MoagShallow::BulletQueueManager( width, height ) )
 	{
@@ -156,6 +157,10 @@ namespace MoagServer {
 
 		moag::SetServerCallback( &ticker, moag::CB_SERVER_UPDATE );
 		moag::SetServerCallback( &greeter, moag::CB_CLIENT_CONNECT );
+	}
+
+	MoagShallow::CrateState& Server::getCrateState(void) {
+		return crate;
 	}
 
 	void Server::acquireMutex(void) {
@@ -206,6 +211,7 @@ namespace MoagServer {
 			(*i)->enqueueDirty();
 		}
 		bulletQ.enqueue();
+		crate.enqueueDirty();
 	}
 
 	void Server::enqueueAll(void) {
@@ -214,6 +220,7 @@ namespace MoagServer {
 			(*i)->enqueueName();
 			(*i)->enqueue();
 		}
+		crate.enqueue();
 	}
 
 	int Server::userConnected(moag::Connection conn) {
