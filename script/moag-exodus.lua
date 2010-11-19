@@ -13,6 +13,7 @@ terrainHeight = 0
 serverPointer = nil
 totalPlayersConnected = 0
 standardGravity = 0.1
+respawnTime = 40
 
 totalSpawns = 0
 
@@ -418,6 +419,12 @@ end
 update_user = function(i)
     local player = connectedUsers[i]
 	local gravity = update_user_movement( player )
+    if player.spawn_wait > 0 then
+        player.spawn_wait = player.spawn_wait - 1
+        if player.spawn_wait <= 0 then
+            player.spawn()
+        end
+    end
 	update_user_physics( player, gravity )
 	update_user_aim( player )
 	update_user_fire( player )
@@ -590,6 +597,7 @@ create_moag_user = function( userptr, id, keys )
     rv.radius = 8
     rv.times_fired = 0
 	rv.current_weapon = Weapons.missile
+    rv.spawn_wait = 0
 
 	rv.fire = function()
         count_player_fire( rv )
@@ -618,7 +626,10 @@ create_moag_user = function( userptr, id, keys )
 	end
 
 	rv.kill = function(killer)
-		rv.spawn()
+        rv.x = -9000
+        rv.y = -9000
+		set_tank_pos( rv.tank, -9000, -9000 )
+        rv.spawn_wait = respawnTime
         count_tank_kill( killer, rv )
 	end
 
