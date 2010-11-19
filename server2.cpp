@@ -58,19 +58,29 @@ namespace MoagServer {
 	}
 
 	int MoagTicker::operator()(moag::Connection con) {
+		using namespace std;
+		cerr << "ticker acquiring mutex" << endl;
 		server.acquireMutex();
+		cerr << "ticker stepping game" << endl;
 		server.stepGame();
+		cerr << "ticker activity sweeping" << endl;
 		server.activitySweep();
+		cerr << "ticker disconnect sweeping" << endl;
 		server.disconnectSweep();
+		cerr << "ticker did tick" << endl;
 		server.didTick();
+		cerr << "ticker releasing mutex" << endl;
 		server.releaseMutex();
 		return 0;
 	}
 
 	int MoagGreeter::operator()(moag::Connection con) {
 		using namespace std;
+		cerr << "greeter acquiring mutex" << endl;
 		server.acquireMutex();
+		cerr << "greeter connecting user" << endl;
 		int rv = server.userConnected( con );
+		cerr << "greeter releasing mutex" << endl;
 		server.releaseMutex();
 		return rv;
 	}
@@ -361,12 +371,16 @@ namespace MoagServer {
 	}
 
 	void Server::disconnectSweep(void) {
+		using namespace std;
+
 		for(userlist_t::iterator i = users.begin(); i != users.end(); ) {
 			if( (*i)->markedForDisconnection() ) {
+				cerr << "user is marked for disconnection" << endl;
 				MoagUser *user = *i;
 				i = users.erase( i );
 
 				delete user;
+				cerr << "deleted user" << endl;
 			} else {
 				i++;
 			}
@@ -468,7 +482,7 @@ int main(int argc, char*argv[]) {
 
 		cout << "Server running.." << endl;
 
-		server.run(65);
+		server.run(45);
 
 		cout << "Goodbye!" << endl;
 	}

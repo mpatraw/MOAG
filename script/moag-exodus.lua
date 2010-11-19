@@ -336,9 +336,10 @@ tunnel_bullet = function(bullet)
 	local ool = 1 / math.sqrt( bullet.vx*bullet.vx + bullet.vy*bullet.vy )
 	local dx = bullet.vx * ool
 	local dy = bullet.vy * ool
-	local vbull = { x = bullet.x + 8 * dx, y = bullet.y + 8 * dy, radius = bullet.radius }
-	destroy_around( bullet, 9, bullet.owner )
-	destroy_around( vbull, 9, bullet.owner )
+	for i=0,8 do
+		local vbull = { x = bullet.x + i * dx, y = bullet.y + i * dy, radius = bullet.radius }
+		destroy_around( vbull, 9, bullet.owner )
+	end
 end
 
 bounce_bullet = function(bullet)
@@ -418,13 +419,14 @@ end
 
 update_user = function(i)
     local player = connectedUsers[i]
-	local gravity = update_user_movement( player )
     if player.spawn_wait > 0 then
         player.spawn_wait = player.spawn_wait - 1
         if player.spawn_wait <= 0 then
             player.spawn()
         end
+		return
     end
+	local gravity = update_user_movement( player )
 	update_user_physics( player, gravity )
 	update_user_aim( player )
 	update_user_fire( player )
@@ -555,16 +557,16 @@ end
 
 
 ConsoleCommands.select_weapon = function(player, arg)
---	if not require_admin( player ) then return end
+	if not require_admin( player ) then return end
 	local weapons = {}
     for name,weapon in pairs( Weapons ) do
-        weapons[ name ] = weapon.bullet_creator
+        weapons[ name ] = weapon
     end
 	weapons["ladder"] = create_ladder
 	if weapons[ arg ] then
 		player.current_weapon = weapons[ arg ]
 	else
-		player.current_weapon = create_normal_bullet
+		player.current_weapon = Weapons.missile
 	end
 end
 
@@ -594,7 +596,7 @@ create_moag_user = function( userptr, id, keys )
 
 	rv.deaths = 0
 	rv.kills = 0
-    rv.radius = 8
+    rv.radius = 7.5
     rv.times_fired = 0
 	rv.current_weapon = Weapons.missile
     rv.spawn_wait = 0
@@ -613,8 +615,15 @@ create_moag_user = function( userptr, id, keys )
 
 	rv.spawn = function()
 		totalSpawns = totalSpawns + 1
-		rv.x = math.mod( (totalSpawns*240), (terrainWidth-40) ) + 20
-		rv.y = 60
+		rv.x = -9000
+		rv.y = -9000
+		local vir = {}
+		vir.x = math.mod( (totalSpawns*240), (terrainWidth-40) ) + 20
+		vir.y = 60
+		vir.radius = 0
+		destroy_around( vir, 12, rv )
+		rv.x = vir.x
+		rv.y = vir.y
 		rv.angle = 30
 		rv.firepower = 0
 		rv.vx = 0
