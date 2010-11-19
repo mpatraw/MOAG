@@ -31,6 +31,61 @@ make_weapon = function( name, bullet_creator, frequency )
     Weapons[ name ] = rv
 end
 
+create_mirv_warhead = function(player, x, y, vx, vy)
+	local rv = create_normal_bullet(player, x, y, vx, vy)
+	rv.explode_radius = 30
+	return rv
+end
+
+create_mirv = function(player, x, y, vx, vy)
+	local rv = create_normal_bullet(player, x, y, vx, vy)
+	rv.detonate_on_descent = true
+	rv.detonate = function(bullet)
+		destroy_around( bullet, 12, bullet.owner )
+		for i=-3,3 do
+			spawn_bullet( create_mirv_warhead( bullet.owner, bullet.x, bullet.y,
+											   bullet.vx + i, bullet.vy ) )
+		end
+	end
+	return rv
+end
+
+create_cluster_bomb = function(player, x, y, vx, vy)
+	local rv = create_normal_bullet(player, x, y, vx, vy)
+	-- TODO: check bouncing, does it really bounce?
+	rv.detonate = function(bullet)
+		local power = 1.5 -- changed from 1.5
+		local spawns = 10
+		local inc = 2 * math.pi / spawns
+        local oldXPower = 0.5 -- changed from 0.25
+        local oldYPower = 0.25 -- changed from 0.5
+		destroy_around( bullet, 20, bullet.owner )
+		for i=0,spawns do
+			local dx = power * math.cos( inc * i )
+			local dy = power * math.sin( inc * i )
+			spawn_bullet( create_normal_bullet( bullet.owner, bullet.x, bullet.y,
+                                                oldXPower * bullet.vx + dx,
+                                                oldYPower * bullet.vy + dy ) )
+		end
+	end
+	return rv
+end
+
+create_bouncer = function(player, x, y, vx, vy)
+	local rv = create_normal_bullet(player, x, y, vx, vy)
+	rv.special_impacts = 11
+	rv.bounce_explosion_radius = 12
+	rv.special_impact = bounce_bullet
+	return rv
+end
+
+create_tunneler = function(player, x, y, vx, vy)
+	local rv = create_normal_bullet(player, x, y, vx, vy)
+	rv.special_impacts = 20
+	rv.special_impact = tunnel_bullet
+	return rv
+end
+
 create_super_dirtball = function(player, x, y, vx, vy)
 	local rv = create_normal_bullet(player, x, y, vx, vy)
 	rv.explode_radius = 300
@@ -63,8 +118,10 @@ create_normal_bullet = function(player, x, y, vx, vy)
     rv.y = y
     rv.vx = vx
     rv.vy = vy
+	rv.detonate_on_descent = false
     rv.explode_radius = 12
     rv.fill_with = 0
+	rv.special_impacts = 0
     rv.radius = 0.5 -- bullets 0.5, tanks 8, crates 5 is close to original
     rv.update = generic_update_bullet
     rv.apply_physics = generic_apply_bullet_physics
@@ -78,6 +135,10 @@ make_weapon( "baby nuke", create_baby_nuke, 100 )
 make_weapon( "dirtball", create_dirtball, 75 )
 make_weapon( "super dirtball", create_super_dirtball, 15 )
 make_weapon( "missile", create_normal_bullet, 0 )
+make_weapon( "bouncer", create_bouncer, 100 )
+make_weapon( "tunneler", create_tunneler, 75 )
+make_weapon( "MIRV", create_mirv, 40 )
+make_weapon( "cluster bomb", create_cluster_bomb, 120 )
 
 is_opaque = function(x,y)
 	local x = math.floor(0.5 + x)
@@ -270,13 +331,60 @@ scan_around = function(center, radius)
     return false
 end
 
+tunnel_bullet = function(bullet)
+	local ool = 1 / math.sqrt( bullet.vx*bullet.vx + bullet.vy*bullet.vy )
+	local dx = bullet.vx * ool
+	local dy = bullet.vy * ool
+	local vbull = { x = bullet.x + 8 * dx, y = bullet.y + 8 * dy, radius = bullet.radius }
+	destroy_around( bullet, 9, bullet.owner )
+	destroy_around( vbull, 9, bullet.owner )
+end
+
+bounce_bullet = function(bullet)
+	local decay = 0.9
+	local ool = 1 / math.sqrt( bullet.vx*bullet.vx + bullet.vy*bullet.vy )
+	local dx = bullet.vx * ool * 0.25
+	local dy = bullet.vy * ool * 0.25
+	local bounce_x = false
+	local bounce_y = false
+
+	for i=0,40 do
+		if is_blank( bullet.x, bullet.y ) then break end
+		bullet.x = bullet.x - dx
+		bullet.y = bullet.y - dy
+	end
+
+	for i=1,100 do
+		if is_opaque( bullet.x + bullet.vx * i, bullet.y ) then bounce_x = true end
+		if is_opaque( bullet.y, bullet.y + bullet.vy * i ) then bounce_y = true end
+		if bounce_x or bounce_y then break end
+	end
+
+	if bounce_x then bullet.vx = - bullet.vx end
+	if bounce_y then bullet.vy = - bullet.vy end
+	bullet.vx = bullet.vx * decay
+	bullet.vy = bullet.vy * decay
+
+	if bullet.bounce_explosion_radius > 0 then
+		destroy_around( bullet, bullet.bounce_explosion_radius, bullet.owner )
+	end
+end
+
 generic_update_bullet = function(bullet)
     local detonate = false
+	if bullet.detonate_on_descent and bullet.vy > 0 then
+		detonate = true
+	end
     if scan_around( bullet, 0 ) then
         detonate = true
     end
     if is_opaque( bullet.x, bullet.y ) then
-        detonate = true
+		if bullet.special_impacts > 0 then
+			bullet.special_impact( bullet )
+			bullet.special_impacts = bullet.special_impacts - 1
+		else
+			detonate = true
+		end
     end
     if detonate then
         bullet.detonate( bullet )
@@ -390,7 +498,7 @@ destroy_crate = function(player, crate)
                                           crate.y - 4,
                                           vx,
                                           vy )
-    broadcast_notice( serverPointer, string.format( ": %s destroyed a crate containing %s!", player.name, weapon.name ) )
+    count_crate_kill( player, crate )
 	despawn_crate()
     table.insert( allBullets, bullet )
 end
@@ -416,6 +524,9 @@ end
 
 initialize_server = function( srvptr, width, height )
 	serverPointer = srvptr
+
+	math.randomseed( os.time() )
+	for i=0,100 do math.random() end -- for better randomness per lua docs
 
 	terrainWidth = width
 	terrainHeight = height
@@ -450,6 +561,10 @@ ConsoleCommands.select_weapon = function(player, arg)
 	end
 end
 
+spawn_bullet = function(bullet)
+    table.insert( allBullets, bullet )
+end
+
 ConsoleCommands.weapon = ConsoleCommands.select_weapon
 
 create_moag_user = function( userptr, id, keys )
@@ -473,9 +588,11 @@ create_moag_user = function( userptr, id, keys )
 	rv.deaths = 0
 	rv.kills = 0
     rv.radius = 8
+    rv.times_fired = 0
 	rv.current_weapon = Weapons.missile
 
 	rv.fire = function()
+        count_player_fire( rv )
 		fire_bullet_from_tank( rv, rv.current_weapon.bullet_creator )
         rv.current_weapon = Weapons.missile
 	end
@@ -502,9 +619,7 @@ create_moag_user = function( userptr, id, keys )
 
 	rv.kill = function(killer)
 		rv.spawn()
-		broadcast_notice( serverPointer, string.format( ": %s killed %s!", killer.name, rv.name ) )
-		rv.deaths = rv.deaths + 1
-		rv.kills = rv.kills + 1
+        count_tank_kill( killer, rv )
 	end
 
 	rv.spawn()
@@ -513,6 +628,51 @@ create_moag_user = function( userptr, id, keys )
 	send_notice_to( serverPointer, userptr, string.format( "This is MOAG/%s version %s.", moagScriptName, moagScriptVersion ) )
 	broadcast_notice( serverPointer, string.format( "A new challenger appears: %s has connected. %d users online.", rv.name, # connectedUsers ) );
 
+    return rv
+end
+
+count_player_fire = function( player )
+    player.times_fired = player.times_fired + 1
+end
+
+count_tank_kill = function( killer, victim )
+    victim.deaths = victim.deaths + 1
+    if not (killer == victim) then
+        killer.kills = killer.kills + 1
+        broadcast_notice( serverPointer, string.format( ": %s killed %s!",
+            get_player_scored_name( killer ),
+            get_player_scored_name( victim ) ) )
+    else
+        broadcast_notice( serverPointer, string.format( ": %s commmitted suicide.",
+            get_player_scored_name( killer ) ) )
+    end
+end
+
+count_crate_kill = function( killer, crate )
+    local weapon = crate.contents
+    broadcast_notice( serverPointer,
+                      string.format( ": %s destroyed a crate containing %s!",
+                      get_player_scored_name( killer ),
+                      weapon.name ) )
+end
+
+get_player_scored_name = function( player )
+    return string.format( "%s [%s]", player.name, get_player_score( player ) )
+end
+
+get_player_score = function( player )
+    local kdr = nil
+    local acc = nil
+    if player.deaths > 0 then
+        kdr = string.format( "K/D %.3f", player.kills / player.deaths )
+    end
+    if player.times_fired > 0 then
+        local hits_per_k = player.kills * 1000 / player.times_fired
+        acc = string.format( "accuracy %d", hits_per_k )
+    end
+    local rv = string.format( "kills %d, deaths %d", player.kills, player.deaths)
+    if kdr then rv = rv .. ", " .. kdr end
+    if acc then rv = rv .. ", " .. acc end
     return rv
 end
 
