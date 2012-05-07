@@ -2,6 +2,11 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include <stdbool.h>
+#include <stdint.h>
+
+#include <netinet/in.h>
+
 #define PORT            8080
 #define MAX_CLIENTS     8
 #define NUM_CHANNELS    2
@@ -49,6 +54,59 @@ inline void set_land_at(char *land, int x, int y, char to)
     if (x < 0 || x >= LAND_WIDTH || y < 0 || y >= LAND_HEIGHT)
         return;
     land[y * LAND_WIDTH + x] = to;
+}
+
+static inline void write8(char *buf, size_t *pos, uint8_t val)
+{
+    *(char *)(&buf[*pos]) = val;
+    (*pos) += 1;
+}
+
+static inline void write16(char *buf, size_t *pos, uint16_t val)
+{
+    *(uint16_t *)(&buf[*pos]) = htons(val);
+    (*pos) += 2;
+}
+
+static inline void write32(char *buf, size_t *pos, uint32_t val)
+{
+    *(uint32_t *)(&buf[*pos]) = htonl(val);
+    (*pos) += 4;
+}
+
+static inline uint8_t read8(char *buf, size_t *pos)
+{
+    uint8_t val = *(char *)(&buf[*pos]);
+    (*pos) += 1;
+    return val;
+}
+
+static inline uint16_t read16(char *buf, size_t *pos)
+{
+    uint16_t val = ntohs(*(uint16_t *)(&buf[*pos]));
+    (*pos) += 2;
+    return val;
+}
+
+static inline uint32_t read32(char *buf, size_t *pos)
+{
+    uint32_t val = ntohl(*(uint32_t *)(&buf[*pos]));
+    (*pos) += 4;
+    return val;
+}
+
+static inline void build_chunk(void *buf, size_t *pos)
+{
+    write8(buf, pos, 'M');
+    write8(buf, pos, 'O');
+    write8(buf, pos, 'A');
+    write8(buf, pos, 'G');
+}
+
+static inline void build_land_chunk(void *buf, size_t *pos)
+{
+    build_chunk(buf, pos);
+    write8(buf, pos, LAND_CHUNK);
 }
 
 #endif
