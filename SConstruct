@@ -1,17 +1,26 @@
-import os
+import os, glob
+
 env = Environment(ENV = {'PATH' : os.environ['PATH']})
 
 env = Environment(CPPPATH='src')
-env['FRAMEWORKS'] = ['OpenGL', 'Foundation', 'Cocoa'] 
+env['FRAMEWORKS'] = ['OpenGL', 'Foundation', 'Cocoa']
 
-flags = '-Wall -pedantic -g'
-libs = ['SDL','SDL_net', 'SDL_ttf','moag']
+flags = '-Wall -pedantic -g -std=c99'
 
-Library('moag', Glob('moag*.cpp'), CPPFLAGS=flags)
+client_libs = ['SDL', 'SDL_ttf', 'enet']
+client_src = glob.glob('*.c')
+client_src.remove('server.c')
+
+server_libs = ['enet']
+server_src = glob.glob('*.c')
+server_src.remove('client.c')
+
 
 env.Append(CPPPATH = ['/opt/local/include/'])
-print env['CPPPATH']
 
-Program('client', ['client.cpp'], LIBS=libs, FRAMEWORKS=env['FRAMEWORKS'], LIBPATH='.', CPPPATH=env['CPPPATH'], CPPFLAGS=flags)
-Program('server', ['server.cpp'], LIBS=libs, FRAMEWORKS=env['FRAMEWORKS'], LIBPATH='.', CPPPATH=env['CPPPATH'], CPPFLAGS=flags)
+Program('client', client_src, LIBS=client_libs, FRAMEWORKS=env['FRAMEWORKS'],
+        LIBPATH='.', CPPPATH=env['CPPPATH'], CPPFLAGS=flags)
+
+Program('server', server_src, LIBS=server_libs, FRAMEWORKS=env['FRAMEWORKS'],
+        LIBPATH='.', CPPPATH=env['CPPPATH'], CPPFLAGS=flags)
 

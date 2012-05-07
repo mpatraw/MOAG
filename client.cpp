@@ -211,7 +211,7 @@ void draw() {
             int w, h;
             moag::GetStringSize(tanks[i].name, &w, &h);
             pushRedraw(tanks[i].x - (w/2),tanks[i].y - 36,w,h);
-            
+
             tanks[i].lastx=tanks[i].x;
             tanks[i].lasty=tanks[i].y;
         }
@@ -292,7 +292,7 @@ void update() {
         }
         return;
     }
-    
+
     if(moag::IsKeyPressed('t')){
         typingStr=moag::StartTextInput();
         return;
@@ -346,15 +346,15 @@ void client_update(moag::Connection arg)
             printf("Disconnected from server!\n");
             exit(0);
         }
-        
+
         char byte = moag::ChunkDequeue8();
-        
+
         switch(byte) {
         case LAND_CHUNK: {
             /*XXX DOESN'T WORK XXX
             int x,y,w,h;
             int xx, yy;
-            
+
             moag::ReceiveChunk(arg, 8);
             x = moag::ChunkDequeue16();
             y = moag::ChunkDequeue16();
@@ -364,7 +364,7 @@ void client_update(moag::Connection arg)
             if(h<0) h=0;
             if(x<0 || y<0 || x+w>WIDTH || y+h>HEIGHT)
                 break;
-            
+
             moag::ReceiveChunk(arg, w*h);
             for (yy = y; yy < h + y; ++yy)
                 for (xx = x; xx < w + x; ++xx)
@@ -395,7 +395,7 @@ void client_update(moag::Connection arg)
             short y = (short)moag::ChunkDequeue16();
             char angle = moag::ChunkDequeue8();
             char facingLeft=0;
-            
+
             if(id<0 || id>=MAX_CLIENTS)
                 break;
             if(angle<0){
@@ -415,17 +415,17 @@ void client_update(moag::Connection arg)
         } break;
         case BULLET_CHUNK: {
             undrawBullets();
-            
+
             moag::ReceiveChunk(arg, 2);
             numBullets = moag::ChunkDequeue16();
-            
+
             if(numBullets<=0)
                 break;
             if(numBullets>=MAX_BULLETS){ // error!
                 numBullets=0;
                 break;
             }
-            
+
             moag::ReceiveChunk(arg, numBullets*4);
             for (int i=0;i<numBullets;i++) {
                 bullets[i].x = moag::ChunkDequeue16();
@@ -520,20 +520,20 @@ int main(int argc, char *argv[])
         printf("Failed to start window\n");
         return 1;
     }
-    
+
     if (moag::SetFont("Nouveau_IBM.ttf", 12) == -1) {
         printf("Failed to open font\n");
         return 1;
     }
-    
+
     moag::SetClientCallback(client_update, moag::CB_CLIENT_UPDATE);
     moag::SetLoopCallback(draw, moag::CB_DRAW);
     moag::SetLoopCallback(update, moag::CB_UPDATE);
 
     initClient();
-    
+
     moag::MainLoop();
-    
+
     moag::CloseWindow();
     moag::CloseClient();
     return 0;

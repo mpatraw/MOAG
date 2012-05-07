@@ -67,7 +67,7 @@ void spawnTank(int id){
 void sendChat(int to, int id, char cmd, const char* msg, unsigned char len){
     if(to<-1 || to>=MAX_CLIENTS || id<-1 || id>=MAX_CLIENTS || (id>=0 && !clients[id]))
         return;
-    
+
     // Prepare chunk.
     moag::ChunkEnqueue8(MSG_CHUNK);
     moag::ChunkEnqueue8(id);
@@ -75,7 +75,7 @@ void sendChat(int to, int id, char cmd, const char* msg, unsigned char len){
     moag::ChunkEnqueue8(len);
     for(int i=0;i<len;i++)
         moag::ChunkEnqueue8(msg[i]);
-    
+
     // Send chunk.
     if(to!=-1){
         if(clients[to] && moag::SendChunk(clients[to], -1, 1)==-1)
@@ -85,7 +85,7 @@ void sendChat(int to, int id, char cmd, const char* msg, unsigned char len){
             if(clients[i] && moag::SendChunk(clients[i], -1, 0)==-1)
                 disconnect_client(i);
     }
-    
+
     // Clear the queue buffer.
     moag::SendChunk(NULL, -1, 1);
 }
@@ -99,14 +99,14 @@ void sendLand(int to, int x, int y, int w, int h){
     if(y+h>HEIGHT) h=HEIGHT-y;
     if(w<=0 || h<=0 || x+w>WIDTH || y+h>HEIGHT)
         return;
-    
+
     // Prepare chunk.
     moag::ChunkEnqueue8(LAND_CHUNK);
     moag::ChunkEnqueue16(x);
     moag::ChunkEnqueue16(y);
     moag::ChunkEnqueue16(w);
     moag::ChunkEnqueue16(h);
-    
+
     int count = 0;
     for (int yy = y; yy < h + y; ++yy)
         for (int xx = x; xx < w + x; ++xx) {
@@ -124,7 +124,7 @@ void sendLand(int to, int x, int y, int w, int h){
             if(clients[i] && moag::SendChunk(clients[i], -1, 0)==-1)
                 disconnect_client(i);
     }
-    
+
     // Clear the queue buffer.
     moag::SendChunk(NULL, -1, 1);
 }
@@ -135,12 +135,12 @@ void sendTank(int to, int id) {
 
     moag::ChunkEnqueue8(TANK_CHUNK);
     moag::ChunkEnqueue8(id);
-    
+
     if(!tanks[id].active){
         tanks[id].x=-1;
         tanks[id].y=-1;
     }
-    
+
     moag::ChunkEnqueue16(tanks[id].x);
     moag::ChunkEnqueue16(tanks[id].y);
     if (tanks[id].facingLeft)
@@ -156,7 +156,7 @@ void sendTank(int to, int id) {
             if (clients[i] && moag::SendChunk(clients[i], -1, 0) == -1)
                 disconnect_client(i);
     }
-    
+
     // Clear the queue buffer.
     moag::SendChunk(NULL, -1, 1);
 }
@@ -166,7 +166,7 @@ void sendBullets() {
     for (int i = 0; i < MAX_BULLETS; i++)
         if (bullets[i].active)
             count++;
-    
+
     // Queue the bytes.
     moag::ChunkEnqueue8(BULLET_CHUNK);
     moag::ChunkEnqueue16(count);
@@ -181,7 +181,7 @@ void sendBullets() {
     for (int i = 0; i < MAX_CLIENTS; i++)
         if (clients[i] && moag::SendChunk(clients[i], -1, 0) == -1)
             disconnect_client(i);
-    
+
     // Clear the queue.
     moag::SendChunk(NULL, -1, 1);
 }
@@ -194,7 +194,7 @@ void sendCrate() {
     for (int i = 0; i < MAX_CLIENTS; i++)
         if (clients[i] && moag::SendChunk(clients[i], -1, 0) == -1)
             disconnect_client(i);
-    
+
     moag::SendChunk(NULL, -1, 1);
 }
 
@@ -308,7 +308,7 @@ void explode(int x, int y, int rad, char type){
         for(int i=0;i<MAX_CLIENTS;i++)
             if(tanks[i].active && sqr(tanks[i].x-x)+sqr(tanks[i].y-3-y)<sqr(rad+4))
                 killTank(i);
-            
+
     sendLand(-1,x-rad,y-rad,rad*2,rad*2);
 }
 
@@ -690,7 +690,7 @@ void initGame(){
         bullets[i].active=0;
     crate.x=0;
     crate.y=0;
-        
+
     for (int y = 0; y < HEIGHT; ++y)
         for (int x = 0; x < WIDTH; ++x){
             if (y < HEIGHT / 3)
@@ -720,12 +720,12 @@ void client_connect(moag::Connection arg) {
             moag::Disconnect(arg);
             return;
         }
-    
+
     clients[i] = arg;
     numClients += 1;
     printf("Client connected!\n");
     spawnClient(i);
-    
+
     fflush(stdout);
 }
 
@@ -759,7 +759,7 @@ void server_update(moag::Connection arg) {
                 disconnect_client(i);
                 continue;
             }
-            
+
             char byte = moag::ChunkDequeue8();
 
             switch(byte){
@@ -803,16 +803,16 @@ int main(int argc, char *argv[])
         printf("Failed to start server\n");
         return 1;
     }
-    
+
     moag::SetServerCallback(client_connect, moag::CB_CLIENT_CONNECT);
     moag::SetServerCallback(server_update, moag::CB_SERVER_UPDATE);
-    
+
     initGame();
     printf("Started server\n");
 
     while (1)
         moag::ServerTick();
-    
+
     moag::CloseServer();
 
     return 0;
