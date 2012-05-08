@@ -630,7 +630,11 @@ int main(int argc, char *argv[])
             }
         }
 
-        usleep(20000);
+        struct timespec t;
+        t.tv_sec = 0;
+        t.tv_nsec = 10000000;
+        while (nanosleep(&t, &t) == -1)
+            continue;
 
         step_game();
     }

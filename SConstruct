@@ -1,9 +1,9 @@
 import os, glob
 
-env = Environment(ENV={'PATH' : os.environ['PATH']}, CPPPATH='src')
+env = Environment(ENV={'PATH' : os.environ['PATH']})
 env['FRAMEWORKS'] = ['OpenGL', 'Foundation', 'Cocoa']
 env.Append(CPPPATH = ['/opt/local/include/'])
-env.Append(CCFLAGS='-Wall -pedantic -g -std=c99')
+env.Append(CCFLAGS='-Wall -pedantic -g -std=c99 -D_POSIX_C_SOURCE=199309L')
 env.Append(LIBPATH='.')
 
 env.Object(glob.glob('*.c'))

@@ -473,6 +473,8 @@ void init_sdl(void)
 
     SDL_EnableUNICODE(true);
     SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
+
+    SDL_WM_SetCaption("MOAG", NULL);
 }
 
 void uninit_sdl(void)
