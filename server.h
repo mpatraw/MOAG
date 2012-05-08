@@ -74,7 +74,7 @@ static inline void broadcast_tank_chunk(struct tank *tanks, int id)
     else
         write8(buffer, &pos, tanks[id].angle);
 
-    broadcast_chunk(buffer, pos, true);
+    broadcast_chunk(buffer, pos, false);
 }
 
 static inline void broadcast_bullets(struct bullet *bullets)
@@ -96,7 +96,7 @@ static inline void broadcast_bullets(struct bullet *bullets)
             write16(buffer, &pos, bullets[i].y);
         }
 
-    broadcast_chunk(buffer, pos, true);
+    broadcast_chunk(buffer, pos, false);
 }
 
 static inline void broadcast_crate_chunk(struct crate crate)
@@ -108,7 +108,7 @@ static inline void broadcast_crate_chunk(struct crate crate)
     write16(buffer, &pos, crate.x);
     write16(buffer, &pos, crate.y);
 
-    broadcast_chunk(buffer, pos, true);
+    broadcast_chunk(buffer, pos, false);
 }
 
 
