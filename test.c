@@ -4,7 +4,7 @@
 
 #include "common.h"
 
-void print_buf(char *buf, size_t len)
+void print_buf(unsigned char *buf, size_t len)
 {
     for (size_t i = 0; i < len; ++i) {
         printf("%d ", buf[i]);
@@ -14,7 +14,7 @@ void print_buf(char *buf, size_t len)
 
 int main(void)
 {
-    char buf[256] = {0};
+    unsigned char buf[256] = {0};
     size_t pos = 0;
 
     print_buf(buf, pos);

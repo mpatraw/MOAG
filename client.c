@@ -33,11 +33,11 @@ const char cratesprite[9][10] = {
 ENetHost *g_client = NULL;
 ENetPeer *g_peer = NULL;
 
-struct chatline chatlines[CHAT_LINES];
-struct tank tanks[MAX_CLIENTS];
-struct bullet bullets[MAX_BULLETS];
-struct crate crate;
-char land[LAND_WIDTH * LAND_HEIGHT];
+struct chatline chatlines[CHAT_LINES] = {{0}};
+struct tank tanks[MAX_CLIENTS] = {{0}};
+struct bullet bullets[MAX_BULLETS] = {{0}};
+struct crate crate = {0};
+char land[LAND_WIDTH * LAND_HEIGHT] = {0};
 
 char *typing_str = NULL;
 bool typing_done = false;
@@ -180,23 +180,133 @@ void draw(void)
     }*/
 }
 
-void initClient() {
-    for(int i=0;i<CHAT_LINES;i++)
-        chatlines[i].str=NULL;
-    for(int i=0;i<MAX_CLIENTS;i++){
-        tanks[i].active=0;
+void on_receive(ENetEvent *ev)
+{
+    size_t pos = 0;
+    unsigned char *packet = ev->packet->data;
+
+    char type = read8(packet, &pos);
+
+    switch(type) {
+    case LAND_CHUNK: {
+        int x = read16(packet, &pos);
+        int y = read16(packet, &pos);
+        int w = read16(packet, &pos);
+        int h = read16(packet, &pos);
+        if(w<0) w=0;
+        if(h<0) h=0;
+        if(x<0 || y<0 || x+w>LAND_WIDTH || y+h>LAND_HEIGHT)
+            break;
+        for (int yy = y; yy < h + y; ++yy)
+            for (int xx = x; xx < w + x; ++xx)
+                set_land_at(land, xx, yy, read8(packet, &pos));
+        break;
     }
-    crate.x=0;
-    crate.y=0;
-    kleft=0;
-    kright=0;
-    kup=0;
-    kdown=0;
-    kfire=0;
+    case TANK_CHUNK: {
+        int id = read8(packet, &pos);
+        short x = read16(packet, &pos);
+        short y = read16(packet, &pos);
+        char angle = read8(packet, &pos);
+        char facingLeft=0;
+
+        if(id<0 || id>=MAX_CLIENTS)
+            break;
+        if(angle<0){
+            angle=-angle;
+            facingLeft=1;
+        }
+        if(x==-1 && y==-1){
+            tanks[id].active=0;
+            break;
+        }
+        tanks[id].active=1;
+        tanks[id].x=x;
+        tanks[id].y=y;
+        tanks[id].angle=angle;
+        tanks[id].facingLeft=facingLeft;
+        break;
+    }
+    case BULLET_CHUNK: {
+        num_bullets = read16(packet, &pos);
+
+        if(num_bullets<=0)
+            break;
+        if(num_bullets>=MAX_BULLETS){ // error!
+            num_bullets=0;
+            break;
+        }
+
+        for (int i=0;i<num_bullets;i++) {
+            bullets[i].x = read16(packet, &pos);
+            bullets[i].y = read16(packet, &pos);
+        }
+        break;
+    }
+    case MSG_CHUNK: {
+        int id = read8(packet, &pos);
+        char cmd = read8(packet, &pos);
+        unsigned char len = read8(packet, &pos);
+        switch(cmd){
+        case 1: { //chat message
+            int namelen=strlen(tanks[id].name);
+            int linelen=namelen+len+4;
+            char* line=malloc(linelen);
+            line[0]='<';
+            for(int i=0;i<namelen;i++)
+                line[i+1]=tanks[id].name[i];
+            line[namelen+1]='>';
+            line[namelen+2]=' ';
+            for (int i = 0; i < len; ++i)
+                line[namelen + 3 + i] = read8(packet, &pos);
+            line[linelen-1]='\0';
+            add_chat_line(line);
+            break;
+        }
+        case 2: { //name change
+            if(len<1 || len>15){ // error!
+                break;
+            }
+            for (int i = 0; i < len; ++i)
+                tanks[id].name[i] = read8(packet, &pos);
+            tanks[id].name[len]='\0';
+            break;
+        }
+        case 3: { //server notice
+            char* line=malloc(len+1);
+            for (int i = 0; i < len; ++i)
+                line[i] = read8(packet, &pos);
+            line[len]='\0';
+            add_chat_line(line);
+            break;
+        }
+        default:
+            break;
+        }
+        break;
+    }
+    case CRATE_CHUNK: {
+        crate.x=read16(packet, &pos);
+        crate.y=read16(packet, &pos);
+        break;
+    }
+    default:
+        printf("unknown type: %d\n",type);
+        break;
+    }
+
+    /*if(typingDone){
+        unsigned char len=strlen(typingStr);
+        char buf[2]={11,len};
+        moag::SendRaw(arg, buf, 2);
+        moag::SendRaw(arg, typingStr, len);
+        typingDone=false;
+        typingStr=NULL;
+    }*/
 }
 
 int main(int argc, char *argv[])
 {
+
     if (argc < 2) {
         printf("usage:  %s [address]\n", argv[0]);
         return EXIT_SUCCESS;
@@ -210,10 +320,66 @@ int main(int argc, char *argv[])
     bool running = true;
 
     while (running) {
+        ENetPacket *packet;
+        size_t pos;
+
         while (SDL_PollEvent(&sdl_ev)) {
             switch (sdl_ev.type) {
             case SDL_QUIT:
                 running = false;
+                break;
+
+            case SDL_KEYDOWN:
+                packet = enet_packet_create(NULL, 1, ENET_PACKET_FLAG_RELIABLE);
+                pos = 0;
+                if (sdl_ev.key.keysym.sym == SDLK_LEFT) {
+                    write8(packet->data, &pos, 1);
+                    kleft = true;
+                }
+                if (sdl_ev.key.keysym.sym == SDLK_RIGHT) {
+                    write8(packet->data, &pos, 3);
+                    kright = true;
+                }
+                if (sdl_ev.key.keysym.sym == SDLK_UP) {
+                    write8(packet->data, &pos, 5);
+                    kup = true;
+                }
+                if (sdl_ev.key.keysym.sym == SDLK_DOWN) {
+                    write8(packet->data, &pos, 7);
+                    kdown = true;
+                }
+                if (sdl_ev.key.keysym.sym == ' ') {
+                    write8(packet->data, &pos, 9);
+                    kfire = true;
+                }
+                enet_peer_send(g_peer, 0, packet);
+                break;
+
+            case SDL_KEYUP:
+                packet = enet_packet_create(NULL, 1, ENET_PACKET_FLAG_RELIABLE);
+                pos = 0;
+                if (sdl_ev.key.keysym.sym == SDLK_LEFT) {
+                    write8(packet->data, &pos, 2);
+                    kleft = false;
+                }
+                if (sdl_ev.key.keysym.sym == SDLK_RIGHT) {
+                    write8(packet->data, &pos, 4);
+                    kright = false;
+                }
+                if (sdl_ev.key.keysym.sym == SDLK_UP) {
+                    write8(packet->data, &pos, 6);
+                    kup = false;
+                }
+                if (sdl_ev.key.keysym.sym == SDLK_DOWN) {
+                    write8(packet->data, &pos, 8);
+                    kdown = false;
+                }
+                if (sdl_ev.key.keysym.sym == ' ') {
+                    write8(packet->data, &pos, 10);
+                    kfire = false;
+                }
+                enet_peer_send(g_peer, 0, packet);
+
                 break;
 
             default:
@@ -239,8 +405,7 @@ int main(int argc, char *argv[])
         }
 
         SDL_FillRect(SDL_GetVideoSurface(), NULL, 0);
-        draw_tank(50, 50, 45, true);
-        draw_crate(40, 40);
+        draw();
         SDL_Flip(SDL_GetVideoSurface());
     }
 
@@ -249,6 +414,7 @@ int main(int argc, char *argv[])
     while (enet_host_service(g_client, &enet_ev, 3000)) {
         switch (enet_ev.type) {
         case ENET_EVENT_TYPE_RECEIVE:
+            on_receive(&enet_ev);
             enet_packet_destroy(enet_ev.packet);
             break;
 
@@ -307,6 +473,9 @@ void init_sdl(void)
     SDL_Surface *s = SDL_SetVideoMode(LAND_WIDTH, LAND_HEIGHT, 32, SDL_DOUBLEBUF);
     if (!s)
         die("%s\n", SDL_GetError());
+
+    SDL_EnableUNICODE(true);
+    SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
 }
 
 void uninit_sdl(void)
