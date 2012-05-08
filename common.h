@@ -113,6 +113,6 @@ static inline uint32_t read32(unsigned char *buf, size_t *pos)
     return val;
 }
 
-int die(const char *fmt, ...);
+void die(const char *fmt, ...);
 
 #endif
