@@ -402,6 +402,38 @@ int main(int argc, char *argv[])
             }
         }
 
+        /*if(typingStr && !typingDone){
+            if(moag::IsKeyPressed(SDLK_ESCAPE)
+                || moag::IsKeyPressed(SDLK_LEFT)
+                || moag::IsKeyPressed(SDLK_RIGHT)
+                || moag::IsKeyPressed(SDLK_UP)
+                || moag::IsKeyPressed(SDLK_DOWN)){
+                typingStr=NULL;
+                moag::StopTextInput();
+                return;
+            }
+            if(moag::IsKeyPressed(SDLK_RETURN)){
+                if(typingStr[0]=='\0'){
+                    typingStr=NULL;
+                    moag::StopTextInput();
+                    return;
+                }
+                typingDone=true;
+                moag::StopTextInput();
+                return;
+            }
+            return;
+        }
+
+        if(moag::IsKeyPressed('t')){
+            typingStr=moag::StartTextInput();
+            return;
+        }
+        if(moag::IsKeyPressed('/')){
+            typingStr=moag::StartTextCmdInput();
+            return;
+        }*/
+
         SDL_FillRect(SDL_GetVideoSurface(), NULL, 0);
         draw();
         SDL_Flip(SDL_GetVideoSurface());

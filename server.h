@@ -25,7 +25,7 @@ static inline void broadcast_chunk(unsigned char *buf, size_t len, bool reliable
 
 static inline void broadcast_byte(unsigned char c)
 {
-    broadcast_chunk(&c, 1, true);
+    broadcast_chunk(&c, 0, true);
 }
 
 static inline void broadcast_land_chunk(char *land, int x, int y, int w, int h)
