@@ -27,7 +27,7 @@
 enum {LAND_CHUNK, TANK_CHUNK, BULLET_CHUNK, MSG_CHUNK, CRATE_CHUNK};
 
 struct tank {
-    int x, y, lastx, lasty;
+    int x, y;
     int angle, power;
     int spawntimer;
     int ladder;

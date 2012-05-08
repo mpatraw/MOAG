@@ -125,6 +125,76 @@ void draw_bullets(void)
     }
 }
 
+void del_chat_line(void)
+{
+    if(chatlines[0].str && chatlines[0].expire<SDL_GetTicks()){
+        free(chatlines[0].str);
+        for(int i=0;i<CHAT_LINES-1;i++){
+            chatlines[i].expire=chatlines[i+1].expire;
+            chatlines[i].str=chatlines[i+1].str;
+        }
+        chatlines[CHAT_LINES-1].str=NULL;
+    }
+}
+
+void add_chat_line(char* str)
+{
+    int i=0;
+    while(chatlines[i].str)
+        if(++i>=CHAT_LINES){
+            chatlines[0].expire=0;
+            del_chat_line();
+            i=CHAT_LINES-1;
+            break;
+        }
+    chatlines[i].str=str;
+    chatlines[i].expire=SDL_GetTicks()+CHAT_EXPIRETIME;
+}
+
+void draw(void)
+{
+    for(int i=0;i<MAX_CLIENTS;i++)
+        if(tanks[i].active)
+            draw_tank(tanks[i].x-9,tanks[i].y-13,tanks[i].angle,tanks[i].facingLeft);
+            /*moag::SetStringCentered(tanks[i].x,tanks[i].y-36,tanks[i].name,240,240,240);
+            int w, h;
+            moag::GetStringSize(tanks[i].name, &w, &h);*/
+    if(crate.x || crate.y)
+        draw_crate(crate.x-4,crate.y-8);
+    draw_bullets();
+    del_chat_line();
+    /*for(int i=0;i<CHAT_LINES;i++)
+        if(chatlines[i].str)
+        {
+            moag::SetString(4,4+12*i,chatlines[i].str,255,255,255);
+            int w, h;
+            moag::GetStringSize(chatlines[i].str, &w, &h);
+        }*/
+    /*if(typingStr){
+        moag::SetBlock(6,8+12*(CHAT_LINES),4,4,210,210,210);
+        pushRedraw(6,8+12*(CHAT_LINES),4,4);
+        moag::SetString(16,4+12*(CHAT_LINES),typingStr,210,210,210);
+        int w, h;
+        moag::GetStringSize(typingStr, &w, &h);
+        pushRedraw(16,4+12*(CHAT_LINES),w,h);
+    }*/
+}
+
+void initClient() {
+    for(int i=0;i<CHAT_LINES;i++)
+        chatlines[i].str=NULL;
+    for(int i=0;i<MAX_CLIENTS;i++){
+        tanks[i].active=0;
+    }
+    crate.x=0;
+    crate.y=0;
+    kleft=0;
+    kright=0;
+    kup=0;
+    kdown=0;
+    kfire=0;
+}
+
 int main(int argc, char *argv[])
 {
     if (argc < 2) {
