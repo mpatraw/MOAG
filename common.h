@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <enet/enet.h>
 #include <netinet/in.h>
@@ -24,7 +25,16 @@
 #define LAND_WIDTH      800
 #define LAND_HEIGHT     600
 
-enum {LAND_CHUNK, TANK_CHUNK, BULLET_CHUNK, MSG_CHUNK, CRATE_CHUNK};
+enum {
+    /* Client -> Server */
+    KLEFT_PRESSED_CHUNK, KLEFT_RELEASED_CHUNK,
+    KRIGHT_PRESSED_CHUNK, KRIGHT_RELEASED_CHUNK,
+    KUP_PRESSED_CHUNK, KUP_RELEASED_CHUNK,
+    KDOWN_PRESSED_CHUNK, KDOWN_RELEASED_CHUNK,
+    KFIRE_PRESSED_CHUNK, KFIRE_RELEASED_CHUNK,
+    /* Server -> Client */
+    LAND_CHUNK, TANK_CHUNK, BULLET_CHUNK, MSG_CHUNK, CRATE_CHUNK
+};
 
 struct tank {
     int x, y;
@@ -101,11 +111,6 @@ static inline uint32_t read32(unsigned char *buf, size_t *pos)
     uint32_t val = ntohl(*(uint32_t *)(&buf[*pos]));
     (*pos) += 4;
     return val;
-}
-
-static inline void build_land_chunk(unsigned char *buf, size_t *pos)
-{
-    write8(buf, pos, LAND_CHUNK);
 }
 
 int die(const char *fmt, ...);

@@ -1,31 +1,17 @@
 import os, glob
 
-env = Environment(ENV = {'PATH' : os.environ['PATH']})
-
-env = Environment(CPPPATH='src')
+env = Environment(ENV={'PATH' : os.environ['PATH']}, CPPPATH='src')
 env['FRAMEWORKS'] = ['OpenGL', 'Foundation', 'Cocoa']
-
-flags = '-Wall -pedantic -g -std=c99'
-
-client_libs = ['SDL', 'SDL_ttf', 'enet']
-client_src = glob.glob('*.c')
-client_src.remove('server.c')
-client_src.remove('test.c')
-
-server_libs = ['enet']
-server_src = glob.glob('*.c')
-server_src.remove('common.c')
-server_src.remove('client.c')
-server_src.remove('test.c')
-
 env.Append(CPPPATH = ['/opt/local/include/'])
+env.Append(CCFLAGS='-Wall -pedantic -g -std=c99')
+env.Append(LIBPATH='.')
 
-Program('client', client_src, LIBS=client_libs, FRAMEWORKS=env['FRAMEWORKS'],
-        LIBPATH='.', CPPPATH=env['CPPPATH'], CPPFLAGS=flags)
+env.Object(glob.glob('*.c'))
 
-Program('server', server_src, LIBS=server_libs, FRAMEWORKS=env['FRAMEWORKS'],
-        LIBPATH='.', CPPPATH=env['CPPPATH'], CPPFLAGS=flags)
+server_libs = ['enet', 'm']
+client_libs = ['SDL', 'SDL_ttf', 'enet', 'm']
 
-Program('test', ['test.c'], FRAMEWORKS=env['FRAMEWORKS'],
-        CPPPATH=env['CPPPATH'], CPPFLAGS=flags)
+env.Program('client', ['client.o', 'common.o'], LIBS=client_libs)
+env.Program('server', ['server.o', 'common.o'], LIBS=server_libs)
+env.Program('test', ['test.o', 'common.o'])
 

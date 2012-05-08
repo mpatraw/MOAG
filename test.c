@@ -19,8 +19,6 @@ int main(void)
 
     print_buf(buf, pos);
 
-    build_land_chunk(buf, &pos);
-
     print_buf(buf, pos);
 
     pos = 0;

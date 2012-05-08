@@ -163,6 +163,13 @@ void draw(void)
         draw_crate(crate.x-4,crate.y-8);
     draw_bullets();
     del_chat_line();
+
+    for (int x = 0; x < LAND_WIDTH; ++x) {
+        for (int y = 0; y < LAND_HEIGHT; ++y) {
+            if (get_land_at(land, x, y))
+                set_pixel(x, y, 240, 240, 240);
+        }
+    }
     /*for(int i=0;i<CHAT_LINES;i++)
         if(chatlines[i].str)
         {
@@ -320,9 +327,6 @@ int main(int argc, char *argv[])
     bool running = true;
 
     while (running) {
-        ENetPacket *packet;
-        size_t pos;
-
         while (SDL_PollEvent(&sdl_ev)) {
             switch (sdl_ev.type) {
             case SDL_QUIT:
@@ -330,56 +334,49 @@ int main(int argc, char *argv[])
                 break;
 
             case SDL_KEYDOWN:
-                packet = enet_packet_create(NULL, 1, ENET_PACKET_FLAG_RELIABLE);
-                pos = 0;
                 if (sdl_ev.key.keysym.sym == SDLK_LEFT) {
-                    write8(packet->data, &pos, 1);
+                    send_byte(KLEFT_PRESSED_CHUNK);
                     kleft = true;
                 }
                 if (sdl_ev.key.keysym.sym == SDLK_RIGHT) {
-                    write8(packet->data, &pos, 3);
+                    send_byte(KRIGHT_PRESSED_CHUNK);
                     kright = true;
                 }
                 if (sdl_ev.key.keysym.sym == SDLK_UP) {
-                    write8(packet->data, &pos, 5);
+                    send_byte(KUP_PRESSED_CHUNK);
                     kup = true;
                 }
                 if (sdl_ev.key.keysym.sym == SDLK_DOWN) {
-                    write8(packet->data, &pos, 7);
+                    send_byte(KDOWN_PRESSED_CHUNK);
                     kdown = true;
                 }
                 if (sdl_ev.key.keysym.sym == ' ') {
-                    write8(packet->data, &pos, 9);
+                    send_byte(KFIRE_PRESSED_CHUNK);
                     kfire = true;
                 }
-                enet_peer_send(g_peer, 0, packet);
                 break;
 
             case SDL_KEYUP:
-                packet = enet_packet_create(NULL, 1, ENET_PACKET_FLAG_RELIABLE);
-                pos = 0;
                 if (sdl_ev.key.keysym.sym == SDLK_LEFT) {
-                    write8(packet->data, &pos, 2);
+                    send_byte(KLEFT_RELEASED_CHUNK);
                     kleft = false;
                 }
                 if (sdl_ev.key.keysym.sym == SDLK_RIGHT) {
-                    write8(packet->data, &pos, 4);
+                    send_byte(KRIGHT_RELEASED_CHUNK);
                     kright = false;
                 }
                 if (sdl_ev.key.keysym.sym == SDLK_UP) {
-                    write8(packet->data, &pos, 6);
+                    send_byte(KUP_RELEASED_CHUNK);
                     kup = false;
                 }
                 if (sdl_ev.key.keysym.sym == SDLK_DOWN) {
-                    write8(packet->data, &pos, 8);
+                    send_byte(KDOWN_RELEASED_CHUNK);
                     kdown = false;
                 }
                 if (sdl_ev.key.keysym.sym == ' ') {
-                    write8(packet->data, &pos, 10);
+                    send_byte(KFIRE_RELEASED_CHUNK);
                     kfire = false;
                 }
-                enet_peer_send(g_peer, 0, packet);
-
                 break;
 
             default:
@@ -396,6 +393,7 @@ int main(int argc, char *argv[])
                 break;
 
             case ENET_EVENT_TYPE_RECEIVE:
+                on_receive(&enet_ev);
                 enet_packet_destroy(enet_ev.packet);
                 break;
 
@@ -414,7 +412,6 @@ int main(int argc, char *argv[])
     while (enet_host_service(g_client, &enet_ev, 3000)) {
         switch (enet_ev.type) {
         case ENET_EVENT_TYPE_RECEIVE:
-            on_receive(&enet_ev);
             enet_packet_destroy(enet_ev.packet);
             break;
 
