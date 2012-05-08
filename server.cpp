@@ -2,24 +2,6 @@
 #include <unistd.h>
 #include <math.h>
 
-const int MAX_CLIENTS = 8;
-const int MAX_BULLETS = 256;
-const float GRAVITY = 0.1;
-const int BOUNCER_BOUNCES = 11;
-const int TUNNELER_TUNNELINGS = 20;
-const int RESPAWN_TIME = 40;
-const int LADDER_TIME = 60;
-const char LADDER_LENGTH = 64;
-
-const int WIDTH  = 800;
-const int HEIGHT = 600;
-
-const int LAND_CHUNK   = 1;
-const int TANK_CHUNK   = 2;
-const int BULLET_CHUNK = 3;
-const int MSG_CHUNK    = 4;
-const int CRATE_CHUNK  = 5;
-
 void disconnect_client(int);
 
 moag::Connection clients[MAX_CLIENTS] = {};

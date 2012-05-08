@@ -2,16 +2,24 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+
+#include <math.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 
+#include <enet/enet.h>
 #include <netinet/in.h>
+
+#define M_PI            3.14159
 
 #define PORT            8080
 #define MAX_CLIENTS     8
 #define NUM_CHANNELS    2
 
-/* 5 seconds. */
+#define MAX_BULLETS     256
 
 #define LAND_WIDTH      800
 #define LAND_HEIGHT     600
@@ -23,11 +31,11 @@ struct tank {
     int angle, power;
     int spawntimer;
     int ladder;
-    char active;
+    bool active;
     char name[16];
     char bullet;
-    char facingLeft;
-    char kleft, kright, kup, kdown, kfire;
+    bool facingLeft;
+    bool kleft, kright, kup, kdown, kfire;
 };
 
 struct bullet {
@@ -108,5 +116,7 @@ static inline void build_land_chunk(void *buf, size_t *pos)
     build_chunk(buf, pos);
     write8(buf, pos, LAND_CHUNK);
 }
+
+int die(const char *fmt, ...);
 
 #endif

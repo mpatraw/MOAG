@@ -3,58 +3,11 @@
 #include <math.h>
 #include <string.h>
 
-const int MAX_CLIENTS = 8;
-const int MAX_BULLETS = 256;
-const int BUFLEN = 256;
-const int CHAT_LINES = 7;
-const int CHAT_EXPIRETIME = 18000;
-
-const int WIDTH = 800;
-const int HEIGHT = 600;
-
-const int LAND_CHUNK   = 1;
-const int TANK_CHUNK   = 2;
-const int BULLET_CHUNK = 3;
-const int MSG_CHUNK    = 4;
-const int CRATE_CHUNK  = 5;
-
-struct BulletPos{
-    Uint16 x,y;
-};
-
-struct ChatLine{
-    int expire;
-    char* str;
-};
-
 struct Redraw{
     int x,y,w,h;
     Redraw* next;
     Redraw(int _x, int _y, int _w, int _h) : x(_x),y(_y),w(_w),h(_h),next(NULL) {}
 };
-
-ChatLine chatlines[CHAT_LINES];
-char* typingStr=NULL;
-bool typingDone=false;
-Redraw redraws(0,0,0,0);
-char land[WIDTH*HEIGHT];
-Tank tanks[MAX_CLIENTS];
-Tank keys;
-BulletPos bullets[MAX_BULLETS];
-int numBullets=0;
-Crate crate;
-
-inline char landAt(int x, int y){
-    if(x<0 || x>=WIDTH || y<0 || y>=HEIGHT)
-        return -1;
-    return land[y*WIDTH+x];
-}
-
-inline void setLandAt(int x, int y, char to) {
-    if(x<0 || x>=WIDTH || y<0 || y>=HEIGHT)
-        return;
-    land[y*WIDTH+x] = to;
-}
 
 void redrawLand(int x, int y, int w, int h){
     if(x<0){ w+=x; x=0; }
@@ -87,92 +40,6 @@ void redraw(){
         delete q;
     }
     redraws.next=NULL;
-}
-
-const char tanksprite[14][19]={
-"..................",
-"..................",
-"..................",
-"..................",
-"..................",
-"........xx........",
-".......xxxx.......",
-"......xxxxxx......",
-"...xxxxxxxxxxxx...",
-".xxxxxxxxxxxxxxxx.",
-"xxxxxxxxxxxxxxxxxx",
-"xxx.xx.xx.xx.xx.xx",
-".x..x..x..x..x..x.",
-"..xxxxxxxxxxxxxx..",
-};
-
-const char cratesprite[9][10]={
-".xxxxxxx.",
-"xx.....xx",
-"x.x...x.x",
-"x..x.x..x",
-"x...x...x",
-"x..x.x..x",
-"x.x...x.x",
-"xx.....xx",
-".xxxxxxx.",
-};
-
-void drawTank(int x, int y, int turretangle, char facingLeft){
-    if(x<0 || x>WIDTH-18 || y<0 || y>HEIGHT-14)
-        return;
-    for(int iy=0;iy<14;iy++)
-    for(int ix=0;ix<18;ix++)
-        if(tanksprite[iy][ix]=='x')
-            moag::SetPixel(x+ix,y+iy,240,240,240);
-    if(turretangle==90)
-        turretangle=89;
-
-    float step=tanf((float)turretangle*M_PI/180.0);
-    int xlen=6.5*cosf((float)turretangle*M_PI/180.0);
-    float rise=0;
-    for(int ix=0;ix<=xlen;ix++){
-        int next=rise+step;
-        if(next>6) next=6;
-        for(int iy=-(int)rise;iy>=-next;iy--)
-            moag::SetPixel(x+(facingLeft?9-ix:8+ix),y+6+iy,240,240,240);
-        rise+=step;
-    }
-}
-
-void drawCrate(int x, int y){
-    if(x<0 || x>WIDTH-9 || y<0 || y>HEIGHT-9)
-        return;
-    for(int iy=0;iy<9;iy++)
-    for(int ix=0;ix<9;ix++)
-        if(cratesprite[iy][ix]=='x')
-            moag::SetPixel(x+ix,y+iy,240,240,240);
-    pushRedraw(x,y,9,9);
-}
-
-void drawBullets(){
-    for(int i=0;i<numBullets;i++){
-        if(bullets[i].x<1 || bullets[i].x>=WIDTH-1 || bullets[i].y<1 || bullets[i].y>=HEIGHT-1)
-            continue;
-        moag::SetPixel(bullets[i].x,bullets[i].y-1,255,255,255);
-        moag::SetPixel(bullets[i].x-1,bullets[i].y,255,255,255);
-        moag::SetPixel(bullets[i].x,  bullets[i].y,255,255,255);
-        moag::SetPixel(bullets[i].x+1,bullets[i].y,255,255,255);
-        moag::SetPixel(bullets[i].x,bullets[i].y+1,255,255,255);
-    }
-}
-
-void undrawBullets(){
-    for(int i=0;i<numBullets;i++){
-        if(bullets[i].x<1 || bullets[i].x>=WIDTH-1 || bullets[i].y<1 || bullets[i].y>=HEIGHT-1)
-            return;
-        moag::SetPixel(bullets[i].x,bullets[i].y-1,30,30,30);
-        moag::SetPixel(bullets[i].x-1,bullets[i].y,30,30,30);
-        moag::SetPixel(bullets[i].x,  bullets[i].y,30,30,30);
-        moag::SetPixel(bullets[i].x+1,bullets[i].y,30,30,30);
-        moag::SetPixel(bullets[i].x,bullets[i].y+1,30,30,30);
-    }
-    numBullets=0;
 }
 
 void delChatLine(){
@@ -326,16 +193,6 @@ void update() {
         sendByte(9); keys.kFire=1;
     }else if(moag::IsKeyReleased(SDLK_SPACE)){
         sendByte(10); keys.kFire=0;
-    }
-}
-
-
-
-void validate_str(char* s){
-    while(*s){
-        if(*s<20 || *s>126)
-            *s='?';
-        s++;
     }
 }
 

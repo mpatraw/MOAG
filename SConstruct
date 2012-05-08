@@ -14,6 +14,7 @@ client_src.remove('test.c')
 
 server_libs = ['enet']
 server_src = glob.glob('*.c')
+server_src.remove('common.c')
 server_src.remove('client.c')
 server_src.remove('test.c')
 

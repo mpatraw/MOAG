@@ -1,6 +1,130 @@
 
 #include "client.h"
 
+const char tanksprite[14][19] = {
+    "..................",
+    "..................",
+    "..................",
+    "..................",
+    "..................",
+    "........xx........",
+    ".......xxxx.......",
+    "......xxxxxx......",
+    "...xxxxxxxxxxxx...",
+    ".xxxxxxxxxxxxxxxx.",
+    "xxxxxxxxxxxxxxxxxx",
+    "xxx.xx.xx.xx.xx.xx",
+    ".x..x..x..x..x..x.",
+    "..xxxxxxxxxxxxxx..",
+};
+
+const char cratesprite[9][10] = {
+    ".xxxxxxx.",
+    "xx.....xx",
+    "x.x...x.x",
+    "x..x.x..x",
+    "x...x...x",
+    "x..x.x..x",
+    "x.x...x.x",
+    "xx.....xx",
+    ".xxxxxxx.",
+};
+
+ENetHost *g_client = NULL;
+ENetPeer *g_peer = NULL;
+
+struct chatline chatlines[CHAT_LINES];
+struct tank tanks[MAX_CLIENTS];
+struct bullet bullets[MAX_BULLETS];
+struct crate crate;
+char land[LAND_WIDTH * LAND_HEIGHT];
+
+char *typing_str = NULL;
+bool typing_done = false;
+bool kleft = false;
+bool kright = false;
+bool kup = false;
+bool kdown = false;
+bool kfire = false;
+int num_bullets = 0;
+
+void set_pixel(int x, int y, int r, int g, int b)
+{
+    SDL_Surface *surface = SDL_GetVideoSurface();
+    Uint8 bpp = surface->format->BytesPerPixel;
+    Uint8 *p = (Uint8 *)surface->pixels + y * surface->pitch + x * bpp;
+    Uint32 pixel = SDL_MapRGB(surface->format, r, g, b);
+
+    switch (bpp) {
+    case 1:
+        *p = pixel;
+        break;
+    case 2:
+        *(Uint16 *)p = pixel;
+        break;
+    case 3:
+        if(SDL_BYTEORDER == SDL_BIG_ENDIAN) {
+            p[0] = (pixel >> 16) & 0xff;
+            p[1] = (pixel >> 8) & 0xff;
+            p[2] = pixel & 0xff;
+        } else {
+            p[0] = pixel & 0xff;
+            p[1] = (pixel >> 8) & 0xff;
+            p[2] = (pixel >> 16) & 0xff;
+        }
+        break;
+    case 4:
+        *(Uint32 *)p = pixel;
+        break;
+    }
+}
+
+void draw_tank(int x, int y, int turretangle, bool facing_left)
+{
+    if (x<0 || x>LAND_WIDTH-18 || y<0 || y>LAND_HEIGHT-14)
+        return;
+    for (int iy=0;iy<14;iy++)
+    for (int ix=0;ix<18;ix++)
+        if(tanksprite[iy][ix]=='x')
+            set_pixel(x+ix,y+iy,240,240,240);
+    if(turretangle==90)
+        turretangle=89;
+
+    float step=tanf((float)turretangle*M_PI/180.0);
+    int xlen=6.5*cosf((float)turretangle*M_PI/180.0);
+    float rise=0;
+    for(int ix=0;ix<=xlen;ix++){
+        int next=rise+step;
+        if(next>6) next=6;
+        for(int iy=-(int)rise;iy>=-next;iy--)
+            set_pixel(x+(facing_left?9-ix:8+ix),y+6+iy,240,240,240);
+        rise+=step;
+    }
+}
+
+void draw_crate(int x, int y){
+    if(x<0 || x>LAND_WIDTH-9 || y<0 || y>LAND_HEIGHT-9)
+        return;
+    for(int iy=0;iy<9;iy++)
+    for(int ix=0;ix<9;ix++)
+        if(cratesprite[iy][ix]=='x')
+            set_pixel(x+ix,y+iy,240,240,240);
+}
+
+void draw_bullets(void)
+{
+    for(int i=0;i<num_bullets;i++){
+        if (bullets[i].x<1 || bullets[i].x>=LAND_WIDTH-1 ||
+            bullets[i].y<1 || bullets[i].y>=LAND_HEIGHT-1)
+            continue;
+        set_pixel(bullets[i].x,bullets[i].y-1,255,255,255);
+        set_pixel(bullets[i].x-1,bullets[i].y,255,255,255);
+        set_pixel(bullets[i].x,  bullets[i].y,255,255,255);
+        set_pixel(bullets[i].x+1,bullets[i].y,255,255,255);
+        set_pixel(bullets[i].x,bullets[i].y+1,255,255,255);
+    }
+}
+
 int main(int argc, char *argv[])
 {
     if (argc < 2) {
@@ -8,92 +132,114 @@ int main(int argc, char *argv[])
         return EXIT_SUCCESS;
     }
 
-    if (enet_initialize() != 0) {
-        fprintf(stderr, "An error occurred while initializing ENet.\n");
-        return EXIT_FAILURE;
-    }
-    atexit(enet_deinitialize);
+    init_enet(argv[1]);
+    init_sdl();
 
-    ENetHost *client = enet_host_create(NULL, MAX_CLIENTS, NUM_CHANNELS, 0, 0);
-    if (!client) {
-        fprintf (stderr, "An error occurred while trying to create an ENet client host.\n");
-        return EXIT_FAILURE;
-    }
-
-    ENetAddress address;
-    enet_address_set_host(&address, argv[1]);
-    address.port = PORT;
-
-    ENetPeer *peer = enet_host_connect(client, &address, NUM_CHANNELS, 0);
-    if (!peer) {
-        fprintf(stderr, "No available peers for initiating an ENet connection.\n");
-        return EXIT_FAILURE;
-    }
-
-    ENetEvent event;
-
-    if (enet_host_service(client, &event, CONNECT_TIMEOUT) == 0 ||
-        event.type != ENET_EVENT_TYPE_CONNECT) {
-        enet_peer_reset(peer);
-        fprintf(stderr, "Connection to %s timed out.\n", argv[1]);
-        return EXIT_FAILURE;
-    }
-
+    ENetEvent enet_ev;
+    SDL_Event sdl_ev;
     bool running = true;
+
     while (running) {
-        while (enet_host_service(client, &event, 10)) {
-            switch (event.type) {
-            case ENET_EVENT_TYPE_CONNECT:
-                printf("Connected %x:%u.\n",
-                       event.peer->address.host,
-                       event.peer->address.port);
-
-                /* Store any relevant client information here. */
-                event.peer->data = "Client information";
-                break;
-
-            case ENET_EVENT_TYPE_DISCONNECT:
-                printf("Disconected.\n");
-
-                /* Reset the peer's client information. */
-                event.peer->data = NULL;
-
+        while (SDL_PollEvent(&sdl_ev)) {
+            switch (sdl_ev.type) {
+            case SDL_QUIT:
                 running = false;
-                break;
-
-            case ENET_EVENT_TYPE_RECEIVE:
-                printf("A packet of length %u containing %s was received from %s on channel %u.\n",
-                       event.packet->dataLength,
-                       (char *)event.packet->data,
-                       (char *)event.peer->data,
-                       event.channelID);
-
-                /* Clean up the packet now that we're done using it. */
-                enet_packet_destroy(event.packet);
                 break;
 
             default:
                 break;
             }
         }
+
+        while (enet_host_service(g_client, &enet_ev, 10)) {
+            switch (enet_ev.type) {
+            case ENET_EVENT_TYPE_CONNECT:
+                break;
+
+            case ENET_EVENT_TYPE_DISCONNECT:
+                break;
+
+            case ENET_EVENT_TYPE_RECEIVE:
+                enet_packet_destroy(enet_ev.packet);
+                break;
+
+            default:
+                break;
+            }
+        }
+
+        SDL_FillRect(SDL_GetVideoSurface(), NULL, 0);
+        draw_tank(50, 50, 45, true);
+        draw_crate(40, 40);
+        SDL_Flip(SDL_GetVideoSurface());
     }
 
-    enet_host_destroy(client);
+    enet_peer_disconnect(g_peer, 0);
 
+    while (enet_host_service(g_client, &enet_ev, 3000)) {
+        switch (enet_ev.type) {
+        case ENET_EVENT_TYPE_RECEIVE:
+            enet_packet_destroy(enet_ev.packet);
+            break;
 
-    /*if (moag::OpenWindow(WIDTH, HEIGHT, "MOAG") == -1) {
-        printf("Failed to start window\n");
-        return 1;
+        case ENET_EVENT_TYPE_DISCONNECT:
+            uninit_sdl();
+            uninit_enet();
+            exit(EXIT_SUCCESS);
+
+        default:
+            break;
+        }
     }
 
-    if (moag::SetFont("Nouveau_IBM.ttf", 12) == -1) {
-        printf("Failed to open font\n");
-        return 1;
+    enet_peer_reset(g_peer);
+
+    exit(EXIT_SUCCESS);
+}
+
+void init_enet(const char *ip)
+{
+    if (enet_initialize() != 0)
+        die("An error occurred while initializing ENet.\n");
+    atexit(enet_deinitialize);
+
+    g_client = enet_host_create(NULL, MAX_CLIENTS, NUM_CHANNELS, 0, 0);
+    if (!g_client)
+        die("An error occurred while trying to create an ENet client host.\n");
+
+    ENetAddress address;
+    enet_address_set_host(&address, ip);
+    address.port = PORT;
+
+    g_peer = enet_host_connect(g_client, &address, NUM_CHANNELS, 0);
+    if (!g_peer)
+        die("No available peers for initiating an ENet connection.\n");
+
+    ENetEvent enet_ev;
+
+    if (enet_host_service(g_client, &enet_ev, CONNECT_TIMEOUT) == 0 ||
+        enet_ev.type != ENET_EVENT_TYPE_CONNECT) {
+        enet_peer_reset(g_peer);
+        die("Connection to %s timed out.\n", ip);
     }
+}
 
-    moag::MainLoop();
+void uninit_enet(void)
+{
+    enet_host_destroy(g_client);
+}
 
-    moag::CloseWindow();*/
+void init_sdl(void)
+{
+    if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
+        die("%s\n", SDL_GetError());
 
-    return EXIT_SUCCESS;
+    SDL_Surface *s = SDL_SetVideoMode(LAND_WIDTH, LAND_HEIGHT, 32, SDL_DOUBLEBUF);
+    if (!s)
+        die("%s\n", SDL_GetError());
+}
+
+void uninit_sdl(void)
+{
+    SDL_Quit();
 }
