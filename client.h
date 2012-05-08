@@ -2,9 +2,8 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
-#include <SDL/SDL.h>
-
 #include "common.h"
+#include "sdl_aux.h"
 
 #define CONNECT_TIMEOUT 5000
 #define BUFLEN          256
@@ -21,8 +20,6 @@ extern ENetPeer *g_peer;
 
 void init_enet(const char *ip);
 void uninit_enet(void);
-void init_sdl(void);
-void uninit_sdl(void);
 
 static inline void send_chunk(unsigned char *buf, size_t len, bool reliable)
 {

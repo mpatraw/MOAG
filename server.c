@@ -85,20 +85,17 @@ void spawn_tank(int id)
 
 void spawn_client(int id)
 {
-    /*sprintf(tanks[id].name,"p%d",id);
+    sprintf(tanks[id].name,"p%d",id);
     char notice[64]="  ";
     strcat(notice,tanks[id].name);
     strcat(notice," has connected");
-    sendChat(-1,-1,3,notice,strlen(notice));*/
+    broadcast_chat(-1,3,notice,strlen(notice));
 
     spawn_tank(id);
     tanks[id].angle=35;
     tanks[id].facingLeft=0;
     broadcast_land_chunk(land, 0,0,LAND_WIDTH,LAND_HEIGHT);
-    /*sendChat(-1,id,2,tanks[id].name,strlen(tanks[id].name));
-    for(int i=0;i<MAX_CLIENTS;i++)
-        if(i!=id && clients[i])
-            sendChat(id,i,2,tanks[i].name,strlen(tanks[i].name));*/
+    broadcast_chat(id,2,tanks[id].name,strlen(tanks[id].name));
 }
 
 void disconnect_client(int c)
@@ -544,33 +541,7 @@ int client_connect(void)
     return i;
 }
 
-/*void sendChat(int to, int id, char cmd, const char* msg, unsigned char len){
-    if(to<-1 || to>=MAX_CLIENTS || id<-1 || id>=MAX_CLIENTS || (id>=0 && !clients[id]))
-        return;
-
-    // Prepare chunk.
-    moag::ChunkEnqueue8(MSG_CHUNK);
-    moag::ChunkEnqueue8(id);
-    moag::ChunkEnqueue8(cmd);
-    moag::ChunkEnqueue8(len);
-    for(int i=0;i<len;i++)
-        moag::ChunkEnqueue8(msg[i]);
-
-    // Send chunk.
-    if(to!=-1){
-        if(clients[to] && moag::SendChunk(clients[to], -1, 1)==-1)
-            disconnect_client(to);
-    }else{
-        for(int i=0;i<MAX_CLIENTS;i++)
-            if(clients[i] && moag::SendChunk(clients[i], -1, 0)==-1)
-                disconnect_client(i);
-    }
-
-    // Clear the queue buffer.
-    moag::SendChunk(NULL, -1, 1);
-}
-
-void handleMsg(int id, const char* msg, int len){
+void handle_msg(int id, const char* msg, int len){
     if(msg[0]=='/' && msg[1]=='n' && msg[2]==' '){
         char notice[64]="  ";
         strcat(notice,tanks[id].name);
@@ -582,12 +553,12 @@ void handleMsg(int id, const char* msg, int len){
         tanks[id].name[len]='\0';
         strcat(notice," is now known as ");
         strcat(notice,tanks[id].name);
-        sendChat(-1,id,2,tanks[id].name,strlen(tanks[id].name));
-        sendChat(-1,-1,3,notice,strlen(notice));
+        broadcast_chat(id,2,tanks[id].name,strlen(tanks[id].name));
+        broadcast_chat(-1,3,notice,strlen(notice));
         return;
     }
-    sendChat(-1,id,1,msg,len);
-}*/
+    broadcast_chat(id,1,msg,len);
+}
 
 void init_game(void)
 {
@@ -630,18 +601,15 @@ void on_receive(ENetEvent *ev)
     case KDOWN_RELEASED_CHUNK: tanks[i].kdown=0; break;
     case KFIRE_PRESSED_CHUNK: tanks[i].kfire=1; break;
     case KFIRE_RELEASED_CHUNK: tanks[i].kfire=0; break;
-    /*case 11: { //msg
-        if(moag::ReceiveChunk(clients[i], 1)==-1)
-            break;
-        unsigned char len = moag::ChunkDequeue8();
-        char* msg=new char[len];
-        if(moag::ReceiveChunk(clients[i], len)==-1)
-            break;
+    case 11: { //msg
+        unsigned char len = read8(packet, &pos);
+        char* msg=malloc(len);
         for(int j=0;j<len;j++)
-            msg[j] = moag::ChunkDequeue8();
-        handleMsg(i,msg,len);
-        delete[] msg;
-    } break;*/
+            msg[j] = read8(packet, &pos);
+        handle_msg(i,msg,len);
+        free(msg);
+        break;
+    }
     default: break;
     }
 }

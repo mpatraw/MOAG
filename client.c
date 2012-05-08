@@ -40,44 +40,12 @@ struct crate crate = {0};
 char land[LAND_WIDTH * LAND_HEIGHT] = {0};
 
 char *typing_str = NULL;
-bool typing_done = false;
 bool kleft = false;
 bool kright = false;
 bool kup = false;
 bool kdown = false;
 bool kfire = false;
 int num_bullets = 0;
-
-void set_pixel(int x, int y, int r, int g, int b)
-{
-    SDL_Surface *surface = SDL_GetVideoSurface();
-    Uint8 bpp = surface->format->BytesPerPixel;
-    Uint8 *p = (Uint8 *)surface->pixels + y * surface->pitch + x * bpp;
-    Uint32 pixel = SDL_MapRGB(surface->format, r, g, b);
-
-    switch (bpp) {
-    case 1:
-        *p = pixel;
-        break;
-    case 2:
-        *(Uint16 *)p = pixel;
-        break;
-    case 3:
-        if(SDL_BYTEORDER == SDL_BIG_ENDIAN) {
-            p[0] = (pixel >> 16) & 0xff;
-            p[1] = (pixel >> 8) & 0xff;
-            p[2] = pixel & 0xff;
-        } else {
-            p[0] = pixel & 0xff;
-            p[1] = (pixel >> 8) & 0xff;
-            p[2] = (pixel >> 16) & 0xff;
-        }
-        break;
-    case 4:
-        *(Uint32 *)p = pixel;
-        break;
-    }
-}
 
 void draw_tank(int x, int y, int turretangle, bool facing_left)
 {
@@ -154,11 +122,10 @@ void add_chat_line(char* str)
 void draw(void)
 {
     for(int i=0;i<MAX_CLIENTS;i++)
-        if(tanks[i].active)
+        if(tanks[i].active) {
             draw_tank(tanks[i].x-9,tanks[i].y-13,tanks[i].angle,tanks[i].facingLeft);
-            /*moag::SetStringCentered(tanks[i].x,tanks[i].y-36,tanks[i].name,240,240,240);
-            int w, h;
-            moag::GetStringSize(tanks[i].name, &w, &h);*/
+            draw_string_centered(tanks[i].x,tanks[i].y-36,240,240,240,tanks[i].name);
+        }
     if(crate.x || crate.y)
         draw_crate(crate.x-4,crate.y-8);
     draw_bullets();
@@ -170,21 +137,17 @@ void draw(void)
                 set_pixel(x, y, 240, 240, 240);
         }
     }
-    /*for(int i=0;i<CHAT_LINES;i++)
+    for(int i=0;i<CHAT_LINES;i++)
         if(chatlines[i].str)
         {
-            moag::SetString(4,4+12*i,chatlines[i].str,255,255,255);
+            draw_string(4,4+12*i,255,255,255,chatlines[i].str);
             int w, h;
-            moag::GetStringSize(chatlines[i].str, &w, &h);
-        }*/
-    /*if(typingStr){
-        moag::SetBlock(6,8+12*(CHAT_LINES),4,4,210,210,210);
-        pushRedraw(6,8+12*(CHAT_LINES),4,4);
-        moag::SetString(16,4+12*(CHAT_LINES),typingStr,210,210,210);
-        int w, h;
-        moag::GetStringSize(typingStr, &w, &h);
-        pushRedraw(16,4+12*(CHAT_LINES),w,h);
-    }*/
+            get_string_size(chatlines[i].str, &w, &h);
+        }
+    if (typing_str){
+        draw_block(6,8+12*(CHAT_LINES),4,4,210,210,210);
+        draw_string(16,4+12*(CHAT_LINES),210,210,210,typing_str);
+    }
 }
 
 void on_receive(ENetEvent *ev)
@@ -301,13 +264,13 @@ void on_receive(ENetEvent *ev)
         break;
     }
 
-    /*if(typingDone){
-        unsigned char len=strlen(typingStr);
+    /*if(!is_text_input()){
+        unsigned char len=strlen(typing_str);
         char buf[2]={11,len};
         moag::SendRaw(arg, buf, 2);
-        moag::SendRaw(arg, typingStr, len);
-        typingDone=false;
-        typingStr=NULL;
+        moag::SendRaw(arg, typing_str, len);
+        stop_text_input();
+        typing_str=NULL;
     }*/
 }
 
@@ -320,68 +283,81 @@ int main(int argc, char *argv[])
     }
 
     init_enet(argv[1]);
-    init_sdl();
+    init_sdl("MOAG");
+
+    if (!set_font("Nouveau_IBM.ttf", 12))
+        die("Failed to open 'Nouveau_IBM.ttf'\n");
 
     ENetEvent enet_ev;
-    SDL_Event sdl_ev;
-    bool running = true;
 
-    while (running) {
-        while (SDL_PollEvent(&sdl_ev)) {
-            switch (sdl_ev.type) {
-            case SDL_QUIT:
-                running = false;
-                break;
+    while (!is_closed()) {
 
-            case SDL_KEYDOWN:
-                if (sdl_ev.key.keysym.sym == SDLK_LEFT) {
-                    send_byte(KLEFT_PRESSED_CHUNK);
-                    kleft = true;
-                }
-                if (sdl_ev.key.keysym.sym == SDLK_RIGHT) {
-                    send_byte(KRIGHT_PRESSED_CHUNK);
-                    kright = true;
-                }
-                if (sdl_ev.key.keysym.sym == SDLK_UP) {
-                    send_byte(KUP_PRESSED_CHUNK);
-                    kup = true;
-                }
-                if (sdl_ev.key.keysym.sym == SDLK_DOWN) {
-                    send_byte(KDOWN_PRESSED_CHUNK);
-                    kdown = true;
-                }
-                if (sdl_ev.key.keysym.sym == ' ') {
-                    send_byte(KFIRE_PRESSED_CHUNK);
-                    kfire = true;
-                }
-                break;
+        grab_events();
 
-            case SDL_KEYUP:
-                if (sdl_ev.key.keysym.sym == SDLK_LEFT) {
-                    send_byte(KLEFT_RELEASED_CHUNK);
-                    kleft = false;
-                }
-                if (sdl_ev.key.keysym.sym == SDLK_RIGHT) {
-                    send_byte(KRIGHT_RELEASED_CHUNK);
-                    kright = false;
-                }
-                if (sdl_ev.key.keysym.sym == SDLK_UP) {
-                    send_byte(KUP_RELEASED_CHUNK);
-                    kup = false;
-                }
-                if (sdl_ev.key.keysym.sym == SDLK_DOWN) {
-                    send_byte(KDOWN_RELEASED_CHUNK);
-                    kdown = false;
-                }
-                if (sdl_ev.key.keysym.sym == ' ') {
-                    send_byte(KFIRE_RELEASED_CHUNK);
-                    kfire = false;
-                }
-                break;
+        if (is_key_down(SDLK_LEFT) && !kleft) {
+            send_byte(KLEFT_PRESSED_CHUNK);
+            kleft = true;
+        }
+        else if (!is_key_down(SDLK_LEFT) && kleft) {
+            send_byte(KLEFT_RELEASED_CHUNK);
+            kleft = false;
+        }
 
-            default:
-                break;
+        if (is_key_down(SDLK_RIGHT) && !kright) {
+            send_byte(KRIGHT_PRESSED_CHUNK);
+            kright = true;
+        }
+        else if (!is_key_down(SDLK_RIGHT) && kright) {
+            send_byte(KRIGHT_RELEASED_CHUNK);
+            kright = false;
+        }
+
+        if (is_key_down(SDLK_UP) && !kup) {
+            send_byte(KUP_PRESSED_CHUNK);
+            kup = true;
+        }
+        else if (!is_key_down(SDLK_UP) && kup) {
+            send_byte(KUP_RELEASED_CHUNK);
+            kup = false;
+        }
+
+        if (is_key_down(SDLK_DOWN) && !kdown) {
+            send_byte(KDOWN_PRESSED_CHUNK);
+            kdown = true;
+        }
+        else if (!is_key_down(SDLK_DOWN) && kdown) {
+            send_byte(KDOWN_RELEASED_CHUNK);
+            kdown = false;
+        }
+
+        if (is_key_down(' ') && !kfire) {
+            send_byte(KFIRE_PRESSED_CHUNK);
+            kfire = true;
+        }
+        else if (!is_key_down(' ') && kfire) {
+            send_byte(KFIRE_RELEASED_CHUNK);
+            kfire = false;
+        }
+
+        if(typing_str && is_text_input()){
+            if(is_key_down(SDLK_ESCAPE)
+                || is_key_down(SDLK_LEFT)
+                || is_key_down(SDLK_RIGHT)
+                || is_key_down(SDLK_UP)
+                || is_key_down(SDLK_DOWN)){
+                typing_str=NULL;
+                stop_text_input();
             }
+            else if(is_key_down(SDLK_RETURN)){
+                typing_str=NULL;
+                stop_text_input();
+            }
+        }
+        else if(is_key_down('t')){
+            typing_str=start_text_input();
+        }
+        else if(is_key_down('/')){
+            typing_str=start_text_cmd_input();
         }
 
         while (enet_host_service(g_client, &enet_ev, 10)) {
@@ -401,38 +377,6 @@ int main(int argc, char *argv[])
                 break;
             }
         }
-
-        /*if(typingStr && !typingDone){
-            if(moag::IsKeyPressed(SDLK_ESCAPE)
-                || moag::IsKeyPressed(SDLK_LEFT)
-                || moag::IsKeyPressed(SDLK_RIGHT)
-                || moag::IsKeyPressed(SDLK_UP)
-                || moag::IsKeyPressed(SDLK_DOWN)){
-                typingStr=NULL;
-                moag::StopTextInput();
-                return;
-            }
-            if(moag::IsKeyPressed(SDLK_RETURN)){
-                if(typingStr[0]=='\0'){
-                    typingStr=NULL;
-                    moag::StopTextInput();
-                    return;
-                }
-                typingDone=true;
-                moag::StopTextInput();
-                return;
-            }
-            return;
-        }
-
-        if(moag::IsKeyPressed('t')){
-            typingStr=moag::StartTextInput();
-            return;
-        }
-        if(moag::IsKeyPressed('/')){
-            typingStr=moag::StartTextCmdInput();
-            return;
-        }*/
 
         SDL_FillRect(SDL_GetVideoSurface(), NULL, 0);
         draw();
@@ -492,24 +436,4 @@ void init_enet(const char *ip)
 void uninit_enet(void)
 {
     enet_host_destroy(g_client);
-}
-
-void init_sdl(void)
-{
-    if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
-        die("%s\n", SDL_GetError());
-
-    SDL_Surface *s = SDL_SetVideoMode(LAND_WIDTH, LAND_HEIGHT, 32, SDL_DOUBLEBUF);
-    if (!s)
-        die("%s\n", SDL_GetError());
-
-    SDL_EnableUNICODE(true);
-    SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
-
-    SDL_WM_SetCaption("MOAG", NULL);
-}
-
-void uninit_sdl(void)
-{
-    SDL_Quit();
 }

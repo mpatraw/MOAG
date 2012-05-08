@@ -111,5 +111,20 @@ static inline void broadcast_crate_chunk(struct crate crate)
     broadcast_chunk(buffer, pos, false);
 }
 
+static inline void broadcast_chat(int id, char cmd, const char* msg, unsigned char len)
+{
+    unsigned char buffer[256];
+    size_t pos = 0;
+
+    write8(buffer, &pos, MSG_CHUNK);
+    write8(buffer, &pos, id);
+    write8(buffer, &pos, cmd);
+    write8(buffer, &pos, len);
+    for(int i=0;i<len;i++)
+        write8(buffer, &pos, msg[i]);
+
+    broadcast_chunk(buffer, pos, true);
+}
+
 
 #endif
