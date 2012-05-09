@@ -430,7 +430,7 @@ void bullet_detonate(struct moag *m, int b)
         break;
     default: break;
     }
-    if(m->bullets[b].active>0) {
+    if(m->bullets[b].active>=0) {
         m->bullets[b].active=0;
         broadcast_bullet_chunk(m, KILL, b);
     }
