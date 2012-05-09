@@ -3,7 +3,6 @@
 #define SERVER_H
 
 #include "common.h"
-#include "enet_aux.h"
 
 #define GRAVITY             0.1
 #define BOUNCER_BOUNCES     11
@@ -12,13 +11,13 @@
 #define LADDER_TIME         60
 #define LADDER_LENGTH       64
 
-static inline void broadcast_land_chunk(char *land, int x, int y, int w, int h)
+static inline void broadcast_land_chunk(struct moag *m, int x, int y, int w, int h)
 {
-    if(x<0){ w+=x; x=0; }
-    if(y<0){ h+=y; y=0; }
-    if(x+w>LAND_WIDTH) w=LAND_WIDTH-x;
-    if(y+h>LAND_HEIGHT) h=LAND_HEIGHT-y;
-    if(w<=0 || h<=0 || x+w>LAND_WIDTH || y+h>LAND_HEIGHT)
+    if (x < 0) { w += x; x = 0; }
+    if (y < 0) { h += y; y = 0; }
+    if (x + w > LAND_WIDTH) w = LAND_WIDTH - x;
+    if (y + h > LAND_HEIGHT) h = LAND_HEIGHT - y;
+    if (w <= 0 || h <= 0 || x + w > LAND_WIDTH || y + h > LAND_HEIGHT)
         return;
 
     size_t pos = 0;
@@ -29,7 +28,7 @@ static inline void broadcast_land_chunk(char *land, int x, int y, int w, int h)
 
     for (int yy = y; yy < h + y; ++yy)
         for (int xx = x; xx < w + x; ++xx)
-            write8(land_buffer, &pos, get_land_at(land, xx, yy));
+            write8(land_buffer, &pos, get_land_at(m->land, xx, yy));
 
     unsigned char *zipped = NULL;
     size_t zipped_len = 0, zipped_pos = 0;
@@ -60,7 +59,7 @@ cleanup:
         free(buffer);
 }
 
-static inline void broadcast_tank_chunk(struct tank *tanks, int id)
+static inline void broadcast_tank_chunk(struct moag *m, int id)
 {
     unsigned char buffer[256];
     size_t pos = 0;
@@ -68,54 +67,54 @@ static inline void broadcast_tank_chunk(struct tank *tanks, int id)
     write8(buffer, &pos, TANK_CHUNK);
     write8(buffer, &pos, id);
 
-    if(!tanks[id].active){
-        tanks[id].x=-1;
-        tanks[id].y=-1;
+    if(!m->tanks[id].active){
+        m->tanks[id].x=-1;
+        m->tanks[id].y=-1;
     }
 
-    write16(buffer, &pos, tanks[id].x);
-    write16(buffer, &pos, tanks[id].y);
+    write16(buffer, &pos, m->tanks[id].x);
+    write16(buffer, &pos, m->tanks[id].y);
 
-    if (tanks[id].facingLeft)
-        write8(buffer, &pos, -tanks[id].angle);
+    if (m->tanks[id].facingLeft)
+        write8(buffer, &pos, -m->tanks[id].angle);
     else
-        write8(buffer, &pos, tanks[id].angle);
+        write8(buffer, &pos, m->tanks[id].angle);
 
     broadcast_packet(buffer, pos, false);
     printf("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);
 }
 
-static inline void broadcast_bullets(struct bullet *bullets)
+static inline void broadcast_bullets(struct moag *m)
 {
     unsigned char buffer[256];
     size_t pos = 0;
 
     int count = 0;
     for (int i = 0; i < MAX_BULLETS; i++)
-        if (bullets[i].active)
+        if (m->bullets[i].active)
             count++;
 
     write8(buffer, &pos, BULLET_CHUNK);
     write16(buffer, &pos, count);
 
     for (int i = 0; i < MAX_BULLETS; i++)
-        if (bullets[i].active) {
-            write16(buffer, &pos, bullets[i].x);
-            write16(buffer, &pos, bullets[i].y);
+        if (m->bullets[i].active) {
+            write16(buffer, &pos, m->bullets[i].x);
+            write16(buffer, &pos, m->bullets[i].y);
         }
 
     broadcast_packet(buffer, pos, false);
     printf("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);
 }
 
-static inline void broadcast_crate_chunk(struct crate crate)
+static inline void broadcast_crate_chunk(struct moag *m)
 {
     unsigned char buffer[256];
     size_t pos = 0;
 
     write8(buffer, &pos, CRATE_CHUNK);
-    write16(buffer, &pos, crate.x);
-    write16(buffer, &pos, crate.y);
+    write16(buffer, &pos, m->crate.x);
+    write16(buffer, &pos, m->crate.y);
 
     broadcast_packet(buffer, pos, false);
     printf("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);

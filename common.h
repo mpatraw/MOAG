@@ -9,11 +9,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "enet_aux.h"
+
 #define M_PI            3.14159
 
 #define PORT            8080
 
+#define MAX_PLAYERS     MAX_CLIENTS
 #define MAX_BULLETS     32
+#define MAX_NAME_LEN    16
 
 #define LAND_WIDTH      800
 #define LAND_HEIGHT     600
@@ -109,12 +113,13 @@ enum {
 struct tank {
     int x, y;
     int angle, power;
-    int spawntimer;
-    int ladder;
-    bool active;
-    char name[16];
     char bullet;
     bool facingLeft;
+
+    bool active;
+    char name[16];
+    int spawntimer;
+    int ladder;
     bool kleft, kright, kup, kdown, kfire;
 };
 
@@ -129,6 +134,71 @@ struct crate {
     int x, y;
     char type;
 };
+
+struct player {
+    struct tank tank;
+
+    char name[MAX_NAME_LEN];
+    bool connected;
+    unsigned spawntimer;
+    unsigned num_ladders;
+    bool kleft, kright, kup, kdown, kfire;
+};
+
+/* Fast speed. Low memory. Period = 2^128 - 1. */
+enum {XOR128_K = 4};
+struct rng_state {
+    uint32_t q[XOR128_K];
+};
+
+struct moag {
+    struct player players[MAX_PLAYERS];
+    struct tank tanks[MAX_PLAYERS];
+    struct bullet bullets[MAX_BULLETS];
+    struct crate crate;
+    char land[LAND_WIDTH * LAND_HEIGHT];
+    struct rng_state rng;
+};
+
+static inline void rng_seed(struct rng_state *st, uint32_t seed)
+{
+    int i;
+
+    srand(seed);
+    for (i = 0; i < XOR128_K; ++i) {
+        st->q[i] = rand();
+    }
+}
+
+static inline uint32_t rng_u32(struct rng_state *st)
+{
+    uint32_t t;
+    t = (st->q[0] ^ (st->q[0] << 11));
+    st->q[0] = st->q[1];
+    st->q[1] = st->q[2];
+    st->q[2] = st->q[3];
+    return st->q[3] = st->q[3] ^ (st->q[3] >> 19) ^ (t ^ (t >> 8));
+}
+
+static inline double rng_unit(struct rng_state *st)
+{
+    return rng_u32(st) * 2.3283064365386963e-10;
+}
+
+static inline double rng_under(struct rng_state *st, int32_t max)
+{
+    return rng_unit(st) * max;
+}
+
+static inline double rng_between(struct rng_state *st, int32_t min, int32_t max)
+{
+    return rng_under(st, max - min) + min;
+}
+
+static inline int32_t rng_range(struct rng_state *st, int32_t min, int32_t max)
+{
+    return floor(rng_between(st, min, max + 1));
+}
 
 static inline char get_land_at(char *land, int x, int y)
 {

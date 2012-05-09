@@ -3,7 +3,6 @@
 #define CLIENT_H
 
 #include "common.h"
-#include "enet_aux.h"
 #include "sdl_aux.h"
 
 #define BUFLEN          256
