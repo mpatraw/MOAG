@@ -11,7 +11,7 @@ void kill_tank(struct moag *m, int id)
     m->tanks[id].x=-30;
     m->tanks[id].y=-30;
     m->tanks[id].spawntimer=RESPAWN_TIME;
-    broadcast_tank_chunk(m,id);
+    broadcast_tank_chunk(m, KILL, id);
 }
 
 void explode(struct moag *m, int x, int y, int rad, char type)
@@ -62,7 +62,7 @@ void spawn_tank(struct moag *m, int id)
     m->tanks[id].x= rng_range(&m->rng, 20, LAND_WIDTH - 20);
     m->tanks[id].y=60;
     m->tanks[id].angle=30;
-    m->tanks[id].facingLeft=0;
+    m->tanks[id].facingleft=0;
     m->tanks[id].power=0;
     m->tanks[id].bullet=1;
     m->tanks[id].ladder=LADDER_TIME;
@@ -72,6 +72,7 @@ void spawn_tank(struct moag *m, int id)
     m->tanks[id].kdown=0;
     m->tanks[id].kfire=0;
     explode(m, m->tanks[id].x,m->tanks[id].y-12, 12, 2);
+    broadcast_tank_chunk(m, SPAWN, id);
 }
 
 void spawn_client(struct moag *m, int id)
@@ -84,16 +85,16 @@ void spawn_client(struct moag *m, int id)
 
     spawn_tank(m, id);
     m->tanks[id].angle=35;
-    m->tanks[id].facingLeft=0;
+    m->tanks[id].facingleft=0;
     broadcast_land_chunk(m, 0,0,LAND_WIDTH,LAND_HEIGHT);
     broadcast_chat(id,NAME_CHANGE,m->tanks[id].name,strlen(m->tanks[id].name));
 }
 
-void disconnect_client(struct moag *m, int c)
+void disconnect_client(struct moag *m, int id)
 {
     printf("Client DCed\n");
-    m->tanks[c].active=0;
-    broadcast_tank_chunk(m,c);
+    m->tanks[id].active = 0;
+    broadcast_tank_chunk(m, KILL, id);
 }
 
 void launch_ladder(struct moag *m, int x, int y)
@@ -110,6 +111,7 @@ void launch_ladder(struct moag *m, int x, int y)
     m->bullets[i].fy=y;
     m->bullets[i].vx=0;
     m->bullets[i].vy=-1;
+    broadcast_bullet_chunk(m, SPAWN, i);
 }
 
 void fire_bullet(struct moag *m, char type, float x, float y, float vx, float vy)
@@ -126,6 +128,7 @@ void fire_bullet(struct moag *m, char type, float x, float y, float vx, float vy
     m->bullets[i].y=(int)m->bullets[i].fy;
     m->bullets[i].vx=vx;
     m->bullets[i].vy=vy;
+    broadcast_bullet_chunk(m, SPAWN, i);
 }
 
 void fire_bullet_ang(struct moag *m, char type, int x, int y, float angle, float vel)
@@ -183,14 +186,15 @@ void liquid(struct moag *m, int x, int y, int n)
     broadcast_land_chunk(m,minx,miny,maxx-minx+1,maxy-miny+1);
 }
 
-void tank_update(struct moag *m, int id){
+void tank_update(struct moag *m, int id)
+{
+    bool moved = false;
     if(!m->tanks[id].active)
         return;
-    if(m->tanks[id].spawntimer>0){
-        if(--m->tanks[id].spawntimer<=0)
+    if (m->tanks[id].spawntimer > 0){
+        if (--m->tanks[id].spawntimer <= 0)
             spawn_tank(m, id);
-        else
-            return;
+        return;
     }
     bool grav=true;
     if(m->tanks[id].ladder>=0 && (!m->tanks[id].kleft || !m->tanks[id].kright))
@@ -206,7 +210,7 @@ void tank_update(struct moag *m, int id){
             m->tanks[id].ladder=-1;
         }
     }else if(m->tanks[id].kleft){
-        m->tanks[id].facingLeft=1;
+        m->tanks[id].facingleft=1;
         if(get_land_at(m, m->tanks[id].x-1,m->tanks[id].y)==0 && m->tanks[id].x>=10){
             m->tanks[id].x--;
         }else if(get_land_at(m, m->tanks[id].x-1,m->tanks[id].y-1)==0 && m->tanks[id].x>=10){
@@ -215,8 +219,9 @@ void tank_update(struct moag *m, int id){
             grav=false; m->tanks[id].y--;
         }else
             grav=false;
+        moved = true;
     }else if(m->tanks[id].kright){
-        m->tanks[id].facingLeft=0;
+        m->tanks[id].facingleft=0;
         if(get_land_at(m, m->tanks[id].x+1,m->tanks[id].y)==0 && m->tanks[id].x<LAND_WIDTH-10){
             m->tanks[id].x++;
         }else if(get_land_at(m, m->tanks[id].x+1,m->tanks[id].y-1)==0 && m->tanks[id].x<LAND_WIDTH-10){
@@ -225,22 +230,29 @@ void tank_update(struct moag *m, int id){
             grav=false; m->tanks[id].y--;
         }else
             grav=false;
+        moved = true;
     }
     // Physics
-    if(m->tanks[id].y<20)
+    if(m->tanks[id].y<20) {
         m->tanks[id].y=20;
+        moved = true;
+    }
     if(grav){
-        if(get_land_at(m, m->tanks[id].x,m->tanks[id].y+1)==0)
+        if(get_land_at(m, m->tanks[id].x,m->tanks[id].y+1)==0) {
             m->tanks[id].y++;
-        if(get_land_at(m, m->tanks[id].x,m->tanks[id].y+1)==0)
+            moved = true;
+        }
+        if(get_land_at(m, m->tanks[id].x,m->tanks[id].y+1)==0) {
             m->tanks[id].y++;
+            moved = true;
+        }
     }
     // Pickup
     if(abs(m->tanks[id].x-m->crate.x)<14 && abs(m->tanks[id].y-m->crate.y)<14){
         m->tanks[id].ladder=LADDER_TIME;
         m->tanks[id].bullet=m->crate.type;
-        m->crate.x=0;
-        m->crate.y=0;
+        m->crate.active = false;
+        broadcast_crate_chunk(m, KILL);
         char notice[64]="* ";
         strcat(notice,m->tanks[id].name);
         strcat(notice," got ");
@@ -261,20 +273,25 @@ void tank_update(struct moag *m, int id){
         broadcast_chat(-1,SERVER_NOTICE,notice,strlen(notice));
     }
     // Aim
-    if(m->tanks[id].kup && m->tanks[id].angle<90)
+    if(m->tanks[id].kup && m->tanks[id].angle<90) {
         m->tanks[id].angle++;
-    else if(m->tanks[id].kdown && m->tanks[id].angle>1)
+        moved = true;
+    }
+    else if(m->tanks[id].kdown && m->tanks[id].angle>1) {
         m->tanks[id].angle--;
+        moved = true;
+    }
     // Fire
     if(m->tanks[id].kfire){
         if(m->tanks[id].power<1000)
             m->tanks[id].power+=10;
     }else if(m->tanks[id].power){
-        fire_bullet_ang(m, m->tanks[id].bullet, m->tanks[id].x, m->tanks[id].y-7,m->tanks[id].facingLeft?180-m->tanks[id].angle:m->tanks[id].angle, (float)m->tanks[id].power*0.01);
+        fire_bullet_ang(m, m->tanks[id].bullet, m->tanks[id].x, m->tanks[id].y-7,m->tanks[id].facingleft?180-m->tanks[id].angle:m->tanks[id].angle, (float)m->tanks[id].power*0.01);
         m->tanks[id].bullet=1;
         m->tanks[id].power=0;
     }
-    broadcast_tank_chunk(m, id);
+    if (moved)
+        broadcast_tank_chunk(m, MOVE, id);
 }
 
 void bounce_bullet(struct moag *m, int b, float hitx, float hity)
@@ -413,8 +430,10 @@ void bullet_detonate(struct moag *m, int b)
         break;
     default: break;
     }
-    if(m->bullets[b].active>0)
+    if(m->bullets[b].active>0) {
         m->bullets[b].active=0;
+        broadcast_bullet_chunk(m, KILL, b);
+    }
 }
 
 void bullet_update(struct moag *m, int b)
@@ -466,11 +485,15 @@ void bullet_update(struct moag *m, int b)
         bullet_detonate(m, b);
         return;
     }
+
+    if (m->bullets[b].active)
+        broadcast_bullet_chunk(m, MOVE, b);
 }
 
 void crate_update(struct moag *m)
 {
-    if(m->crate.x==0 && m->crate.y==0){
+    if(!m->crate.active){
+        m->crate.active = true;
         m->crate.x=rng_range(&m->rng, 20, LAND_WIDTH - 20);
         m->crate.y=30;
         explode(m, m->crate.x,m->crate.y-12, 12, 2);
@@ -499,11 +522,11 @@ void crate_update(struct moag *m)
         else if((r-=PMIRV)<0)       m->crate.type=11;
         else if((r-=PCLUSTER)<0)    m->crate.type=13;
         else                        m->crate.type=4;
-        broadcast_crate_chunk(m);
+        broadcast_crate_chunk(m, SPAWN);
     }
     if(get_land_at(m, m->crate.x,m->crate.y+1)==0) {
         m->crate.y++;
-        broadcast_crate_chunk(m);
+        broadcast_crate_chunk(m, MOVE);
     }
 }
 
@@ -514,7 +537,6 @@ void step_game(struct moag *m)
         tank_update(m, i);
     for(int i=0;i<MAX_BULLETS;i++)
         bullet_update(m, i);
-    broadcast_bullets(m);
 }
 
 int client_connect(struct moag *m)
@@ -558,8 +580,7 @@ void init_game(struct moag *m)
         m->tanks[i].active=0;
     for(int i=0;i<MAX_BULLETS;i++)
         m->bullets[i].active=0;
-    m->crate.x=0;
-    m->crate.y=0;
+    m->crate.active = false;
 
     rng_seed(&m->rng, time(NULL));
 

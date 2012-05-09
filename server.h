@@ -59,70 +59,77 @@ cleanup:
         free(buffer);
 }
 
-static inline void broadcast_tank_chunk(struct moag *m, int id)
+static inline void broadcast_tank_chunk(struct moag *m, int type, int id)
 {
-    unsigned char buffer[256];
+    unsigned char buffer[TANK_CHUNK_SIZE];
     size_t pos = 0;
 
     write8(buffer, &pos, TANK_CHUNK);
+    write8(buffer, &pos, type);
     write8(buffer, &pos, id);
 
-    if(!m->tanks[id].active){
-        m->tanks[id].x=-1;
-        m->tanks[id].y=-1;
+    if (type != KILL) {
+        write16(buffer, &pos, m->tanks[id].x);
+        write16(buffer, &pos, m->tanks[id].y);
+
+        if (m->tanks[id].facingleft)
+            write8(buffer, &pos, -m->tanks[id].angle);
+        else
+            write8(buffer, &pos, m->tanks[id].angle);
     }
 
-    write16(buffer, &pos, m->tanks[id].x);
-    write16(buffer, &pos, m->tanks[id].y);
-
-    if (m->tanks[id].facingLeft)
-        write8(buffer, &pos, -m->tanks[id].angle);
+    if (type == SPAWN || type == KILL)
+        broadcast_packet(buffer, pos, true);
     else
-        write8(buffer, &pos, m->tanks[id].angle);
-
-    broadcast_packet(buffer, pos, false);
+        broadcast_packet(buffer, pos, false);
     printf("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);
 }
 
-static inline void broadcast_bullets(struct moag *m)
+static inline void broadcast_bullet_chunk(struct moag *m, int type, int id)
 {
-    unsigned char buffer[256];
+    unsigned char buffer[BULLET_CHUNK_SIZE];
     size_t pos = 0;
 
-    int count = 0;
-    for (int i = 0; i < MAX_BULLETS; i++)
-        if (m->bullets[i].active)
-            count++;
-
     write8(buffer, &pos, BULLET_CHUNK);
-    write16(buffer, &pos, count);
+    write8(buffer, &pos, type);
+    write8(buffer, &pos, id);
 
-    for (int i = 0; i < MAX_BULLETS; i++)
-        if (m->bullets[i].active) {
-            write16(buffer, &pos, m->bullets[i].x);
-            write16(buffer, &pos, m->bullets[i].y);
-        }
+    if (type != KILL) {
+        write16(buffer, &pos, m->bullets[id].x);
+        write16(buffer, &pos, m->bullets[id].y);
+    }
 
-    broadcast_packet(buffer, pos, false);
+    if (type == SPAWN || type == KILL)
+        broadcast_packet(buffer, pos, true);
+    else
+        broadcast_packet(buffer, pos, false);
     printf("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);
 }
 
-static inline void broadcast_crate_chunk(struct moag *m)
+static inline void broadcast_crate_chunk(struct moag *m, int type)
 {
-    unsigned char buffer[256];
+    unsigned char buffer[CRATE_CHUNK_SIZE];
     size_t pos = 0;
 
     write8(buffer, &pos, CRATE_CHUNK);
-    write16(buffer, &pos, m->crate.x);
-    write16(buffer, &pos, m->crate.y);
+    write8(buffer, &pos, type);
 
-    broadcast_packet(buffer, pos, false);
+    if (type != KILL) {
+        write16(buffer, &pos, m->crate.x);
+        write16(buffer, &pos, m->crate.y);
+    }
+
+    if (type == SPAWN || type == KILL)
+        broadcast_packet(buffer, pos, true);
+    else
+        broadcast_packet(buffer, pos, false);
+
     printf("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);
 }
 
 static inline void broadcast_chat(int id, char cmd, const char *msg, unsigned char len)
 {
-    unsigned char buffer[256];
+    unsigned char buffer[MSG_CHUNK_SIZE];
     size_t pos = 0;
 
     write8(buffer, &pos, MSG_CHUNK);

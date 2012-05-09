@@ -2,6 +2,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include <assert.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -21,6 +22,12 @@
 
 #define LAND_WIDTH      800
 #define LAND_HEIGHT     600
+
+#define CLIENT_MSG_CHUNK_SIZE   258
+#define TANK_CHUNK_SIZE         8
+#define BULLET_CHUNK_SIZE       7
+#define CRATE_CHUNK_SIZE        6
+#define MSG_CHUNK_SIZE          260
 
 /* Chunk types. */
 enum {
@@ -79,7 +86,6 @@ enum {
     /* VARIES
      * 1: CREATE_CHUNK
      * 1: SPAWN/KILL/MOVE
-     * 1: id
      * IF NOT KILL
      *  2: x-position
      *  2: y-position
@@ -115,7 +121,7 @@ struct tank {
     int x, y;
     int angle, power;
     char bullet;
-    bool facingLeft;
+    bool facingleft;
 
     bool active;
     char name[16];
@@ -133,6 +139,7 @@ struct bullet {
 
 struct crate {
     int x, y;
+    bool active;
     char type;
 };
 

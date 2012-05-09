@@ -38,7 +38,6 @@ bool kright = false;
 bool kup = false;
 bool kdown = false;
 bool kfire = false;
-int num_bullets = 0;
 
 static void die(const char *fmt, ...)
 {
@@ -83,9 +82,10 @@ void draw_crate(int x, int y){
 
 void draw_bullets(struct moag *m)
 {
-    for(int i=0;i<num_bullets;i++){
+    for(int i=0;i<MAX_BULLETS;i++){
         if (m->bullets[i].x<1 || m->bullets[i].x>=LAND_WIDTH-1 ||
-            m->bullets[i].y<1 || m->bullets[i].y>=LAND_HEIGHT-1)
+            m->bullets[i].y<1 || m->bullets[i].y>=LAND_HEIGHT-1 ||
+            !m->bullets[i].active)
             continue;
         set_pixel(m->bullets[i].x,m->bullets[i].y-1,255,155,155);
         set_pixel(m->bullets[i].x-1,m->bullets[i].y,255,155,155);
@@ -131,7 +131,7 @@ void draw(struct moag *m)
     }
     for(int i=0;i<MAX_CLIENTS;i++)
         if(m->tanks[i].active) {
-            draw_tank(m->tanks[i].x-9,m->tanks[i].y-13,m->tanks[i].angle,m->tanks[i].facingLeft);
+            draw_tank(m->tanks[i].x-9,m->tanks[i].y-13,m->tanks[i].angle,m->tanks[i].facingleft);
             draw_string_centered(m->tanks[i].x,m->tanks[i].y-36,240,240,240,m->tanks[i].name);
         }
     if(m->crate.x || m->crate.y)
@@ -156,49 +156,73 @@ void on_receive(struct moag *m, ENetEvent *ev)
     size_t pos = 0;
     unsigned char *packet = ev->packet->data;
 
-    char type = read8(packet, &pos);
+    char chunk_type = read8(packet, &pos);
 
-    switch(type) {
+    switch(chunk_type) {
     case LAND_CHUNK:
         read_land_chunk(m, packet, ev->packet->dataLength);
         break;
-    case TANK_CHUNK: {
-        int id = read8(packet, &pos);
-        short x = read16(packet, &pos);
-        short y = read16(packet, &pos);
-        char angle = read8(packet, &pos);
-        char facingLeft=0;
 
-        if(id<0 || id>=MAX_CLIENTS)
-            break;
-        if(angle<0){
-            angle=-angle;
-            facingLeft=1;
+    case TANK_CHUNK: {
+        int type = read8(packet, &pos);
+        int id = read8(packet, &pos);
+
+        assert(id >= 0 && id <= MAX_PLAYERS);
+
+        if (type == SPAWN) {
+            m->tanks[id].active = true;
+
+            m->tanks[id].x = read16(packet, &pos);
+            m->tanks[id].y = read16(packet, &pos);
+            char angle = read8(packet, &pos);
+
+            m->tanks[id].facingleft = false;
+            if (angle < 0){
+                angle = -angle;
+                m->tanks[id].facingleft = true;
+            }
+            m->tanks[id].angle = angle;
         }
-        if(x==-1 && y==-1){
-            m->tanks[id].active=0;
-            break;
+        else if (type == MOVE) {
+            m->tanks[id].x = read16(packet, &pos);
+            m->tanks[id].y = read16(packet, &pos);
+            char angle = read8(packet, &pos);
+
+            m->tanks[id].facingleft = false;
+            if (angle < 0){
+                angle = -angle;
+                m->tanks[id].facingleft = true;
+            }
+            m->tanks[id].angle = angle;
         }
-        m->tanks[id].active=1;
-        m->tanks[id].x=x;
-        m->tanks[id].y=y;
-        m->tanks[id].angle=angle;
-        m->tanks[id].facingLeft=facingLeft;
+        else if (type == KILL) {
+            m->tanks[id].x = -1;
+            m->tanks[id].y = -1;
+            m->tanks[id].active = false;
+        }
+        else {
+            assert(!"Invalid TANK_CHUNK type.");
+        }
         break;
     }
     case BULLET_CHUNK: {
-        num_bullets = read16(packet, &pos);
+        int type = read8(packet, &pos);
+        int id = read8(packet, &pos);
 
-        if(num_bullets<=0)
-            break;
-        if(num_bullets>=MAX_BULLETS){ // error!
-            num_bullets=0;
-            break;
+        if (type == SPAWN) {
+            m->bullets[id].active = true;
+            m->bullets[id].x = read16(packet, &pos);
+            m->bullets[id].y = read16(packet, &pos);
         }
-
-        for (int i=0;i<num_bullets;i++) {
-            m->bullets[i].x = read16(packet, &pos);
-            m->bullets[i].y = read16(packet, &pos);
+        else if (type == MOVE) {
+            m->bullets[id].x = read16(packet, &pos);
+            m->bullets[id].y = read16(packet, &pos);
+        }
+        else if (type == KILL) {
+            m->bullets[id].active = false;
+        }
+        else {
+            assert(!"Invalid BULLET_CHUNK type.");
         }
         break;
     }
@@ -245,12 +269,27 @@ void on_receive(struct moag *m, ENetEvent *ev)
         break;
     }
     case CRATE_CHUNK: {
-        m->crate.x=read16(packet, &pos);
-        m->crate.y=read16(packet, &pos);
+        int type = read8(packet, &pos);
+
+        if (type == SPAWN) {
+            m->crate.active = true;
+            m->crate.x = read16(packet, &pos);
+            m->crate.y = read16(packet, &pos);
+        }
+        else if (type == MOVE) {
+            m->crate.x = read16(packet, &pos);
+            m->crate.y = read16(packet, &pos);
+        }
+        else if (type == KILL) {
+            m->crate.active = false;
+        }
+        else {
+            assert(!"Invalid CRATE_CHUNK type.");
+        }
         break;
     }
     default:
-        printf("unknown type: %d\n",type);
+        assert(!"Invalid CHUNK type.");
         break;
     }
 }
@@ -380,6 +419,7 @@ int main(int argc, char *argv[])
         SDL_Flip(SDL_GetVideoSurface());
     }
 
+    uninit_sdl();
     uninit_enet();
 
     exit(EXIT_SUCCESS);
