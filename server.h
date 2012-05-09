@@ -21,21 +21,43 @@ static inline void broadcast_land_chunk(char *land, int x, int y, int w, int h)
     if(w<=0 || h<=0 || x+w>LAND_WIDTH || y+h>LAND_HEIGHT)
         return;
 
-    unsigned char buffer[LAND_WIDTH * LAND_HEIGHT + 256];
     size_t pos = 0;
 
+    unsigned char *land_buffer = malloc(w * h);
+    if (!land_buffer)
+        goto cleanup;
+
+    for (int yy = y; yy < h + y; ++yy)
+        for (int xx = x; xx < w + x; ++xx)
+            write8(land_buffer, &pos, get_land_at(land, xx, yy));
+
+    unsigned char *zipped = NULL;
+    size_t zipped_len = 0, zipped_pos = 0;
+    zip((char *)land_buffer, pos, (char **)&zipped, &zipped_len);
+
+    unsigned char *buffer = malloc(1 + sizeof(uint16_t) * 4 + zipped_len);
+    if (!buffer)
+        goto cleanup;
+
+    pos = 0;
     write8(buffer, &pos, LAND_CHUNK);
     write16(buffer, &pos, x);
     write16(buffer, &pos, y);
     write16(buffer, &pos, w);
     write16(buffer, &pos, h);
-
-    for (int yy = y; yy < h + y; ++yy)
-        for (int xx = x; xx < w + x; ++xx)
-            write8(buffer, &pos, get_land_at(land, xx, yy));
+    for (size_t i = 0; i < zipped_len; ++i)
+        write8(buffer, &pos, read8(zipped, &zipped_pos));
 
     broadcast_packet(buffer, pos, true);
-    printf("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);
+    printf("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, zipped_len);
+
+cleanup:
+    if (land_buffer)
+        free(land_buffer);
+    if (zipped)
+        free(zipped);
+    if (buffer)
+        free(buffer);
 }
 
 static inline void broadcast_tank_chunk(struct tank *tanks, int id)
@@ -99,7 +121,7 @@ static inline void broadcast_crate_chunk(struct crate crate)
     printf("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);
 }
 
-static inline void broadcast_chat(int id, char cmd, const char* msg, unsigned char len)
+static inline void broadcast_chat(int id, char cmd, const char *msg, unsigned char len)
 {
     unsigned char buffer[256];
     size_t pos = 0;

@@ -163,20 +163,9 @@ void on_receive(ENetEvent *ev)
     char type = read8(packet, &pos);
 
     switch(type) {
-    case LAND_CHUNK: {
-        int x = read16(packet, &pos);
-        int y = read16(packet, &pos);
-        int w = read16(packet, &pos);
-        int h = read16(packet, &pos);
-        if(w<0) w=0;
-        if(h<0) h=0;
-        if(x<0 || y<0 || x+w>LAND_WIDTH || y+h>LAND_HEIGHT)
-            break;
-        for (int yy = y; yy < h + y; ++yy)
-            for (int xx = x; xx < w + x; ++xx)
-                set_land_at(land, xx, yy, read8(packet, &pos));
+    case LAND_CHUNK:
+        read_land_chunk(land, packet, ev->packet->dataLength);
         break;
-    }
     case TANK_CHUNK: {
         int id = read8(packet, &pos);
         short x = read16(packet, &pos);
@@ -222,7 +211,7 @@ void on_receive(ENetEvent *ev)
         char cmd = read8(packet, &pos);
         unsigned char len = read8(packet, &pos);
         switch(cmd){
-        case 1: { //chat message
+        case CHAT: {
             int namelen=strlen(tanks[id].name);
             int linelen=namelen+len+4;
             char* line=malloc(linelen);
@@ -237,7 +226,7 @@ void on_receive(ENetEvent *ev)
             add_chat_line(line);
             break;
         }
-        case 2: { //name change
+        case NAME_CHANGE: {
             if(len<1 || len>15){ // error!
                 break;
             }
@@ -246,7 +235,7 @@ void on_receive(ENetEvent *ev)
             tanks[id].name[len]='\0';
             break;
         }
-        case 3: { //server notice
+        case SERVER_NOTICE: { //server notice
             char* line=malloc(len+1);
             for (int i = 0; i < len; ++i)
                 line[i] = read8(packet, &pos);
@@ -267,22 +256,6 @@ void on_receive(ENetEvent *ev)
     default:
         printf("unknown type: %d\n",type);
         break;
-    }
-
-    if(typing_str && !is_text_input()){
-        unsigned char buffer[256];
-        size_t pos = 0;
-
-        unsigned char len = strlen(typing_str);
-        write8(buffer, &pos, 11);
-        write8(buffer, &pos, len);
-        for (int i = 0; i < len; ++i)
-            write8(buffer, &pos, typing_str[i]);
-
-        send_packet(buffer, pos, true);
-
-        stop_text_input();
-        typing_str=NULL;
     }
 }
 
@@ -316,6 +289,19 @@ int main(int argc, char *argv[])
                 stop_text_input();
             }
             else if(is_key_down(SDLK_RETURN)){
+                unsigned char buffer[256];
+                size_t pos = 0;
+
+                unsigned char len = strlen(typing_str);
+                write8(buffer, &pos, CLIENT_MSG_CHUNK);
+                write8(buffer, &pos, len);
+                for (int i = 0; i < len; ++i)
+                    write8(buffer, &pos, typing_str[i]);
+
+                send_packet(buffer, pos, true);
+
+                stop_text_input();
+                typing_str=NULL;
                 stop_text_input();
             }
         }

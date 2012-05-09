@@ -87,13 +87,13 @@ void spawn_client(int id)
     char notice[64]="  ";
     strcat(notice,tanks[id].name);
     strcat(notice," has connected");
-    broadcast_chat(-1,3,notice,strlen(notice));
+    broadcast_chat(-1,SERVER_NOTICE,notice,strlen(notice));
 
     spawn_tank(id);
     tanks[id].angle=35;
     tanks[id].facingLeft=0;
     broadcast_land_chunk(land, 0,0,LAND_WIDTH,LAND_HEIGHT);
-    broadcast_chat(id,2,tanks[id].name,strlen(tanks[id].name));
+    broadcast_chat(id,NAME_CHANGE,tanks[id].name,strlen(tanks[id].name));
 }
 
 void disconnect_client(int c)
@@ -265,7 +265,7 @@ void tank_update(int id){
         case 13: strcat(notice,"Cluster Bomb"); break;
         default: strcat(notice,"???"); break;
         }
-        broadcast_chat(-1,3,notice,strlen(notice));
+        broadcast_chat(-1,SERVER_NOTICE,notice,strlen(notice));
     }
     // Aim
     if(tanks[id].kup && tanks[id].angle<90)
@@ -553,11 +553,11 @@ void handle_msg(int id, const char* msg, int len){
         tanks[id].name[len]='\0';
         strcat(notice," is now known as ");
         strcat(notice,tanks[id].name);
-        broadcast_chat(id,2,tanks[id].name,strlen(tanks[id].name));
-        broadcast_chat(-1,3,notice,strlen(notice));
+        broadcast_chat(id,NAME_CHANGE,tanks[id].name,strlen(tanks[id].name));
+        broadcast_chat(-1,SERVER_NOTICE,notice,strlen(notice));
         return;
     }
-    broadcast_chat(id,1,msg,len);
+    broadcast_chat(id,CHAT,msg,len);
 }
 
 void init_game(void)
@@ -599,7 +599,7 @@ void on_receive(ENetEvent *ev)
     case KDOWN_RELEASED_CHUNK: tanks[i].kdown=0; break;
     case KFIRE_PRESSED_CHUNK: tanks[i].kfire=1; break;
     case KFIRE_RELEASED_CHUNK: tanks[i].kfire=0; break;
-    case 11: { //msg
+    case CLIENT_MSG_CHUNK: { //msg
         unsigned char len = read8(packet, &pos);
         char* msg=malloc(len);
         for(int j=0;j<len;j++)

@@ -8,8 +8,8 @@ env.Append(LIBPATH='.')
 
 env.Object(glob.glob('*.c'))
 
-server_libs = ['enet', 'm']
-client_libs = ['SDL', 'SDL_ttf', 'enet', 'm']
+server_libs = ['enet', 'z', 'm']
+client_libs = ['SDL', 'SDL_ttf', 'enet', 'z', 'm']
 
 env.Program('client', ['client.o', 'enet_aux.o', 'sdl_aux.o', 'common.o'], LIBS=client_libs)
 env.Program('server', ['server.o', 'enet_aux.o', 'common.o'], LIBS=server_libs)
