@@ -297,7 +297,7 @@ int main(int argc, char *argv[])
     init_enet_client(argv[1], PORT);
     init_sdl(LAND_WIDTH, LAND_HEIGHT, "MOAG");
 
-    if (!set_font("Nouveau_IBM.ttf", 12))
+    if (!set_font("Nouveau_IBM.ttf", 14))
         die("Failed to open 'Nouveau_IBM.ttf'\n");
 
     ENetEvent enet_ev;
@@ -305,51 +305,6 @@ int main(int argc, char *argv[])
     while (!is_closed()) {
 
         grab_events();
-
-        if (is_key_down(SDLK_LEFT) && !kleft) {
-            send_byte(KLEFT_PRESSED_CHUNK);
-            kleft = true;
-        }
-        else if (!is_key_down(SDLK_LEFT) && kleft) {
-            send_byte(KLEFT_RELEASED_CHUNK);
-            kleft = false;
-        }
-
-        if (is_key_down(SDLK_RIGHT) && !kright) {
-            send_byte(KRIGHT_PRESSED_CHUNK);
-            kright = true;
-        }
-        else if (!is_key_down(SDLK_RIGHT) && kright) {
-            send_byte(KRIGHT_RELEASED_CHUNK);
-            kright = false;
-        }
-
-        if (is_key_down(SDLK_UP) && !kup) {
-            send_byte(KUP_PRESSED_CHUNK);
-            kup = true;
-        }
-        else if (!is_key_down(SDLK_UP) && kup) {
-            send_byte(KUP_RELEASED_CHUNK);
-            kup = false;
-        }
-
-        if (is_key_down(SDLK_DOWN) && !kdown) {
-            send_byte(KDOWN_PRESSED_CHUNK);
-            kdown = true;
-        }
-        else if (!is_key_down(SDLK_DOWN) && kdown) {
-            send_byte(KDOWN_RELEASED_CHUNK);
-            kdown = false;
-        }
-
-        if (is_key_down(' ') && !kfire) {
-            send_byte(KFIRE_PRESSED_CHUNK);
-            kfire = true;
-        }
-        else if (!is_key_down(' ') && kfire) {
-            send_byte(KFIRE_RELEASED_CHUNK);
-            kfire = false;
-        }
 
         if(typing_str && is_text_input()){
             if(is_key_down(SDLK_ESCAPE)
@@ -364,11 +319,58 @@ int main(int argc, char *argv[])
                 stop_text_input();
             }
         }
-        else if(is_key_down('t')){
-            typing_str=start_text_input();
-        }
-        else if(is_key_down('/')){
-            typing_str=start_text_cmd_input();
+        else {
+            if (is_key_down(SDLK_LEFT) && !kleft) {
+                send_byte(KLEFT_PRESSED_CHUNK);
+                kleft = true;
+            }
+            else if (!is_key_down(SDLK_LEFT) && kleft) {
+                send_byte(KLEFT_RELEASED_CHUNK);
+                kleft = false;
+            }
+
+            if (is_key_down(SDLK_RIGHT) && !kright) {
+                send_byte(KRIGHT_PRESSED_CHUNK);
+                kright = true;
+            }
+            else if (!is_key_down(SDLK_RIGHT) && kright) {
+                send_byte(KRIGHT_RELEASED_CHUNK);
+                kright = false;
+            }
+
+            if (is_key_down(SDLK_UP) && !kup) {
+                send_byte(KUP_PRESSED_CHUNK);
+                kup = true;
+            }
+            else if (!is_key_down(SDLK_UP) && kup) {
+                send_byte(KUP_RELEASED_CHUNK);
+                kup = false;
+            }
+
+            if (is_key_down(SDLK_DOWN) && !kdown) {
+                send_byte(KDOWN_PRESSED_CHUNK);
+                kdown = true;
+            }
+            else if (!is_key_down(SDLK_DOWN) && kdown) {
+                send_byte(KDOWN_RELEASED_CHUNK);
+                kdown = false;
+            }
+
+            if (is_key_down(' ') && !kfire) {
+                send_byte(KFIRE_PRESSED_CHUNK);
+                kfire = true;
+            }
+            else if (!is_key_down(' ') && kfire) {
+                send_byte(KFIRE_RELEASED_CHUNK);
+                kfire = false;
+            }
+
+            if(is_key_down('t')){
+                typing_str=start_text_input();
+            }
+            if(is_key_down('/')){
+                typing_str=start_text_cmd_input();
+            }
         }
 
         while (enet_host_service(get_client_host(), &enet_ev, 10)) {
