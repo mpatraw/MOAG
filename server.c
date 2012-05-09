@@ -21,21 +21,21 @@ void explode(struct moag *m, int x, int y, int rad, char type)
         // collapse
         for(int iy=-rad;iy<=rad;iy++)
         for(int ix=-rad;ix<=rad;ix++)
-            if(ix*ix+iy*iy<rad*rad && get_land_at(m->land, x+ix,y+iy))
-                set_land_at(m->land, x+ix,y+iy,2);
+            if(ix*ix+iy*iy<rad*rad && get_land_at(m, x+ix,y+iy))
+                set_land_at(m, x+ix,y+iy,2);
         int maxy=y+rad;
         for(int iy=-rad;iy<=rad;iy++)
         for(int ix=-rad;ix<=rad;ix++)
-            if(get_land_at(m->land, x+ix,y+iy)==2){
+            if(get_land_at(m, x+ix,y+iy)==2){
                 int count=0;
                 int yy;
-                for(yy=y+iy;yy<LAND_HEIGHT && get_land_at(m->land, x+ix,yy)!=1;yy++)
-                    if(get_land_at(m->land, x+ix,yy)==2){
+                for(yy=y+iy;yy<LAND_HEIGHT && get_land_at(m, x+ix,yy)!=1;yy++)
+                    if(get_land_at(m, x+ix,yy)==2){
                         count++;
-                        set_land_at(m->land, x+ix,yy,0);
+                        set_land_at(m, x+ix,yy,0);
                     }
                 for(;count>0;count--)
-                    set_land_at(m->land, x+ix,yy-count,1);
+                    set_land_at(m, x+ix,yy-count,1);
                 if(yy>maxy)
                     maxy=yy;
             }
@@ -46,7 +46,7 @@ void explode(struct moag *m, int x, int y, int rad, char type)
     for(int iy=-rad;iy<=rad;iy++)
     for(int ix=-rad;ix<=rad;ix++)
         if(ix*ix+iy*iy<rad*rad)
-            set_land_at(m->land, x+ix,y+iy, p);
+            set_land_at(m, x+ix,y+iy, p);
     if(type==0)
         for(int i=0;i<MAX_CLIENTS;i++)
             if(m->tanks[i].active && SQ(m->tanks[i].x-x)+SQ(m->tanks[i].y-3-y)<SQ(rad+4))
@@ -149,28 +149,28 @@ void liquid(struct moag *m, int x, int y, int n)
     for(int i=0;i<n;i++){
         if(y<0) break;
         int nx=x;
-        if(get_land_at(m->land, x,y+1)==0) y++;
-        else if(get_land_at(m->land, x-1,y)==0) x--;
-        else if(get_land_at(m->land, x+1,y)==0) x++;
+        if(get_land_at(m, x,y+1)==0) y++;
+        else if(get_land_at(m, x-1,y)==0) x--;
+        else if(get_land_at(m, x+1,y)==0) x++;
         else
             for(int i=x;i<LAND_WIDTH+1;i++){
-                if(nx==x && get_land_at(m->land, i,y-1)==0)
+                if(nx==x && get_land_at(m, i,y-1)==0)
                     nx=i;
-                if(get_land_at(m->land, i,y)==0){
+                if(get_land_at(m, i,y)==0){
                     x=i; break;
-                }else if(get_land_at(m->land, i,y)!=3){
+                }else if(get_land_at(m, i,y)!=3){
                     for(int i=x;i>=-1;i--){
-                        if(nx==x && get_land_at(m->land, i,y-1)==0)
+                        if(nx==x && get_land_at(m, i,y-1)==0)
                             nx=i;
-                        if(get_land_at(m->land, i,y)==0){
+                        if(get_land_at(m, i,y)==0){
                             x=i; break;
-                        }else if(get_land_at(m->land, i,y)!=3){
+                        }else if(get_land_at(m, i,y)!=3){
                             y--; x=nx; break;
                         }
                     } break;
                 }
             }
-        set_land_at(m->land, x,y,3);
+        set_land_at(m, x,y,3);
         if(x<minx) minx=x;
         else if(x>maxx) maxx=x;
         if(y<miny) miny=y;
@@ -178,8 +178,8 @@ void liquid(struct moag *m, int x, int y, int n)
     }
     for(int iy=miny;iy<=maxy;iy++)
     for(int ix=minx;ix<=maxx;ix++)
-        if(get_land_at(m->land, ix,iy)==3)
-            set_land_at(m->land, ix,iy,1);
+        if(get_land_at(m, ix,iy)==3)
+            set_land_at(m, ix,iy,1);
     broadcast_land_chunk(m,minx,miny,maxx-minx+1,maxy-miny+1);
 }
 
@@ -197,7 +197,7 @@ void tank_update(struct moag *m, int id){
         m->tanks[id].ladder=LADDER_TIME;
     if(m->tanks[id].kleft && m->tanks[id].kright){
         if(m->tanks[id].ladder>0){
-            if(get_land_at(m->land, m->tanks[id].x,m->tanks[id].y+1))
+            if(get_land_at(m, m->tanks[id].x,m->tanks[id].y+1))
                 m->tanks[id].ladder--;
             else
                 m->tanks[id].ladder=LADDER_TIME;
@@ -207,21 +207,21 @@ void tank_update(struct moag *m, int id){
         }
     }else if(m->tanks[id].kleft){
         m->tanks[id].facingLeft=1;
-        if(get_land_at(m->land, m->tanks[id].x-1,m->tanks[id].y)==0 && m->tanks[id].x>=10){
+        if(get_land_at(m, m->tanks[id].x-1,m->tanks[id].y)==0 && m->tanks[id].x>=10){
             m->tanks[id].x--;
-        }else if(get_land_at(m->land, m->tanks[id].x-1,m->tanks[id].y-1)==0 && m->tanks[id].x>=10){
+        }else if(get_land_at(m, m->tanks[id].x-1,m->tanks[id].y-1)==0 && m->tanks[id].x>=10){
             m->tanks[id].x--; m->tanks[id].y--;
-        }else if(get_land_at(m->land, m->tanks[id].x,m->tanks[id].y-1)==0 || get_land_at(m->land, m->tanks[id].x,m->tanks[id].y-2)==0 || get_land_at(m->land, m->tanks[id].x,m->tanks[id].y-3)==0){
+        }else if(get_land_at(m, m->tanks[id].x,m->tanks[id].y-1)==0 || get_land_at(m, m->tanks[id].x,m->tanks[id].y-2)==0 || get_land_at(m, m->tanks[id].x,m->tanks[id].y-3)==0){
             grav=false; m->tanks[id].y--;
         }else
             grav=false;
     }else if(m->tanks[id].kright){
         m->tanks[id].facingLeft=0;
-        if(get_land_at(m->land, m->tanks[id].x+1,m->tanks[id].y)==0 && m->tanks[id].x<LAND_WIDTH-10){
+        if(get_land_at(m, m->tanks[id].x+1,m->tanks[id].y)==0 && m->tanks[id].x<LAND_WIDTH-10){
             m->tanks[id].x++;
-        }else if(get_land_at(m->land, m->tanks[id].x+1,m->tanks[id].y-1)==0 && m->tanks[id].x<LAND_WIDTH-10){
+        }else if(get_land_at(m, m->tanks[id].x+1,m->tanks[id].y-1)==0 && m->tanks[id].x<LAND_WIDTH-10){
             m->tanks[id].x++; m->tanks[id].y--;
-        }else if(get_land_at(m->land, m->tanks[id].x,m->tanks[id].y-1)==0 || get_land_at(m->land, m->tanks[id].x,m->tanks[id].y-2)==0 || get_land_at(m->land, m->tanks[id].x,m->tanks[id].y-3)==0){
+        }else if(get_land_at(m, m->tanks[id].x,m->tanks[id].y-1)==0 || get_land_at(m, m->tanks[id].x,m->tanks[id].y-2)==0 || get_land_at(m, m->tanks[id].x,m->tanks[id].y-3)==0){
             grav=false; m->tanks[id].y--;
         }else
             grav=false;
@@ -230,9 +230,9 @@ void tank_update(struct moag *m, int id){
     if(m->tanks[id].y<20)
         m->tanks[id].y=20;
     if(grav){
-        if(get_land_at(m->land, m->tanks[id].x,m->tanks[id].y+1)==0)
+        if(get_land_at(m, m->tanks[id].x,m->tanks[id].y+1)==0)
             m->tanks[id].y++;
-        if(get_land_at(m->land, m->tanks[id].x,m->tanks[id].y+1)==0)
+        if(get_land_at(m, m->tanks[id].x,m->tanks[id].y+1)==0)
             m->tanks[id].y++;
     }
     // Pickup
@@ -281,7 +281,7 @@ void bounce_bullet(struct moag *m, int b, float hitx, float hity)
 {
     const int ix=(int)hitx;
     const int iy=(int)hity;
-    if(get_land_at(m->land, ix,iy)==-1){
+    if(get_land_at(m, ix,iy)==-1){
         m->bullets[b].vx=-m->bullets[b].vx;
         m->bullets[b].vy=-m->bullets[b].vy;
         return;
@@ -291,14 +291,14 @@ void bounce_bullet(struct moag *m, int b, float hitx, float hity)
     m->bullets[b].x=ix;
     m->bullets[b].y=iy;
     unsigned char hit=0;
-    if(get_land_at(m->land, ix-1,iy-1)) hit|=1<<7;
-    if(get_land_at(m->land, ix  ,iy-1)) hit|=1<<6;
-    if(get_land_at(m->land, ix+1,iy-1)) hit|=1<<5;
-    if(get_land_at(m->land, ix-1,iy  )) hit|=1<<4;
-    if(get_land_at(m->land, ix+1,iy  )) hit|=1<<3;
-    if(get_land_at(m->land, ix-1,iy+1)) hit|=1<<2;
-    if(get_land_at(m->land, ix  ,iy+1)) hit|=1<<1;
-    if(get_land_at(m->land, ix+1,iy+1)) hit|=1;
+    if(get_land_at(m, ix-1,iy-1)) hit|=1<<7;
+    if(get_land_at(m, ix  ,iy-1)) hit|=1<<6;
+    if(get_land_at(m, ix+1,iy-1)) hit|=1<<5;
+    if(get_land_at(m, ix-1,iy  )) hit|=1<<4;
+    if(get_land_at(m, ix+1,iy  )) hit|=1<<3;
+    if(get_land_at(m, ix-1,iy+1)) hit|=1<<2;
+    if(get_land_at(m, ix  ,iy+1)) hit|=1<<1;
+    if(get_land_at(m, ix+1,iy+1)) hit|=1;
     const float IRT2=0.70710678;
     const float vx=m->bullets[b].vx;
     const float vy=m->bullets[b].vy;
@@ -334,7 +334,7 @@ void bullet_detonate(struct moag *m, int b)
     const float dy=m->bullets[b].vy/d;
     float hitx=m->bullets[b].fx;
     float hity=m->bullets[b].fy;
-    for(int i=40; i>0 && get_land_at(m->land, (int)hitx,(int)hity); i--){
+    for(int i=40; i>0 && get_land_at(m, (int)hitx,(int)hity); i--){
         hitx-=dx;
         hity-=dy;
     }
@@ -379,19 +379,19 @@ void bullet_detonate(struct moag *m, int b)
     case 10: { //ladder
         int x=m->bullets[b].x;
         int y=m->bullets[b].y;
-        for(;y<LAND_HEIGHT;y++) if(get_land_at(m->land, x,y)==0) break;
-        for(;y<LAND_HEIGHT;y++) if(get_land_at(m->land, x,y)) break;
+        for(;y<LAND_HEIGHT;y++) if(get_land_at(m, x,y)==0) break;
+        for(;y<LAND_HEIGHT;y++) if(get_land_at(m, x,y)) break;
         const int maxy=y+1;
         y=m->bullets[b].y;
-        for(;y>0;y--) if(get_land_at(m->land, x,y)==0) break;
+        for(;y>0;y--) if(get_land_at(m, x,y)==0) break;
         const int miny=y;
         for(;y<maxy;y+=2){
-            set_land_at(m->land, x-1,y,0);
-            set_land_at(m->land, x  ,y,1);
-            set_land_at(m->land, x+1,y,0);
-            set_land_at(m->land, x-1,y+1,1);
-            set_land_at(m->land, x  ,y+1,1);
-            set_land_at(m->land, x+1,y+1,1);
+            set_land_at(m, x-1,y,0);
+            set_land_at(m, x  ,y,1);
+            set_land_at(m, x+1,y,0);
+            set_land_at(m, x-1,y+1,1);
+            set_land_at(m, x  ,y+1,1);
+            set_land_at(m, x+1,y+1,1);
         }
         broadcast_land_chunk(m, x-1,miny,3,maxy-miny+1);
     } break;
@@ -427,7 +427,7 @@ void bullet_update(struct moag *m, int b)
         m->bullets[b].fy+=m->bullets[b].vy;
         m->bullets[b].x=(int)m->bullets[b].fx;
         m->bullets[b].y=(int)m->bullets[b].fy;
-        if(get_land_at(m->land, m->bullets[b].x,m->bullets[b].y)==1){
+        if(get_land_at(m, m->bullets[b].x,m->bullets[b].y)==1){
             explode(m, m->bullets[b].x,m->bullets[b].y+LADDER_LENGTH-m->bullets[b].active, 1, 2);
             bullet_detonate(m, b);
         }
@@ -438,7 +438,7 @@ void bullet_update(struct moag *m, int b)
     m->bullets[b].vy+=GRAVITY;
     m->bullets[b].x=(int)m->bullets[b].fx;
     m->bullets[b].y=(int)m->bullets[b].fy;
-    if(get_land_at(m->land, m->bullets[b].x,m->bullets[b].y)){
+    if(get_land_at(m, m->bullets[b].x,m->bullets[b].y)){
         bullet_detonate(m, b);
         return;
     }
@@ -501,7 +501,7 @@ void crate_update(struct moag *m)
         else                        m->crate.type=4;
         broadcast_crate_chunk(m);
     }
-    if(get_land_at(m->land, m->crate.x,m->crate.y+1)==0) {
+    if(get_land_at(m, m->crate.x,m->crate.y+1)==0) {
         m->crate.y++;
         broadcast_crate_chunk(m);
     }
@@ -566,9 +566,9 @@ void init_game(struct moag *m)
     for (int y = 0; y < LAND_HEIGHT; ++y) {
         for (int x = 0; x < LAND_WIDTH; ++x){
             if (y < LAND_HEIGHT / 3)
-                set_land_at(m->land, x, y, 0);
+                set_land_at(m, x, y, 0);
             else
-                set_land_at(m->land, x, y, 1);
+                set_land_at(m, x, y, 1);
         }
     }
 }

@@ -31,10 +31,6 @@ const char cratesprite[9][10] = {
 };
 
 struct chatline chatlines[CHAT_LINES] = {{0}};
-struct tank tanks[MAX_CLIENTS] = {{0}};
-struct bullet bullets[MAX_BULLETS] = {{0}};
-struct crate crate = {0};
-char land[LAND_WIDTH * LAND_HEIGHT] = {0};
 
 char *typing_str = NULL;
 bool kleft = false;
@@ -85,17 +81,17 @@ void draw_crate(int x, int y){
             set_pixel(x+ix,y+iy,150, 75, 0);
 }
 
-void draw_bullets(void)
+void draw_bullets(struct moag *m)
 {
     for(int i=0;i<num_bullets;i++){
-        if (bullets[i].x<1 || bullets[i].x>=LAND_WIDTH-1 ||
-            bullets[i].y<1 || bullets[i].y>=LAND_HEIGHT-1)
+        if (m->bullets[i].x<1 || m->bullets[i].x>=LAND_WIDTH-1 ||
+            m->bullets[i].y<1 || m->bullets[i].y>=LAND_HEIGHT-1)
             continue;
-        set_pixel(bullets[i].x,bullets[i].y-1,255,155,155);
-        set_pixel(bullets[i].x-1,bullets[i].y,255,155,155);
-        set_pixel(bullets[i].x,  bullets[i].y,255,155,155);
-        set_pixel(bullets[i].x+1,bullets[i].y,255,155,155);
-        set_pixel(bullets[i].x,bullets[i].y+1,255,155,155);
+        set_pixel(m->bullets[i].x,m->bullets[i].y-1,255,155,155);
+        set_pixel(m->bullets[i].x-1,m->bullets[i].y,255,155,155);
+        set_pixel(m->bullets[i].x,  m->bullets[i].y,255,155,155);
+        set_pixel(m->bullets[i].x+1,m->bullets[i].y,255,155,155);
+        set_pixel(m->bullets[i].x,m->bullets[i].y+1,255,155,155);
     }
 }
 
@@ -125,22 +121,22 @@ void add_chat_line(char* str)
     chatlines[i].expire=SDL_GetTicks()+CHAT_EXPIRETIME;
 }
 
-void draw(void)
+void draw(struct moag *m)
 {
     for (int x = 0; x < LAND_WIDTH; ++x) {
         for (int y = 0; y < LAND_HEIGHT; ++y) {
-            if (get_land_at(land, x, y))
+            if (get_land_at(m, x, y))
                 set_pixel(x, y, 155, 155, 155);
         }
     }
     for(int i=0;i<MAX_CLIENTS;i++)
-        if(tanks[i].active) {
-            draw_tank(tanks[i].x-9,tanks[i].y-13,tanks[i].angle,tanks[i].facingLeft);
-            draw_string_centered(tanks[i].x,tanks[i].y-36,240,240,240,tanks[i].name);
+        if(m->tanks[i].active) {
+            draw_tank(m->tanks[i].x-9,m->tanks[i].y-13,m->tanks[i].angle,m->tanks[i].facingLeft);
+            draw_string_centered(m->tanks[i].x,m->tanks[i].y-36,240,240,240,m->tanks[i].name);
         }
-    if(crate.x || crate.y)
-        draw_crate(crate.x-4,crate.y-8);
-    draw_bullets();
+    if(m->crate.x || m->crate.y)
+        draw_crate(m->crate.x-4,m->crate.y-8);
+    draw_bullets(m);
     del_chat_line();
     for(int i=0;i<CHAT_LINES;i++)
         if(chatlines[i].str)
@@ -155,7 +151,7 @@ void draw(void)
     }
 }
 
-void on_receive(ENetEvent *ev)
+void on_receive(struct moag *m, ENetEvent *ev)
 {
     size_t pos = 0;
     unsigned char *packet = ev->packet->data;
@@ -164,7 +160,7 @@ void on_receive(ENetEvent *ev)
 
     switch(type) {
     case LAND_CHUNK:
-        read_land_chunk(land, packet, ev->packet->dataLength);
+        read_land_chunk(m, packet, ev->packet->dataLength);
         break;
     case TANK_CHUNK: {
         int id = read8(packet, &pos);
@@ -180,14 +176,14 @@ void on_receive(ENetEvent *ev)
             facingLeft=1;
         }
         if(x==-1 && y==-1){
-            tanks[id].active=0;
+            m->tanks[id].active=0;
             break;
         }
-        tanks[id].active=1;
-        tanks[id].x=x;
-        tanks[id].y=y;
-        tanks[id].angle=angle;
-        tanks[id].facingLeft=facingLeft;
+        m->tanks[id].active=1;
+        m->tanks[id].x=x;
+        m->tanks[id].y=y;
+        m->tanks[id].angle=angle;
+        m->tanks[id].facingLeft=facingLeft;
         break;
     }
     case BULLET_CHUNK: {
@@ -201,8 +197,8 @@ void on_receive(ENetEvent *ev)
         }
 
         for (int i=0;i<num_bullets;i++) {
-            bullets[i].x = read16(packet, &pos);
-            bullets[i].y = read16(packet, &pos);
+            m->bullets[i].x = read16(packet, &pos);
+            m->bullets[i].y = read16(packet, &pos);
         }
         break;
     }
@@ -212,12 +208,12 @@ void on_receive(ENetEvent *ev)
         unsigned char len = read8(packet, &pos);
         switch(cmd){
         case CHAT: {
-            int namelen=strlen(tanks[id].name);
+            int namelen=strlen(m->tanks[id].name);
             int linelen=namelen+len+4;
             char* line=malloc(linelen);
             line[0]='<';
             for(int i=0;i<namelen;i++)
-                line[i+1]=tanks[id].name[i];
+                line[i+1]=m->tanks[id].name[i];
             line[namelen+1]='>';
             line[namelen+2]=' ';
             for (int i = 0; i < len; ++i)
@@ -231,8 +227,8 @@ void on_receive(ENetEvent *ev)
                 break;
             }
             for (int i = 0; i < len; ++i)
-                tanks[id].name[i] = read8(packet, &pos);
-            tanks[id].name[len]='\0';
+                m->tanks[id].name[i] = read8(packet, &pos);
+            m->tanks[id].name[len]='\0';
             break;
         }
         case SERVER_NOTICE: { //server notice
@@ -249,8 +245,8 @@ void on_receive(ENetEvent *ev)
         break;
     }
     case CRATE_CHUNK: {
-        crate.x=read16(packet, &pos);
-        crate.y=read16(packet, &pos);
+        m->crate.x=read16(packet, &pos);
+        m->crate.y=read16(packet, &pos);
         break;
     }
     default:
@@ -272,6 +268,8 @@ int main(int argc, char *argv[])
 
     if (!set_font("Nouveau_IBM.ttf", 14))
         die("Failed to open 'Nouveau_IBM.ttf'\n");
+
+    struct moag moag;
 
     ENetEvent enet_ev;
 
@@ -368,7 +366,7 @@ int main(int argc, char *argv[])
                 break;
 
             case ENET_EVENT_TYPE_RECEIVE:
-                on_receive(&enet_ev);
+                on_receive(&moag, &enet_ev);
                 enet_packet_destroy(enet_ev.packet);
                 break;
 
@@ -378,7 +376,7 @@ int main(int argc, char *argv[])
         }
 
         SDL_FillRect(SDL_GetVideoSurface(), NULL, 0);
-        draw();
+        draw(&moag);
         SDL_Flip(SDL_GetVideoSurface());
     }
 

@@ -79,6 +79,7 @@ enum {
     /* VARIES
      * 1: CREATE_CHUNK
      * 1: SPAWN/KILL/MOVE
+     * 1: id
      * IF NOT KILL
      *  2: x-position
      *  2: y-position
@@ -200,18 +201,18 @@ static inline int32_t rng_range(struct rng_state *st, int32_t min, int32_t max)
     return floor(rng_between(st, min, max + 1));
 }
 
-static inline char get_land_at(char *land, int x, int y)
+static inline char get_land_at(struct moag *m, int x, int y)
 {
     if (x < 0 || x >= LAND_WIDTH || y < 0 || y >= LAND_HEIGHT)
         return -1;
-    return land[y * LAND_WIDTH + x];
+    return m->land[y * LAND_WIDTH + x];
 }
 
-static inline void set_land_at(char *land, int x, int y, char to)
+static inline void set_land_at(struct moag *m, int x, int y, char to)
 {
     if (x < 0 || x >= LAND_WIDTH || y < 0 || y >= LAND_HEIGHT)
         return;
-    land[y * LAND_WIDTH + x] = to;
+    m->land[y * LAND_WIDTH + x] = to;
 }
 
 int zip(char *in_data, size_t in_size, char **out_data, size_t *out_size);

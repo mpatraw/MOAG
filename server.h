@@ -28,7 +28,7 @@ static inline void broadcast_land_chunk(struct moag *m, int x, int y, int w, int
 
     for (int yy = y; yy < h + y; ++yy)
         for (int xx = x; xx < w + x; ++xx)
-            write8(land_buffer, &pos, get_land_at(m->land, xx, yy));
+            write8(land_buffer, &pos, get_land_at(m, xx, yy));
 
     unsigned char *zipped = NULL;
     size_t zipped_len = 0, zipped_pos = 0;

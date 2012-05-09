@@ -19,7 +19,7 @@ static inline void send_byte(unsigned char c)
     send_packet(&c, 1, true);
 }
 
-static inline void read_land_chunk(char *land, unsigned char *packet, size_t len)
+static inline void read_land_chunk(struct moag *m, unsigned char *packet, size_t len)
 {
     /* Skip LAND_CHUNK */
     size_t pos = 1;
@@ -41,7 +41,7 @@ static inline void read_land_chunk(char *land, unsigned char *packet, size_t len
     pos = 0;
     for (int yy = y; yy < h + y; ++yy)
         for (int xx = x; xx < w + x; ++xx)
-            set_land_at(land, xx, yy, read8(unzipped, &pos));
+            set_land_at(m, xx, yy, read8(unzipped, &pos));
 
     free(unzipped);
 }
