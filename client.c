@@ -279,7 +279,7 @@ void on_receive(ENetEvent *ev)
         for (int i = 0; i < len; ++i)
             write8(buffer, &pos, typing_str[i]);
 
-        send_chunk(buffer, pos, true);
+        send_packet(buffer, pos, true);
 
         stop_text_input();
         typing_str=NULL;

@@ -265,7 +265,7 @@ void tank_update(int id){
         case 13: strcat(notice,"Cluster Bomb"); break;
         default: strcat(notice,"???"); break;
         }
-        /*sendChat(-1,-1,3,notice,strlen(notice));*/
+        broadcast_chat(-1,3,notice,strlen(notice));
     }
     // Aim
     if(tanks[id].kup && tanks[id].angle<90)
@@ -508,10 +508,12 @@ void crate_update(void)
         else if((r-=PMIRV)<0)       crate.type=11;
         else if((r-=PCLUSTER)<0)    crate.type=13;
         else                        crate.type=4;
+        broadcast_crate_chunk(crate);
     }
-    if(get_land_at(land, crate.x,crate.y+1)==0)
+    if(get_land_at(land, crate.x,crate.y+1)==0) {
         crate.y++;
-    broadcast_crate_chunk(crate);
+        broadcast_crate_chunk(crate);
+    }
 }
 
 void step_game(void)
@@ -576,7 +578,6 @@ void init_game(void)
                 set_land_at(land, x, y, 1);
         }
     }
-    broadcast_land_chunk(land, 0, 0, LAND_WIDTH, LAND_HEIGHT);
 }
 
 void on_receive(ENetEvent *ev)

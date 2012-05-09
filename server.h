@@ -12,18 +12,6 @@
 #define LADDER_TIME         60
 #define LADDER_LENGTH       64
 
-static inline void broadcast_chunk(unsigned char *buf, size_t len, bool reliable)
-{
-    ENetPacket *packet = enet_packet_create(NULL, len, reliable);
-    memcpy(packet->data, buf, len);
-    enet_host_broadcast(get_server_host(), 0, packet);
-}
-
-static inline void broadcast_byte(unsigned char c)
-{
-    broadcast_chunk(&c, 0, true);
-}
-
 static inline void broadcast_land_chunk(char *land, int x, int y, int w, int h)
 {
     if(x<0){ w+=x; x=0; }
@@ -46,7 +34,8 @@ static inline void broadcast_land_chunk(char *land, int x, int y, int w, int h)
         for (int xx = x; xx < w + x; ++xx)
             write8(buffer, &pos, get_land_at(land, xx, yy));
 
-    broadcast_chunk(buffer, pos, true);
+    broadcast_packet(buffer, pos, true);
+    printf("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);
 }
 
 static inline void broadcast_tank_chunk(struct tank *tanks, int id)
@@ -70,7 +59,8 @@ static inline void broadcast_tank_chunk(struct tank *tanks, int id)
     else
         write8(buffer, &pos, tanks[id].angle);
 
-    broadcast_chunk(buffer, pos, false);
+    broadcast_packet(buffer, pos, false);
+    printf("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);
 }
 
 static inline void broadcast_bullets(struct bullet *bullets)
@@ -92,7 +82,8 @@ static inline void broadcast_bullets(struct bullet *bullets)
             write16(buffer, &pos, bullets[i].y);
         }
 
-    broadcast_chunk(buffer, pos, false);
+    broadcast_packet(buffer, pos, false);
+    printf("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);
 }
 
 static inline void broadcast_crate_chunk(struct crate crate)
@@ -104,7 +95,8 @@ static inline void broadcast_crate_chunk(struct crate crate)
     write16(buffer, &pos, crate.x);
     write16(buffer, &pos, crate.y);
 
-    broadcast_chunk(buffer, pos, false);
+    broadcast_packet(buffer, pos, false);
+    printf("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);
 }
 
 static inline void broadcast_chat(int id, char cmd, const char* msg, unsigned char len)
@@ -119,7 +111,8 @@ static inline void broadcast_chat(int id, char cmd, const char* msg, unsigned ch
     for(int i=0;i<len;i++)
         write8(buffer, &pos, msg[i]);
 
-    broadcast_chunk(buffer, pos, true);
+    broadcast_packet(buffer, pos, true);
+    printf("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);
 }
 
 
