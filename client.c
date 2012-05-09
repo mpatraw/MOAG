@@ -269,14 +269,21 @@ void on_receive(ENetEvent *ev)
         break;
     }
 
-    /*if(!is_text_input()){
-        unsigned char len=strlen(typing_str);
-        char buf[2]={11,len};
-        moag::SendRaw(arg, buf, 2);
-        moag::SendRaw(arg, typing_str, len);
+    if(typing_str && !is_text_input()){
+        unsigned char buffer[256];
+        size_t pos = 0;
+
+        unsigned char len = strlen(typing_str);
+        write8(buffer, &pos, 11);
+        write8(buffer, &pos, len);
+        for (int i = 0; i < len; ++i)
+            write8(buffer, &pos, typing_str[i]);
+
+        send_chunk(buffer, pos, true);
+
         stop_text_input();
         typing_str=NULL;
-    }*/
+    }
 }
 
 int main(int argc, char *argv[])
@@ -354,7 +361,6 @@ int main(int argc, char *argv[])
                 stop_text_input();
             }
             else if(is_key_down(SDLK_RETURN)){
-                typing_str=NULL;
                 stop_text_input();
             }
         }
