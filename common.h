@@ -17,8 +17,6 @@
 #define M_PI            3.14159
 
 #define PORT            8080
-#define MAX_CLIENTS     8
-#define NUM_CHANNELS    2
 
 #define MAX_BULLETS     256
 
@@ -112,7 +110,5 @@ static inline uint32_t read32(unsigned char *buf, size_t *pos)
     (*pos) += 4;
     return val;
 }
-
-void die(const char *fmt, ...);
 
 #endif

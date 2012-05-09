@@ -11,6 +11,6 @@ env.Object(glob.glob('*.c'))
 server_libs = ['enet', 'm']
 client_libs = ['SDL', 'SDL_ttf', 'enet', 'm']
 
-env.Program('client', ['client.o', 'sdl_aux.o', 'common.o'], LIBS=client_libs)
-env.Program('server', ['server.o', 'common.o'], LIBS=server_libs)
+env.Program('client', ['client.o', 'enet_aux.o', 'sdl_aux.o', 'common.o'], LIBS=client_libs)
+env.Program('server', ['server.o', 'enet_aux.o', 'common.o'], LIBS=server_libs)
 

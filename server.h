@@ -3,6 +3,7 @@
 #define SERVER_H
 
 #include "common.h"
+#include "enet_aux.h"
 
 #define GRAVITY             0.1
 #define BOUNCER_BOUNCES     11
@@ -11,16 +12,11 @@
 #define LADDER_TIME         60
 #define LADDER_LENGTH       64
 
-extern ENetHost *g_server;
-
-void init_enet(void);
-void uninit_enet(void);
-
 static inline void broadcast_chunk(unsigned char *buf, size_t len, bool reliable)
 {
     ENetPacket *packet = enet_packet_create(NULL, len, reliable);
     memcpy(packet->data, buf, len);
-    enet_host_broadcast(g_server, 0, packet);
+    enet_host_broadcast(get_server_host(), 0, packet);
 }
 
 static inline void broadcast_byte(unsigned char c)

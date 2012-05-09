@@ -6,8 +6,6 @@
 
 #define SQ(x) ((x) * (x))
 
-ENetHost *g_server = NULL;
-
 static char land[LAND_WIDTH * LAND_HEIGHT] = {0};
 struct tank tanks[MAX_CLIENTS];
 struct bullet bullets[MAX_BULLETS];
@@ -588,7 +586,6 @@ void on_receive(ENetEvent *ev)
     int i = (int)ev->peer->data;
 
     char byte = read8(packet, &pos);
-    printf("%d\n", byte);
 
     switch(byte){
     case KLEFT_PRESSED_CHUNK: tanks[i].kleft=1; break;
@@ -616,14 +613,14 @@ void on_receive(ENetEvent *ev)
 
 int main(int argc, char *argv[])
 {
-    init_enet();
+    init_enet_server(PORT);
 
     init_game();
 
     ENetEvent event;
 
     for (;;) {
-        while (enet_host_service(g_server, &event, 10)) {
+        while (enet_host_service(get_server_host(), &event, 10)) {
             switch (event.type) {
             case ENET_EVENT_TYPE_CONNECT:
                 event.peer->data = (void *)client_connect();
@@ -655,26 +652,4 @@ int main(int argc, char *argv[])
     uninit_enet();
 
     return EXIT_SUCCESS;
-}
-
-void init_enet(void)
-{
-    if (enet_initialize() != 0)
-        die("An error occurred while initializing ENet.\n");
-    atexit(enet_deinitialize);
-
-    ENetAddress address;
-    address.host = ENET_HOST_ANY;
-    address.port = PORT;
-
-    g_server = enet_host_create(&address, MAX_CLIENTS, NUM_CHANNELS, 0, 0);
-    if (!g_server)
-        die("An error occurred while trying to create an ENet server host.\n");
-
-    fprintf(stdout, "Started server\n");
-}
-
-void uninit_enet(void)
-{
-    enet_host_destroy(g_server);
 }

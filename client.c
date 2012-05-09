@@ -30,9 +30,6 @@ const char cratesprite[9][10] = {
     ".xxxxxxx.",
 };
 
-ENetHost *g_client = NULL;
-ENetPeer *g_peer = NULL;
-
 struct chatline chatlines[CHAT_LINES] = {{0}};
 struct tank tanks[MAX_CLIENTS] = {{0}};
 struct bullet bullets[MAX_BULLETS] = {{0}};
@@ -46,6 +43,15 @@ bool kup = false;
 bool kdown = false;
 bool kfire = false;
 int num_bullets = 0;
+
+static void die(const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(stderr, fmt, args);
+    va_end(args);
+    exit(EXIT_FAILURE);
+}
 
 void draw_tank(int x, int y, int turretangle, bool facing_left)
 {
@@ -76,7 +82,7 @@ void draw_crate(int x, int y){
     for(int iy=0;iy<9;iy++)
     for(int ix=0;ix<9;ix++)
         if(cratesprite[iy][ix]=='x')
-            set_pixel(x+ix,y+iy,240,240,240);
+            set_pixel(x+ix,y+iy,150, 75, 0);
 }
 
 void draw_bullets(void)
@@ -85,11 +91,11 @@ void draw_bullets(void)
         if (bullets[i].x<1 || bullets[i].x>=LAND_WIDTH-1 ||
             bullets[i].y<1 || bullets[i].y>=LAND_HEIGHT-1)
             continue;
-        set_pixel(bullets[i].x,bullets[i].y-1,255,255,255);
-        set_pixel(bullets[i].x-1,bullets[i].y,255,255,255);
-        set_pixel(bullets[i].x,  bullets[i].y,255,255,255);
-        set_pixel(bullets[i].x+1,bullets[i].y,255,255,255);
-        set_pixel(bullets[i].x,bullets[i].y+1,255,255,255);
+        set_pixel(bullets[i].x,bullets[i].y-1,255,155,155);
+        set_pixel(bullets[i].x-1,bullets[i].y,255,155,155);
+        set_pixel(bullets[i].x,  bullets[i].y,255,155,155);
+        set_pixel(bullets[i].x+1,bullets[i].y,255,155,155);
+        set_pixel(bullets[i].x,bullets[i].y+1,255,155,155);
     }
 }
 
@@ -121,6 +127,12 @@ void add_chat_line(char* str)
 
 void draw(void)
 {
+    for (int x = 0; x < LAND_WIDTH; ++x) {
+        for (int y = 0; y < LAND_HEIGHT; ++y) {
+            if (get_land_at(land, x, y))
+                set_pixel(x, y, 155, 155, 155);
+        }
+    }
     for(int i=0;i<MAX_CLIENTS;i++)
         if(tanks[i].active) {
             draw_tank(tanks[i].x-9,tanks[i].y-13,tanks[i].angle,tanks[i].facingLeft);
@@ -130,13 +142,6 @@ void draw(void)
         draw_crate(crate.x-4,crate.y-8);
     draw_bullets();
     del_chat_line();
-
-    for (int x = 0; x < LAND_WIDTH; ++x) {
-        for (int y = 0; y < LAND_HEIGHT; ++y) {
-            if (get_land_at(land, x, y))
-                set_pixel(x, y, 240, 240, 240);
-        }
-    }
     for(int i=0;i<CHAT_LINES;i++)
         if(chatlines[i].str)
         {
@@ -282,8 +287,8 @@ int main(int argc, char *argv[])
         return EXIT_SUCCESS;
     }
 
-    init_enet(argv[1]);
-    init_sdl("MOAG");
+    init_enet_client(argv[1], PORT);
+    init_sdl(LAND_WIDTH, LAND_HEIGHT, "MOAG");
 
     if (!set_font("Nouveau_IBM.ttf", 12))
         die("Failed to open 'Nouveau_IBM.ttf'\n");
@@ -360,7 +365,7 @@ int main(int argc, char *argv[])
             typing_str=start_text_cmd_input();
         }
 
-        while (enet_host_service(g_client, &enet_ev, 10)) {
+        while (enet_host_service(get_client_host(), &enet_ev, 10)) {
             switch (enet_ev.type) {
             case ENET_EVENT_TYPE_CONNECT:
                 break;
@@ -383,57 +388,7 @@ int main(int argc, char *argv[])
         SDL_Flip(SDL_GetVideoSurface());
     }
 
-    enet_peer_disconnect(g_peer, 0);
-
-    while (enet_host_service(g_client, &enet_ev, 3000)) {
-        switch (enet_ev.type) {
-        case ENET_EVENT_TYPE_RECEIVE:
-            enet_packet_destroy(enet_ev.packet);
-            break;
-
-        case ENET_EVENT_TYPE_DISCONNECT:
-            uninit_sdl();
-            uninit_enet();
-            exit(EXIT_SUCCESS);
-
-        default:
-            break;
-        }
-    }
-
-    enet_peer_reset(g_peer);
+    uninit_enet();
 
     exit(EXIT_SUCCESS);
-}
-
-void init_enet(const char *ip)
-{
-    if (enet_initialize() != 0)
-        die("An error occurred while initializing ENet.\n");
-    atexit(enet_deinitialize);
-
-    g_client = enet_host_create(NULL, MAX_CLIENTS, NUM_CHANNELS, 0, 0);
-    if (!g_client)
-        die("An error occurred while trying to create an ENet client host.\n");
-
-    ENetAddress address;
-    enet_address_set_host(&address, ip);
-    address.port = PORT;
-
-    g_peer = enet_host_connect(g_client, &address, NUM_CHANNELS, 0);
-    if (!g_peer)
-        die("No available peers for initiating an ENet connection.\n");
-
-    ENetEvent enet_ev;
-
-    if (enet_host_service(g_client, &enet_ev, CONNECT_TIMEOUT) == 0 ||
-        enet_ev.type != ENET_EVENT_TYPE_CONNECT) {
-        enet_peer_reset(g_peer);
-        die("Connection to %s timed out.\n", ip);
-    }
-}
-
-void uninit_enet(void)
-{
-    enet_host_destroy(g_client);
 }

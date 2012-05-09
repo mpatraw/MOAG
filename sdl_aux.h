@@ -2,10 +2,10 @@
 #ifndef SDL_AUX_H
 #define SDL_AUX_H
 
+#include <stdbool.h>
+
 #include <SDL/SDL.h>
 #include <SDL/SDL_ttf.h>
-
-#include "common.h"
 
 static inline void set_pixel(int x, int y, Uint8 r, Uint8 g, Uint8 b)
 {
@@ -80,7 +80,7 @@ static inline void draw_block(int x, int y, int w, int h, Uint8 r, Uint8 g, Uint
                  SDL_MapRGB(SDL_GetVideoSurface()->format, r, g, b));
 }
 
-void init_sdl(const char *title);
+void init_sdl(unsigned w, unsigned h, const char *title);
 void uninit_sdl(void);
 
 void grab_events(void);

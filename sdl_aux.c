@@ -1,12 +1,24 @@
 
+#include <stdarg.h>
+#include <stdio.h>
+
 #include "sdl_aux.h"
 
-void init_sdl(const char *title)
+static void die(const char *fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(stderr, fmt, args);
+    va_end(args);
+    exit(EXIT_FAILURE);
+}
+
+void init_sdl(unsigned w, unsigned h, const char *title)
 {
     if (SDL_Init(SDL_INIT_EVERYTHING) != 0)
         die("%s\n", SDL_GetError());
 
-    SDL_Surface *s = SDL_SetVideoMode(LAND_WIDTH, LAND_HEIGHT, 32, SDL_DOUBLEBUF);
+    SDL_Surface *s = SDL_SetVideoMode(w, h, 32, SDL_DOUBLEBUF);
     if (!s)
         die("%s\n", SDL_GetError());
 
@@ -14,7 +26,6 @@ void init_sdl(const char *title)
         die("%s\n", TTF_GetError());
 
     SDL_EnableUNICODE(true);
-    SDL_EnableKeyRepeat(SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL);
 
     SDL_WM_SetCaption(title, NULL);
 }
