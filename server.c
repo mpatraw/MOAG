@@ -70,7 +70,6 @@ void spawn_tank(struct moag *m, int id)
     m->tanks[id].kdown=0;
     m->tanks[id].kfire=0;
     explode(m, m->tanks[id].x,m->tanks[id].y-12, 12, 2);
-    broadcast_tank_chunk(m, SPAWN, id);
 }
 
 void spawn_client(struct moag *m, int id)
@@ -88,6 +87,10 @@ void spawn_client(struct moag *m, int id)
     broadcast_chat(id,NAME_CHANGE,m->tanks[id].name,strlen(m->tanks[id].name));
     if (m->crate.active)
         broadcast_crate_chunk(m, SPAWN);
+
+    for (int i = 0; i < MAX_PLAYERS; ++i)
+        if (m->tanks[i].active)
+            broadcast_tank_chunk(m, SPAWN, id);
 }
 
 void disconnect_client(struct moag *m, int id)
