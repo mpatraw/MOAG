@@ -68,8 +68,6 @@ void init_enet_server(unsigned port)
     _server = enet_host_create(&address, MAX_CLIENTS, NUM_CHANNELS, 0, 0);
     if (!_server)
         die("An error occurred while trying to create an ENet server host.\n");
-
-    fprintf(stdout, "Started server\n");
 }
 
 void uninit_enet(void)

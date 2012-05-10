@@ -14,7 +14,9 @@
 
 #include "enet_aux.h"
 
-#define M_PI            3.14159
+#ifndef M_PI
+#   define M_PI            3.14159
+#endif
 
 #define PORT            8080
 
@@ -25,11 +27,54 @@
 #define LAND_WIDTH      800
 #define LAND_HEIGHT     600
 
-#define CLIENT_MSG_CHUNK_SIZE   258
-#define TANK_CHUNK_SIZE         8
-#define BULLET_CHUNK_SIZE       7
-#define CRATE_CHUNK_SIZE        6
-#define MSG_CHUNK_SIZE          260
+#if VERBOSITY == 5
+#   define LOG(...) \
+    do { fprintf(stdout, "    "); fprintf(stdout, __VA_ARGS__); } while (0)
+#   define INFO(...) \
+    do { fprintf(stdout, "::: "); fprintf(stdout, __VA_ARGS__); } while (0)
+#   define WARN(...) \
+    do { fprintf(stderr, "!!! "); fprintf(stderr, __VA_ARGS__); } while (0)
+#   define ERR(...) \
+    do { fprintf(stderr, "XXX "); fprintf(stderr, __VA_ARGS__); } while (0)
+#elif VERBOSITY == 4
+#   define LOG(...)
+#   define INFO(...) \
+    do { fprintf(stdout, "::: "); fprintf(stdout, __VA_ARGS__); } while (0)
+#   define WARN(...) \
+    do { fprintf(stderr, "!!! "); fprintf(stderr, __VA_ARGS__); } while (0)
+#   define ERR(...) \
+    do { fprintf(stderr, "XXX "); fprintf(stderr, __VA_ARGS__); } while (0)
+#elif VERBOSITY == 3
+#   define LOG(...)
+#   define INFO(...)
+#   define WARN(...) \
+    do { fprintf(stderr, "!!! "); fprintf(stderr, __VA_ARGS__); } while (0)
+#   define ERR(...) \
+    do { fprintf(stderr, "XXX "); fprintf(stderr, __VA_ARGS__); } while (0)
+#elif VERBOSITY == 2
+#   define LOG(...)
+#   define INFO(...)
+#   define WARN(...)
+#   define ERR(...) \
+    do { fprintf(stderr, "XXX "); fprintf(stderr, __VA_ARGS__); } while (0)
+#elif VERBOSITY == 1
+#   define LOG(...)
+#   define INFO(...)
+#   define WARN(...)
+#   define ERR(...)
+#else
+#   define LOG(...) \
+    do { fprintf(stdout, "    "); fprintf(stdout, __VA_ARGS__); } while (0)
+#   define INFO(...) \
+    do { fprintf(stdout, "::: "); fprintf(stdout, __VA_ARGS__); } while (0)
+#   define WARN(...) \
+    do { fprintf(stderr, "!!! "); fprintf(stderr, __VA_ARGS__); } while (0)
+#   define ERR(...) \
+    do { fprintf(stderr, "XXX "); fprintf(stderr, __VA_ARGS__); } while (0)
+#endif
+
+#define DIE(...) \
+    do { ERR(__VA_ARGS__); exit(EXIT_FAILURE); } while (0)
 
 /* Chunk types. */
 enum {
