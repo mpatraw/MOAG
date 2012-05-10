@@ -11,6 +11,12 @@
 #define LADDER_TIME         60
 #define LADDER_LENGTH       64
 
+#define CLIENT_MSG_CHUNK_SIZE   258
+#define TANK_CHUNK_SIZE         8
+#define BULLET_CHUNK_SIZE       7
+#define CRATE_CHUNK_SIZE        6
+#define MSG_CHUNK_SIZE          260
+
 static inline void broadcast_land_chunk(struct moag *m, int x, int y, int w, int h)
 {
     if (x < 0) { w += x; x = 0; }
@@ -48,7 +54,7 @@ static inline void broadcast_land_chunk(struct moag *m, int x, int y, int w, int
         write8(buffer, &pos, read8(zipped, &zipped_pos));
 
     broadcast_packet(buffer, pos, true);
-    printf("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, zipped_len);
+    INFO("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, zipped_len);
 
 cleanup:
     if (land_buffer)
@@ -82,7 +88,7 @@ static inline void broadcast_tank_chunk(struct moag *m, int type, int id)
         broadcast_packet(buffer, pos, true);
     else
         broadcast_packet(buffer, pos, false);
-    printf("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);
+    INFO("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);
 }
 
 static inline void broadcast_bullet_chunk(struct moag *m, int type, int id)
@@ -103,7 +109,7 @@ static inline void broadcast_bullet_chunk(struct moag *m, int type, int id)
         broadcast_packet(buffer, pos, true);
     else
         broadcast_packet(buffer, pos, false);
-    printf("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);
+    INFO("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);
 }
 
 static inline void broadcast_crate_chunk(struct moag *m, int type)
@@ -124,7 +130,7 @@ static inline void broadcast_crate_chunk(struct moag *m, int type)
     else
         broadcast_packet(buffer, pos, false);
 
-    printf("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);
+    INFO("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);
 }
 
 static inline void broadcast_chat(int id, char cmd, const char *msg, unsigned char len)
@@ -140,7 +146,7 @@ static inline void broadcast_chat(int id, char cmd, const char *msg, unsigned ch
         write8(buffer, &pos, msg[i]);
 
     broadcast_packet(buffer, pos, true);
-    printf("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);
+    INFO("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);
 }
 
 

@@ -92,7 +92,6 @@ void spawn_client(struct moag *m, int id)
 
 void disconnect_client(struct moag *m, int id)
 {
-    printf("Client DCed\n");
     m->tanks[id].active = 0;
     broadcast_tank_chunk(m, KILL, id);
 }
@@ -522,7 +521,6 @@ void crate_update(struct moag *m)
         else if((r-=PCLUSTER)<0)    m->crate.type=13;
         else                        m->crate.type=4;
         broadcast_crate_chunk(m, SPAWN);
-        printf("%d, %d\n", m->crate.x, m->crate.y);
     }
     if(get_land_at(m, m->crate.x,m->crate.y+1)==0) {
         m->crate.y++;
@@ -548,7 +546,6 @@ int client_connect(struct moag *m)
             return -1;
         }
 
-    printf("Client connected!\n");
     spawn_client(m, i);
 
     return i;
@@ -630,9 +627,12 @@ int main(int argc, char *argv[])
 {
     init_enet_server(PORT);
 
+    INFO("Started server.\n");
 
     struct moag moag;
     init_game(&moag);
+
+    INFO("Initialized game.\n");
 
     ENetEvent event;
 
@@ -640,10 +640,12 @@ int main(int argc, char *argv[])
         while (enet_host_service(get_server_host(), &event, 10)) {
             switch (event.type) {
             case ENET_EVENT_TYPE_CONNECT:
+                INFO("Client connected.\n");
                 event.peer->data = (void *)client_connect(&moag);
                 break;
 
             case ENET_EVENT_TYPE_DISCONNECT:
+                INFO("Client disconnected.\n");
                 disconnect_client(&moag, (int)event.peer->data);
                 break;
 
@@ -667,6 +669,8 @@ int main(int argc, char *argv[])
     }
 
     uninit_enet();
+
+    INFO("Stopped server.\n");
 
     return EXIT_SUCCESS;
 }

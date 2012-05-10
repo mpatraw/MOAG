@@ -39,15 +39,6 @@ bool kup = false;
 bool kdown = false;
 bool kfire = false;
 
-static void die(const char *fmt, ...)
-{
-    va_list args;
-    va_start(args, fmt);
-    vfprintf(stderr, fmt, args);
-    va_end(args);
-    exit(EXIT_FAILURE);
-}
-
 void draw_tank(int x, int y, int turretangle, bool facing_left)
 {
     if (x<0 || x>LAND_WIDTH-18 || y<0 || y>LAND_HEIGHT-14)
@@ -201,7 +192,7 @@ void on_receive(struct moag *m, ENetEvent *ev)
             m->tanks[id].active = false;
         }
         else {
-            assert(!"Invalid TANK_CHUNK type.");
+            DIE("Invalid TANK_CHUNK type.\n");
         }
         break;
     }
@@ -222,7 +213,7 @@ void on_receive(struct moag *m, ENetEvent *ev)
             m->bullets[id].active = false;
         }
         else {
-            assert(!"Invalid BULLET_CHUNK type.");
+            DIE("Invalid BULLET_CHUNK type.\n");
         }
         break;
     }
@@ -284,12 +275,12 @@ void on_receive(struct moag *m, ENetEvent *ev)
             m->crate.active = false;
         }
         else {
-            assert(!"Invalid CRATE_CHUNK type.");
+            DIE("Invalid CRATE_CHUNK type.\n");
         }
         break;
     }
     default:
-        assert(!"Invalid CHUNK type.");
+        DIE("Invalid CHUNK type.\n");
         break;
     }
 }
@@ -306,7 +297,7 @@ int main(int argc, char *argv[])
     init_sdl(LAND_WIDTH, LAND_HEIGHT, "MOAG");
 
     if (!set_font("Nouveau_IBM.ttf", 14))
-        die("Failed to open 'Nouveau_IBM.ttf'\n");
+        DIE("Failed to open 'Nouveau_IBM.ttf'\n");
 
     struct moag moag;
 
@@ -316,16 +307,16 @@ int main(int argc, char *argv[])
 
         grab_events();
 
-        if(typing_str && is_text_input()){
-            if(is_key_down(SDLK_ESCAPE)
+        if (typing_str && is_text_input()) {
+            if (is_key_down(SDLK_ESCAPE)
                 || is_key_down(SDLK_LEFT)
                 || is_key_down(SDLK_RIGHT)
                 || is_key_down(SDLK_UP)
-                || is_key_down(SDLK_DOWN)){
+                || is_key_down(SDLK_DOWN)) {
                 typing_str=NULL;
                 stop_text_input();
             }
-            else if(is_key_down(SDLK_RETURN)){
+            else if(is_key_down(SDLK_RETURN)) {
                 unsigned char buffer[256];
                 size_t pos = 0;
 
@@ -338,7 +329,7 @@ int main(int argc, char *argv[])
                 send_packet(buffer, pos, true);
 
                 stop_text_input();
-                typing_str=NULL;
+                typing_str = NULL;
                 stop_text_input();
             }
         }
@@ -402,6 +393,8 @@ int main(int argc, char *argv[])
                 break;
 
             case ENET_EVENT_TYPE_DISCONNECT:
+                INFO("Disconnected from server.\n");
+                close_window();
                 break;
 
             case ENET_EVENT_TYPE_RECEIVE:

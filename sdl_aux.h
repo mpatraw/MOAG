@@ -86,6 +86,7 @@ void uninit_sdl(void);
 void grab_events(void);
 bool is_key_down(int c);
 bool is_closed(void);
+void close_window(void);
 
 char *start_text_input(void);
 char *start_text_cmd_input(void);

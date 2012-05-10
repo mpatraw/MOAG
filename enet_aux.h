@@ -31,7 +31,6 @@ static inline void send_packet(unsigned char *buf, size_t len, bool reliable)
     ENetPacket *packet = enet_packet_create(NULL, len, reliable);
     memcpy(packet->data, buf, len);
     enet_peer_send(get_peer(), 1, packet);
-    printf("Sent packet of size: %zu\n", len);
 }
 
 static inline void write8(unsigned char *buf, size_t *pos, uint8_t val)

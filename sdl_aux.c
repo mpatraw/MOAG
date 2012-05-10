@@ -91,6 +91,11 @@ bool is_closed(void)
     return _is_closed;
 }
 
+void close_window(void)
+{
+    _is_closed = true;
+}
+
 char *start_text_input(void)
 {
     SDL_EnableKeyRepeat(200, 50);
