@@ -1,30 +1,15 @@
-import os, sys
-platform = sys.platform
+import os, glob
 
-env = Environment(ENV = {'PATH' : os.environ['PATH']})
-env = Environment(CPPPATH='src')
-env['FRAMEWORKS'] = ['OpenGL', 'Foundation', 'Cocoa'] 
+env = Environment(ENV={'PATH' : os.environ['PATH']})
+env['FRAMEWORKS'] = ['OpenGL', 'Foundation', 'Cocoa']
+env.Append(CPPPATH = ['/opt/local/include/'])
+env.Append(CCFLAGS='-Wall -pedantic -g -std=c99 -D_POSIX_C_SOURCE=199309L')
+env.Append(LIBPATH='.')
 
-flags = '-Wall -pedantic -g'
-libs = ['SDL','SDL_net', 'SDL_ttf','moag']
+env.Object(glob.glob('*.c'))
 
+server_libs = ['enet', 'z', 'm']
+client_libs = ['SDL', 'SDL_ttf', 'enet', 'z', 'm']
 
-#this is where libmoag gets built
-env.Append(LIBPATH = ['.'])
-
-#includes for macports
-if platform == 'darwin' :
-    env.Append(LIBPATH = ['/opt/local/lib'])
-    env.Append(CPPPATH = ['/opt/local/include/'])
-
-Library('moag', Glob('moag*.cpp'),    LIBS=libs, FRAMEWORKS=env['FRAMEWORKS'], LIBPATH=env['LIBPATH'], CPPPATH=env['CPPPATH'], CPPFLAGS=flags )
-
-if platform == 'darwin' :
-    Object( 'SDLMain.o', 'SDLMain.m', LIBS=libs, FRAMEWORKS=env['FRAMEWORKS'], LIBPATH='.', CPPPATH=env['CPPPATH'], CPPFLAGS=flags)
-    Program('client', ['SDLMain.o']+['client.cpp'], LIBS=libs, FRAMEWORKS=env['FRAMEWORKS'], LIBPATH=env['LIBPATH'], CPPPATH=env['CPPPATH'], CPPFLAGS=flags)
-    Program('server', ['SDLMain.o']+['server.cpp'], LIBS=libs, FRAMEWORKS=env['FRAMEWORKS'], LIBPATH=env['LIBPATH'], CPPPATH=env['CPPPATH'], CPPFLAGS=flags)
-
-else:
-    Program('client', ['client.cpp'],     LIBS=libs, FRAMEWORKS=env['FRAMEWORKS'], LIBPATH=env['LIBPATH'], CPPPATH=env['CPPPATH'], CPPFLAGS=flags )
-    Program('server', ['server.cpp'],     LIBS=libs, FRAMEWORKS=env['FRAMEWORKS'], LIBPATH=env['LIBPATH'], CPPPATH=env['CPPPATH'], CPPFLAGS=flags )
-
+env.Program('client', ['client.o', 'enet_aux.o', 'sdl_aux.o', 'common.o'], LIBS=client_libs)
+env.Program('server', ['server.o', 'enet_aux.o', 'common.o'], LIBS=server_libs)
