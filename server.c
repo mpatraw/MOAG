@@ -1,6 +1,4 @@
 
-#include <time.h>
-#include <unistd.h>
 
 #include "server.h"
 
@@ -477,8 +475,7 @@ void bullet_update(struct moag *m, int b)
     if(SQ(m->crate.x-m->bullets[b].x)+SQ(m->crate.y-4-m->bullets[b].y)<30){
         bullet_detonate(m, b);
         fire_bullet(m, m->crate.type, m->crate.x, m->crate.y-4, m->crate.type==8?(m->bullets[b].vx<0?-0.2:0.2):0, -0.2);
-        m->crate.x=0;
-        m->crate.y=0;
+        m->crate.active = false;
         return;
     }
     if(m->bullets[b].type==11 && m->bullets[b].vy>0){
@@ -523,6 +520,7 @@ void crate_update(struct moag *m)
         else if((r-=PCLUSTER)<0)    m->crate.type=13;
         else                        m->crate.type=4;
         broadcast_crate_chunk(m, SPAWN);
+        printf("%d, %d\n", m->crate.x, m->crate.y);
     }
     if(get_land_at(m, m->crate.x,m->crate.y+1)==0) {
         m->crate.y++;

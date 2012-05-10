@@ -134,7 +134,7 @@ void draw(struct moag *m)
             draw_tank(m->tanks[i].x-9,m->tanks[i].y-13,m->tanks[i].angle,m->tanks[i].facingleft);
             draw_string_centered(m->tanks[i].x,m->tanks[i].y-36,240,240,240,m->tanks[i].name);
         }
-    if(m->crate.x || m->crate.y)
+    if(m->crate.active)
         draw_crate(m->crate.x-4,m->crate.y-8);
     draw_bullets(m);
     del_chat_line();
@@ -420,6 +420,12 @@ int main(int argc, char *argv[])
         sprintf(buf, "%u", get_peer()->roundTripTime);
         draw_string_right(LAND_WIDTH, 0, 0, 155, 0, buf);
         SDL_Flip(SDL_GetVideoSurface());
+
+        struct timespec t;
+        t.tv_sec = 0;
+        t.tv_nsec = 10000000;
+        while (nanosleep(&t, &t) == -1)
+            continue;
     }
 
     uninit_sdl();
