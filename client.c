@@ -416,6 +416,9 @@ int main(int argc, char *argv[])
 
         SDL_FillRect(SDL_GetVideoSurface(), NULL, 0);
         draw(&moag);
+        char buf[256];
+        sprintf(buf, "%u", get_peer()->roundTripTime);
+        draw_string_right(LAND_WIDTH, 0, 0, 155, 0, buf);
         SDL_Flip(SDL_GetVideoSurface());
     }
 

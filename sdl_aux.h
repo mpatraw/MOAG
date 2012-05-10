@@ -95,6 +95,7 @@ bool is_text_input(void);
 bool set_font(const char *ttf, int ptsize);
 void draw_string(int x, int y, Uint8 r, Uint8 g, Uint8 b, const char *str);
 void draw_string_centered(int x, int y, Uint8 r, Uint8 g, Uint8 b, const char *str);
+void draw_string_right(int x, int y, Uint8 r, Uint8 g, Uint8 b, const char *str);
 bool get_string_size(const char *str, int *w, int *h);
 
 #endif
