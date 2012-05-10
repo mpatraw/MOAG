@@ -86,6 +86,8 @@ void spawn_client(struct moag *m, int id)
     m->tanks[id].facingleft=0;
     broadcast_land_chunk(m, 0,0,LAND_WIDTH,LAND_HEIGHT);
     broadcast_chat(id,NAME_CHANGE,m->tanks[id].name,strlen(m->tanks[id].name));
+    if (m->crate.active)
+        broadcast_crate_chunk(m, SPAWN);
 }
 
 void disconnect_client(struct moag *m, int id)
