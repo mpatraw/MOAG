@@ -79,7 +79,7 @@ void spawn_tank(struct moag *m, int id)
     m->tanks[id].kup = 0;
     m->tanks[id].kdown = 0;
     m->tanks[id].kfire = 0;
-    explode(m, m->tanks[id].x, m->tanks[id].y - 12, 12, E_CLEAR_DIRT);
+    explode(m, m->tanks[id].x, m->tanks[id].y - 12, 12, E_SAFE_EXPLODE);
     broadcast_tank_chunk(m, SPAWN, id);
 }
 
@@ -328,6 +328,7 @@ void tank_update(struct moag *m, int id)
             case  8: strcat(notice, "Tunneler"); break;
             case 10: strcat(notice, "MIRV"); break;
             case 12: strcat(notice, "Cluster Bomb"); break;
+            case 13: strcat(notice, "Cluster Bouncer"); break;
             default: strcat(notice, "???"); WARN("BTYPE: %d\n", t->bullet); break;
         }
         broadcast_chat(-1, SERVER_NOTICE, notice, strlen(notice));
@@ -561,6 +562,15 @@ void bullet_detonate(struct moag *m, int b)
                             1.5 * sinf(i * M_PI / 5.5) + 0.50 * m->bullets[b].vy);
             break;
 
+        case CLUSTER_BOUNCER:
+            bounce_bullet(m, b,hitx, hity);
+            explode(m, m->bullets[b].x, m->bullets[b].y, 20, E_EXPLODE);
+            for (int i = 0; i < 11; i++)
+                fire_bullet(m, BOUNCER, hitx, hity,
+                            1.5 * cosf(i * M_PI / 5.5) + 0.25 * m->bullets[b].vx,
+                            1.5 * sinf(i * M_PI / 5.5) + 0.50 * m->bullets[b].vy);
+            break;
+
         default: break;
     }
 
@@ -588,7 +598,7 @@ void bullet_update(struct moag *m, int b)
         {
             explode(m, m->bullets[b].x,
                        m->bullets[b].y + LADDER_LENGTH - m->bullets[b].active,
-                       1, E_CLEAR_DIRT);
+                       1, E_SAFE_EXPLODE);
             bullet_detonate(m, b);
         }
         return;
@@ -655,7 +665,7 @@ void crate_update(struct moag *m)
         m->crate.active = true;
         m->crate.x = rng_range(&m->rng, 20, LAND_WIDTH - 20);
         m->crate.y = 30;
-        explode(m, m->crate.x, m->crate.y - 12, 12, E_CLEAR_DIRT);
+        explode(m, m->crate.x, m->crate.y - 12, 12, E_SAFE_EXPLODE);
 
         const int PBABYNUKE = 100;
         const int PNUKE = 20;
@@ -667,9 +677,11 @@ void crate_update(struct moag *m)
         const int PTUNNELER = 75;
         const int PMIRV = 40;
         const int PCLUSTER = 120;
+        const int PCLUSTERB = 500;
         // add new ones here:
         const int TOTAL = PBABYNUKE + PNUKE + PDIRT + PSUPERDIRT + PLIQUIDDIRT +
-                          PCOLLAPSE + PBOUNCER + PTUNNELER + PMIRV + PCLUSTER;
+                          PCOLLAPSE + PBOUNCER + PTUNNELER + PMIRV + PCLUSTER +
+                          PCLUSTERB;
         int r = rng_range(&m->rng, 0, TOTAL);
              if ((r -= PBABYNUKE) < 0)   m->crate.type = BABY_NUKE;
         else if ((r -= PNUKE) < 0)       m->crate.type = NUKE;
@@ -680,6 +692,7 @@ void crate_update(struct moag *m)
         else if ((r -= PTUNNELER) < 0)   m->crate.type = TUNNELER;
         else if ((r -= PMIRV) < 0)       m->crate.type = MIRV;
         else if ((r -= PCLUSTER) < 0)    m->crate.type = CLUSTER_BOMB;
+        else if ((r -= PCLUSTERB) < 0)   m->crate.type = CLUSTER_BOUNCER;
         else                             m->crate.type = DIRT;
         broadcast_crate_chunk(m, SPAWN);
     }

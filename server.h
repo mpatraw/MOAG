@@ -25,14 +25,15 @@ enum
     LADDER,
     MIRV,
     MIRV_WARHEAD,
-    CLUSTER_BOMB
+    CLUSTER_BOMB,
+    CLUSTER_BOUNCER,
 };
 
 enum
 {
     E_EXPLODE,
     E_DIRT,
-    E_CLEAR_DIRT,
+    E_SAFE_EXPLODE,
     E_COLLAPSE
 };
 
