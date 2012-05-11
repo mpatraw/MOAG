@@ -677,7 +677,7 @@ void crate_update(struct moag *m)
         const int PTUNNELER = 75;
         const int PMIRV = 40;
         const int PCLUSTER = 120;
-        const int PCLUSTERB = 500;
+        const int PCLUSTERB = 15;
         // add new ones here:
         const int TOTAL = PBABYNUKE + PNUKE + PDIRT + PSUPERDIRT + PLIQUIDDIRT +
                           PCOLLAPSE + PBOUNCER + PTUNNELER + PMIRV + PCLUSTER +
