@@ -6,10 +6,10 @@ LDFLAGS = -lenet -lz -lm
 all: client server
 
 client: client.o sdl_aux.o enet_aux.o common.o
-	$(CC) $(LDFLAGS) -lSDL -lSDL_ttf client.o sdl_aux.o enet_aux.o common.o -o $@
+	$(CC) $(LDFLAGS) -lSDL -lSDL_ttf $^ -o $@
 
 server: server.o enet_aux.o common.o
-	$(CC) $(LDFLAGS) server.o enet_aux.o common.o -o $@
+	$(CC) $(LDFLAGS) $^ -o $@
 
 .c.o:
 	$(CC) $(CCFLAGS) $< -o $@
