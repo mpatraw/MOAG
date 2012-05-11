@@ -1,7 +1,8 @@
 
 #include "client.h"
 
-const char tanksprite[14][19] = {
+const char tanksprite[14][19] =
+{
     "..................",
     "..................",
     "..................",
@@ -18,7 +19,8 @@ const char tanksprite[14][19] = {
     "..xxxxxxxxxxxxxx..",
 };
 
-const char cratesprite[9][10] = {
+const char cratesprite[9][10] =
+{
     ".xxxxxxx.",
     "xx.....xx",
     "x.x...x.x",
@@ -120,7 +122,7 @@ void draw(struct moag *m)
                 set_pixel(x, y, 155, 155, 155);
         }
     }
-    for(int i=0;i<MAX_CLIENTS;i++)
+    for(int i=0;i<MAX_PLAYERS;i++)
         if(m->tanks[i].active) {
             draw_tank(m->tanks[i].x-9,m->tanks[i].y-13,m->tanks[i].angle,m->tanks[i].facingleft);
             draw_string_centered(m->tanks[i].x,m->tanks[i].y-36,240,240,240,m->tanks[i].name);
@@ -217,7 +219,7 @@ void on_receive(struct moag *m, ENetEvent *ev)
         }
         break;
     }
-    case MSG_CHUNK: {
+    case SERVER_MSG_CHUNK: {
         int id = read8(packet, &pos);
         char cmd = read8(packet, &pos);
         unsigned char len = read8(packet, &pos);

@@ -11,11 +11,36 @@
 #define LADDER_TIME         60
 #define LADDER_LENGTH       64
 
+enum
+{
+    MISSILE,
+    BABY_NUKE,
+    NUKE,
+    DIRT,
+    SUPER_DIRT,
+    COLLAPSE,
+    LIQUID_DIRT,
+    BOUNCER,
+    TUNNELER,
+    LADDER,
+    MIRV,
+    MIRV_WARHEAD,
+    CLUSTER_BOMB
+};
+
+enum
+{
+    E_EXPLODE,
+    E_DIRT,
+    E_CLEAR_DIRT,
+    E_COLLAPSE
+};
+
 #define CLIENT_MSG_CHUNK_SIZE   258
 #define TANK_CHUNK_SIZE         8
 #define BULLET_CHUNK_SIZE       7
 #define CRATE_CHUNK_SIZE        6
-#define MSG_CHUNK_SIZE          260
+#define SERVER_MSG_CHUNK_SIZE   260
 
 static inline void broadcast_land_chunk(struct moag *m, int x, int y, int w, int h)
 {
@@ -74,7 +99,8 @@ static inline void broadcast_tank_chunk(struct moag *m, int type, int id)
     write8(buffer, &pos, type);
     write8(buffer, &pos, id);
 
-    if (type != KILL) {
+    if (type != KILL)
+    {
         write16(buffer, &pos, m->tanks[id].x);
         write16(buffer, &pos, m->tanks[id].y);
 
@@ -100,7 +126,8 @@ static inline void broadcast_bullet_chunk(struct moag *m, int type, int id)
     write8(buffer, &pos, type);
     write8(buffer, &pos, id);
 
-    if (type != KILL) {
+    if (type != KILL)
+    {
         write16(buffer, &pos, m->bullets[id].x);
         write16(buffer, &pos, m->bullets[id].y);
     }
@@ -120,7 +147,8 @@ static inline void broadcast_crate_chunk(struct moag *m, int type)
     write8(buffer, &pos, CRATE_CHUNK);
     write8(buffer, &pos, type);
 
-    if (type != KILL) {
+    if (type != KILL)
+    {
         write16(buffer, &pos, m->crate.x);
         write16(buffer, &pos, m->crate.y);
     }
@@ -135,10 +163,10 @@ static inline void broadcast_crate_chunk(struct moag *m, int type)
 
 static inline void broadcast_chat(int id, char cmd, const char *msg, unsigned char len)
 {
-    unsigned char buffer[MSG_CHUNK_SIZE];
+    unsigned char buffer[SERVER_MSG_CHUNK_SIZE];
     size_t pos = 0;
 
-    write8(buffer, &pos, MSG_CHUNK);
+    write8(buffer, &pos, SERVER_MSG_CHUNK);
     write8(buffer, &pos, id);
     write8(buffer, &pos, cmd);
     write8(buffer, &pos, len);

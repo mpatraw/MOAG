@@ -14,62 +14,72 @@ void kill_tank(struct moag *m, int id)
 
 void explode(struct moag *m, int x, int y, int rad, char type)
 {
-    // type: 0=explode, 1=dirt, 2=clear dirt, 3=collapse
-    if(type==3){
-        // collapse
-        for(int iy=-rad;iy<=rad;iy++)
-        for(int ix=-rad;ix<=rad;ix++)
-            if(ix*ix+iy*iy<rad*rad && get_land_at(m, x+ix,y+iy))
-                set_land_at(m, x+ix,y+iy,2);
-        int maxy=y+rad;
-        for(int iy=-rad;iy<=rad;iy++)
-        for(int ix=-rad;ix<=rad;ix++)
-            if(get_land_at(m, x+ix,y+iy)==2){
-                int count=0;
-                int yy;
-                for(yy=y+iy;yy<LAND_HEIGHT && get_land_at(m, x+ix,yy)!=1;yy++)
-                    if(get_land_at(m, x+ix,yy)==2){
-                        count++;
-                        set_land_at(m, x+ix,yy,0);
+    if (type == E_COLLAPSE)
+    {
+        for (int iy = -rad; iy <= rad; iy++)
+            for (int ix = -rad; ix <= rad; ix++)
+                if (SQ(ix) + SQ(iy) < SQ(rad) && get_land_at(m, x+ix, y+iy))
+                    set_land_at(m, x + ix, y + iy, 2);
+        int maxy = y + rad;
+        for (int iy = -rad; iy <= rad; iy++)
+        {
+            for (int ix = -rad; ix <= rad; ix++)
+            {
+                if (get_land_at(m, x + ix, y + iy) == 2)
+                {
+                    int count = 0;
+                    int yy;
+                    for (yy = y + iy;
+                         yy < LAND_HEIGHT && get_land_at(m, x + ix, yy) != 1;
+                         yy++)
+                    {
+                        if (get_land_at(m, x + ix, yy) == 2)
+                        {
+                            count++;
+                            set_land_at(m, x + ix, yy, 0);
+                        }
                     }
-                for(;count>0;count--)
-                    set_land_at(m, x+ix,yy-count,1);
-                if(yy>maxy)
-                    maxy=yy;
+                    for (; count > 0; count--)
+                        set_land_at(m, x + ix, yy - count, 1);
+                    if (yy > maxy)
+                        maxy = yy;
+                }
             }
-        broadcast_land_chunk(m, x-rad,y-rad,rad*2,maxy-(y-rad));
+        }
+        broadcast_land_chunk(m, x - rad, y - rad, rad * 2, maxy - (y - rad));
         return;
     }
-    char p=type==1?1:0;
-    for(int iy=-rad;iy<=rad;iy++)
-    for(int ix=-rad;ix<=rad;ix++)
-        if(ix*ix+iy*iy<rad*rad)
-            set_land_at(m, x+ix,y+iy, p);
-    if(type==0)
-        for(int i=0;i<MAX_CLIENTS;i++)
-            if(m->tanks[i].active && SQ(m->tanks[i].x-x)+SQ(m->tanks[i].y-3-y)<SQ(rad+4))
+    char p = type == E_DIRT ? 1 : 0;
+    for (int iy = -rad; iy <= rad; iy++)
+        for (int ix = -rad; ix <= rad; ix++)
+            if (SQ(ix) + SQ(iy) < SQ(rad))
+                set_land_at(m, x + ix, y + iy, p);
+    if (type == E_EXPLODE)
+        for (int i = 0; i < MAX_PLAYERS; i++)
+            if (m->tanks[i].active &&
+                SQ(m->tanks[i].x - x) + SQ(m->tanks[i].y - 3 - y) < SQ(rad + 4))
                 kill_tank(m, i);
 
-    broadcast_land_chunk(m, x-rad,y-rad,rad*2,rad*2);
+    broadcast_land_chunk(m, x - rad, y - rad, rad * 2, rad * 2);
 }
 
 void spawn_tank(struct moag *m, int id)
 {
-    m->tanks[id].active=1;
-    m->tanks[id].spawntimer=0;
-    m->tanks[id].x= rng_range(&m->rng, 20, LAND_WIDTH - 20);
-    m->tanks[id].y=60;
-    m->tanks[id].angle=30;
-    m->tanks[id].facingleft=0;
-    m->tanks[id].power=0;
-    m->tanks[id].bullet=1;
-    m->tanks[id].ladder=LADDER_TIME;
-    m->tanks[id].kleft=0;
-    m->tanks[id].kright=0;
-    m->tanks[id].kup=0;
-    m->tanks[id].kdown=0;
-    m->tanks[id].kfire=0;
-    explode(m, m->tanks[id].x,m->tanks[id].y-12, 12, 2);
+    m->tanks[id].active = 1;
+    m->tanks[id].spawntimer = 0;
+    m->tanks[id].x = rng_range(&m->rng, 20, LAND_WIDTH - 20);
+    m->tanks[id].y = 60;
+    m->tanks[id].angle = 30;
+    m->tanks[id].facingleft = 0;
+    m->tanks[id].power = 0;
+    m->tanks[id].bullet = MISSILE;
+    m->tanks[id].ladder = LADDER_TIME;
+    m->tanks[id].kleft = 0;
+    m->tanks[id].kright = 0;
+    m->tanks[id].kup = 0;
+    m->tanks[id].kdown = 0;
+    m->tanks[id].kfire = 0;
+    explode(m, m->tanks[id].x, m->tanks[id].y - 12, 12, E_CLEAR_DIRT);
     broadcast_tank_chunk(m, SPAWN, id);
 }
 
@@ -102,44 +112,44 @@ void disconnect_client(struct moag *m, int id)
 
 void launch_ladder(struct moag *m, int x, int y)
 {
-    int i=0;
-    while(m->bullets[i].active)
-        if(++i>=MAX_BULLETS)
+    int i = 0;
+    while (m->bullets[i].active)
+        if (++i >= MAX_BULLETS)
             return;
-    m->bullets[i].active=LADDER_LENGTH;
-    m->bullets[i].type=10;
-    m->bullets[i].x=x;
-    m->bullets[i].y=y;
-    m->bullets[i].fx=x;
-    m->bullets[i].fy=y;
-    m->bullets[i].vx=0;
-    m->bullets[i].vy=-1;
+    m->bullets[i].active = LADDER_LENGTH;
+    m->bullets[i].type = LADDER;
+    m->bullets[i].x = x;
+    m->bullets[i].y = y;
+    m->bullets[i].fx = x;
+    m->bullets[i].fy = y;
+    m->bullets[i].vx = 0;
+    m->bullets[i].vy = -1;
     broadcast_bullet_chunk(m, SPAWN, i);
 }
 
 void fire_bullet(struct moag *m, char type, float x, float y, float vx, float vy)
 {
-    int i=0;
-    while(m->bullets[i].active)
-        if(++i>=MAX_BULLETS)
+    int i = 0;
+    while (m->bullets[i].active)
+        if (++i >= MAX_BULLETS)
             return;
-    m->bullets[i].active=4;
-    m->bullets[i].type=type;
-    m->bullets[i].fx=x;
-    m->bullets[i].fy=y;
-    m->bullets[i].x=(int)m->bullets[i].fx;
-    m->bullets[i].y=(int)m->bullets[i].fy;
-    m->bullets[i].vx=vx;
-    m->bullets[i].vy=vy;
+    m->bullets[i].active = 4;
+    m->bullets[i].type = type;
+    m->bullets[i].fx = x;
+    m->bullets[i].fy = y;
+    m->bullets[i].x = (int)m->bullets[i].fx;
+    m->bullets[i].y = (int)m->bullets[i].fy;
+    m->bullets[i].vx = vx;
+    m->bullets[i].vy = vy;
     broadcast_bullet_chunk(m, SPAWN, i);
 }
 
 void fire_bullet_ang(struct moag *m, char type, int x, int y, float angle, float vel)
 {
-    fire_bullet(m, type,(float)x+5.0*cosf(angle*M_PI/180),
-                    (float)y-5.0*sinf(angle*M_PI/180),
-                    vel*cosf(angle*M_PI/180.0),
-                    -vel*sinf(angle*M_PI/180.0));
+    fire_bullet(m, type, (float)x + 5.0 * cosf(DEG2RAD(angle)),
+                         (float)y - 5.0 * sinf(DEG2RAD(angle)),
+                         vel * cosf(DEG2RAD(angle)),
+                        -vel * sinf(DEG2RAD(angle)));
 }
 
 void liquid(struct moag *m, int x, int y, int n)
@@ -191,299 +201,445 @@ void liquid(struct moag *m, int x, int y, int n)
 
 void tank_update(struct moag *m, int id)
 {
-    bool moved = false;
-    if(!m->tanks[id].active)
+    struct tank *t = &m->tanks[id];
+
+    if (!t->active)
         return;
-    if (m->tanks[id].spawntimer > 0){
-        if (--m->tanks[id].spawntimer <= 0)
+
+    if (t->spawntimer > 0)
+    {
+        if (--t->spawntimer <= 0)
             spawn_tank(m, id);
         return;
     }
-    bool grav=true;
-    if(m->tanks[id].ladder>=0 && (!m->tanks[id].kleft || !m->tanks[id].kright))
-        m->tanks[id].ladder=LADDER_TIME;
-    if(m->tanks[id].kleft && m->tanks[id].kright){
-        if(m->tanks[id].ladder>0){
-            if(get_land_at(m, m->tanks[id].x,m->tanks[id].y+1))
-                m->tanks[id].ladder--;
+
+    bool moved = false;
+    bool grav = true;
+    if (t->ladder >= 0 && (!t->kleft || !t->kright))
+        t->ladder = LADDER_TIME;
+
+    if (t->kleft && t->kright)
+    {
+        if(t->ladder > 0)
+        {
+            if(get_land_at(m, t->x,t->y+1))
+                t->ladder--;
             else
-                m->tanks[id].ladder=LADDER_TIME;
-        }else if(m->tanks[id].ladder==0){
-            launch_ladder(m, m->tanks[id].x,m->tanks[id].y);
-            m->tanks[id].ladder=-1;
+                t->ladder = LADDER_TIME;
         }
-    }else if(m->tanks[id].kleft){
-        m->tanks[id].facingleft=1;
-        if(get_land_at(m, m->tanks[id].x-1,m->tanks[id].y)==0 && m->tanks[id].x>=10){
-            m->tanks[id].x--;
-        }else if(get_land_at(m, m->tanks[id].x-1,m->tanks[id].y-1)==0 && m->tanks[id].x>=10){
-            m->tanks[id].x--; m->tanks[id].y--;
-        }else if(get_land_at(m, m->tanks[id].x,m->tanks[id].y-1)==0 || get_land_at(m, m->tanks[id].x,m->tanks[id].y-2)==0 || get_land_at(m, m->tanks[id].x,m->tanks[id].y-3)==0){
-            grav=false; m->tanks[id].y--;
-        }else
-            grav=false;
-        moved = true;
-    }else if(m->tanks[id].kright){
-        m->tanks[id].facingleft=0;
-        if(get_land_at(m, m->tanks[id].x+1,m->tanks[id].y)==0 && m->tanks[id].x<LAND_WIDTH-10){
-            m->tanks[id].x++;
-        }else if(get_land_at(m, m->tanks[id].x+1,m->tanks[id].y-1)==0 && m->tanks[id].x<LAND_WIDTH-10){
-            m->tanks[id].x++; m->tanks[id].y--;
-        }else if(get_land_at(m, m->tanks[id].x,m->tanks[id].y-1)==0 || get_land_at(m, m->tanks[id].x,m->tanks[id].y-2)==0 || get_land_at(m, m->tanks[id].x,m->tanks[id].y-3)==0){
-            grav=false; m->tanks[id].y--;
-        }else
-            grav=false;
+        else if (t->ladder == 0)
+        {
+            launch_ladder(m, t->x, t->y);
+            t->ladder = -1;
+        }
+    }
+    else if (t->kleft)
+    {
+        t->facingleft = 1;
+        if (get_land_at(m, t->x-1,t->y) == 0 && t->x >= 10)
+        {
+            t->x--;
+        }
+        else if (get_land_at(m, t->x-1, t->y-1) == 0 && t->x >= 10)
+        {
+            t->x--;
+            t->y--;
+        }
+        else if (get_land_at(m, t->x, t->y - 1) == 0 ||
+                 get_land_at(m, t->x, t->y - 2) == 0 ||
+                 get_land_at(m, t->x, t->y - 3) == 0)
+        {
+            grav = false;
+            t->y--;
+        }
+        else
+        {
+            grav = false;
+        }
         moved = true;
     }
+    else if (t->kright)
+    {
+        t->facingleft = 0;
+        if (get_land_at(m, t->x + 1, t->y) == 0 && t->x < LAND_WIDTH - 10)
+        {
+            t->x++;
+        }
+        else if (get_land_at(m, t->x + 1, t->y - 1) == 0 &&
+                 t->x < LAND_WIDTH - 10)
+        {
+            t->x++;
+            t->y--;
+        }
+        else if (get_land_at(m, t->x, t->y - 1) == 0 ||
+                 get_land_at(m, t->x, t->y - 2) == 0 ||
+                 get_land_at(m, t->x, t->y - 3) == 0)
+        {
+            grav = false;
+            t->y--;
+        }
+        else
+        {
+            grav = false;
+        }
+        moved = true;
+    }
+
     // Physics
-    if(m->tanks[id].y<20) {
-        m->tanks[id].y=20;
+    if (t->y < 20)
+    {
+        t->y = 20;
         moved = true;
     }
-    if(grav){
-        if(get_land_at(m, m->tanks[id].x,m->tanks[id].y+1)==0) {
-            m->tanks[id].y++;
+
+    if (grav)
+    {
+        if (get_land_at(m, t->x, t->y + 1) == 0)
+        {
+            t->y++;
             moved = true;
         }
-        if(get_land_at(m, m->tanks[id].x,m->tanks[id].y+1)==0) {
-            m->tanks[id].y++;
+        if (get_land_at(m, t->x, t->y + 1) == 0)
+        {
+            t->y++;
             moved = true;
         }
     }
     // Pickup
-    if(abs(m->tanks[id].x-m->crate.x)<14 && abs(m->tanks[id].y-m->crate.y)<14){
-        m->tanks[id].ladder=LADDER_TIME;
-        m->tanks[id].bullet=m->crate.type;
+    if (abs(t->x - m->crate.x) < 14 && abs(t->y - m->crate.y) < 14)
+    {
+        t->ladder = LADDER_TIME;
+        t->bullet = m->crate.type;
         m->crate.active = false;
         broadcast_crate_chunk(m, KILL);
-        char notice[64]="* ";
-        strcat(notice,m->tanks[id].name);
-        strcat(notice," got ");
-        switch(m->tanks[id].bullet){
-        case  1: strcat(notice,"Missile"); break;
-        case  2: strcat(notice,"Baby Nuke"); break;
-        case  3: strcat(notice,"Nuke"); break;
-        case  4: strcat(notice,"Dirtball"); break;
-        case  5: strcat(notice,"Dirtball"); break;
-        case  6: strcat(notice,"Collapse"); break;
-        case  7: strcat(notice,"Liquid Dirt"); break;
-        case  8: strcat(notice,"Bouncer"); break;
-        case  9: strcat(notice,"Tunneler"); break;
-        case 11: strcat(notice,"MIRV"); break;
-        case 13: strcat(notice,"Cluster Bomb"); break;
-        default: strcat(notice,"???"); break;
+        char notice[64] = "* ";
+        strcat(notice, t->name);
+        strcat(notice, " got ");
+        switch (t->bullet)
+        {
+            case  0: strcat(notice, "Missile"); break;
+            case  1: strcat(notice, "Baby Nuke"); break;
+            case  2: strcat(notice, "Nuke"); break;
+            case  3: strcat(notice, "Dirtball"); break;
+            case  4: strcat(notice, "Super Dirtball"); break;
+            case  5: strcat(notice, "Collapse"); break;
+            case  6: strcat(notice, "Liquid Dirt"); break;
+            case  7: strcat(notice, "Bouncer"); break;
+            case  8: strcat(notice, "Tunneler"); break;
+            case 10: strcat(notice, "MIRV"); break;
+            case 12: strcat(notice, "Cluster Bomb"); break;
+            default: strcat(notice, "???"); WARN("BTYPE: %d\n", t->bullet); break;
         }
-        broadcast_chat(-1,SERVER_NOTICE,notice,strlen(notice));
+        broadcast_chat(-1, SERVER_NOTICE, notice, strlen(notice));
     }
+
     // Aim
-    if(m->tanks[id].kup && m->tanks[id].angle<90) {
-        m->tanks[id].angle++;
+    if (t->kup && t->angle < 90)
+    {
+        t->angle++;
         moved = true;
     }
-    else if(m->tanks[id].kdown && m->tanks[id].angle>1) {
-        m->tanks[id].angle--;
+    else if (t->kdown && t->angle > 1)
+    {
+        t->angle--;
         moved = true;
     }
+
     // Fire
-    if(m->tanks[id].kfire){
-        if(m->tanks[id].power<1000)
-            m->tanks[id].power+=10;
-    }else if(m->tanks[id].power){
-        fire_bullet_ang(m, m->tanks[id].bullet, m->tanks[id].x, m->tanks[id].y-7,m->tanks[id].facingleft?180-m->tanks[id].angle:m->tanks[id].angle, (float)m->tanks[id].power*0.01);
-        m->tanks[id].bullet=1;
-        m->tanks[id].power=0;
+    if (t->kfire)
+    {
+        if (t->power < 1000)
+            t->power += 10;
     }
+    else if (t->power)
+    {
+        fire_bullet_ang(m, t->bullet, t->x, t->y - 7,
+                        t->facingleft ? 180 - t->angle : t->angle,
+                        (float)t->power * 0.01);
+        t->bullet = MISSILE;
+        t->power = 0;
+    }
+
     if (moved)
         broadcast_tank_chunk(m, MOVE, id);
 }
 
 void bounce_bullet(struct moag *m, int b, float hitx, float hity)
 {
-    const int ix=(int)hitx;
-    const int iy=(int)hity;
-    if(get_land_at(m, ix,iy)==-1){
-        m->bullets[b].vx=-m->bullets[b].vx;
-        m->bullets[b].vy=-m->bullets[b].vy;
+    const int ix = (int)hitx;
+    const int iy = (int)hity;
+
+    if (get_land_at(m, ix, iy) == -1)
+    {
+        m->bullets[b].vx = -m->bullets[b].vx;
+        m->bullets[b].vy = -m->bullets[b].vy;
         return;
     }
-    m->bullets[b].fx=hitx;
-    m->bullets[b].fy=hity;
-    m->bullets[b].x=ix;
-    m->bullets[b].y=iy;
-    unsigned char hit=0;
-    if(get_land_at(m, ix-1,iy-1)) hit|=1<<7;
-    if(get_land_at(m, ix  ,iy-1)) hit|=1<<6;
-    if(get_land_at(m, ix+1,iy-1)) hit|=1<<5;
-    if(get_land_at(m, ix-1,iy  )) hit|=1<<4;
-    if(get_land_at(m, ix+1,iy  )) hit|=1<<3;
-    if(get_land_at(m, ix-1,iy+1)) hit|=1<<2;
-    if(get_land_at(m, ix  ,iy+1)) hit|=1<<1;
-    if(get_land_at(m, ix+1,iy+1)) hit|=1;
-    const float IRT2=0.70710678;
-    const float vx=m->bullets[b].vx;
-    const float vy=m->bullets[b].vy;
-    switch(hit){
-    case 0x00: break;
-    case 0x07: case 0xe0: case 0x02: case 0x40:
-        m->bullets[b].vy=-vy; break;
-    case 0x94: case 0x29: case 0x10: case 0x08:
-        m->bullets[b].vx=-vx; break;
-    case 0x16: case 0x68: case 0x04: case 0x20:
-        m->bullets[b].vy=vx; m->bullets[b].vx=vy; break;
-    case 0xd0: case 0x0b: case 0x80: case 0x01:
-        m->bullets[b].vy=-vx; m->bullets[b].vx=-vy; break;
-    case 0x17: case 0xe8: case 0x06: case 0x60:
-        m->bullets[b].vx=+vx*IRT2+vy*IRT2; m->bullets[b].vy=-vy*IRT2+vx*IRT2; break;
-    case 0x96: case 0x69: case 0x14: case 0x28:
-        m->bullets[b].vx=-vx*IRT2+vy*IRT2; m->bullets[b].vy=+vy*IRT2+vx*IRT2; break;
-    case 0xf0: case 0x0f: case 0xc0: case 0x03:
-        m->bullets[b].vx=+vx*IRT2-vy*IRT2; m->bullets[b].vy=-vy*IRT2-vx*IRT2; break;
-    case 0xd4: case 0x2b: case 0x90: case 0x09:
-        m->bullets[b].vx=-vx*IRT2-vy*IRT2; m->bullets[b].vy=+vy*IRT2-vx*IRT2; break;
-    default:
-        m->bullets[b].vx=-vx; m->bullets[b].vy=-vy; break;
+
+    m->bullets[b].fx = hitx;
+    m->bullets[b].fy = hity;
+    m->bullets[b].x = ix;
+    m->bullets[b].y = iy;
+
+    unsigned char hit = 0;
+    if (get_land_at(m, ix - 1, iy - 1)) hit |= 1 << 7;
+    if (get_land_at(m, ix    , iy - 1)) hit |= 1 << 6;
+    if (get_land_at(m, ix + 1, iy - 1)) hit |= 1 << 5;
+    if (get_land_at(m, ix - 1, iy    )) hit |= 1 << 4;
+    if (get_land_at(m, ix + 1, iy    )) hit |= 1 << 3;
+    if (get_land_at(m, ix - 1, iy + 1)) hit |= 1 << 2;
+    if (get_land_at(m, ix    , iy + 1)) hit |= 1 << 1;
+    if (get_land_at(m, ix + 1, iy + 1)) hit |= 1;
+
+    const float IRT2 = 0.70710678;
+    const float vx = m->bullets[b].vx;
+    const float vy = m->bullets[b].vy;
+
+    switch(hit)
+    {
+        case 0x00: break;
+
+        case 0x07: case 0xe0: case 0x02: case 0x40:
+            m->bullets[b].vy = -vy;
+            break;
+
+        case 0x94: case 0x29: case 0x10: case 0x08:
+            m->bullets[b].vx = -vx;
+            break;
+
+        case 0x16: case 0x68: case 0x04: case 0x20:
+            m->bullets[b].vy = vx;
+            m->bullets[b].vx = vy;
+            break;
+
+        case 0xd0: case 0x0b: case 0x80: case 0x01:
+            m->bullets[b].vy = -vx;
+            m->bullets[b].vx = -vy;
+            break;
+
+        case 0x17: case 0xe8: case 0x06: case 0x60:
+            m->bullets[b].vx = +vx * IRT2 + vy * IRT2;
+            m->bullets[b].vy = -vy * IRT2 + vx * IRT2;
+            break;
+
+        case 0x96: case 0x69: case 0x14: case 0x28:
+            m->bullets[b].vx = -vx * IRT2 + vy * IRT2;
+            m->bullets[b].vy = +vy * IRT2 + vx * IRT2;
+            break;
+
+        case 0xf0: case 0x0f: case 0xc0: case 0x03:
+            m->bullets[b].vx = +vx * IRT2 - vy * IRT2;
+            m->bullets[b].vy = -vy * IRT2 - vx * IRT2;
+            break;
+
+        case 0xd4: case 0x2b: case 0x90: case 0x09:
+            m->bullets[b].vx = -vx * IRT2 - vy * IRT2;
+            m->bullets[b].vy = +vy * IRT2 - vx * IRT2;
+            break;
+
+        default:
+            m->bullets[b].vx = -vx;
+            m->bullets[b].vy = -vy;
+            break;
     }
 }
 
 void bullet_detonate(struct moag *m, int b)
 {
-    float d=sqrt(SQ(m->bullets[b].vx)+SQ(m->bullets[b].vy));
-    if(d<0.001 && d>-0.001)
-        d=d<0?-1:1;
-    const float dx=m->bullets[b].vx/d;
-    const float dy=m->bullets[b].vy/d;
-    float hitx=m->bullets[b].fx;
-    float hity=m->bullets[b].fy;
-    for(int i=40; i>0 && get_land_at(m, (int)hitx,(int)hity); i--){
-        hitx-=dx;
-        hity-=dy;
+    float d = DIST(m->bullets[b].vx, m->bullets[b].vy, 0, 0);
+
+    if (d < 0.001 && d >- 0.001)
+        d = d < 0 ? -1 : 1;
+
+    const float dx = m->bullets[b].vx / d;
+    const float dy = m->bullets[b].vy / d;
+
+    float hitx = m->bullets[b].fx;
+    float hity = m->bullets[b].fy;
+
+    for (int i = 40; i > 0 && get_land_at(m, (int)hitx, (int)hity); i--)
+    {
+        hitx -= dx;
+        hity -= dy;
     }
-    switch(m->bullets[b].type){
-    case 1: // missile
-        explode(m, m->bullets[b].x,m->bullets[b].y, 12, 0);
-        break;
-    case 2: // baby nuke
-        explode(m, m->bullets[b].x,m->bullets[b].y, 55, 0);
-        break;
-    case 3: // nuke
-        explode(m, m->bullets[b].x,m->bullets[b].y, 150, 0);
-        break;
-    case 4: // dirt
-        explode(m, m->bullets[b].x,m->bullets[b].y, 55, 1);
-        break;
-    case 5: // super dirt
-        explode(m, m->bullets[b].x,m->bullets[b].y, 300, 1);
-        break;
-    case 6: // collapse
-        explode(m, m->bullets[b].x,m->bullets[b].y, 120, 3);
-        break;
-    case 7: // liquid dirt
-        liquid(m, (int)hitx, (int)hity, 3000);
-        break;
-    case 8: { // bouncer
-        if(m->bullets[b].active>0)
-            m->bullets[b].active=-BOUNCER_BOUNCES;
-        m->bullets[b].active++;
-        bounce_bullet(m, b,hitx,hity);
-        m->bullets[b].vx*=0.9;
-        m->bullets[b].vy*=0.9;
-        explode(m, m->bullets[b].x,m->bullets[b].y, 12, 0);
-    } break;
-    case 9: //tunneler
-        if(m->bullets[b].active>0)
-            m->bullets[b].active=-TUNNELER_TUNNELINGS;
-        m->bullets[b].active++;
-        explode(m, hitx,hity, 9, 0);
-        explode(m, hitx+8*dx,hity+8*dy, 9, 0);
-        break;
-    case 10: { //ladder
-        int x=m->bullets[b].x;
-        int y=m->bullets[b].y;
-        for(;y<LAND_HEIGHT;y++) if(get_land_at(m, x,y)==0) break;
-        for(;y<LAND_HEIGHT;y++) if(get_land_at(m, x,y)) break;
-        const int maxy=y+1;
-        y=m->bullets[b].y;
-        for(;y>0;y--) if(get_land_at(m, x,y)==0) break;
-        const int miny=y;
-        for(;y<maxy;y+=2){
-            set_land_at(m, x-1,y,0);
-            set_land_at(m, x  ,y,1);
-            set_land_at(m, x+1,y,0);
-            set_land_at(m, x-1,y+1,1);
-            set_land_at(m, x  ,y+1,1);
-            set_land_at(m, x+1,y+1,1);
+
+    switch (m->bullets[b].type)
+    {
+        case MISSILE:
+            explode(m, m->bullets[b].x, m->bullets[b].y, 12, E_EXPLODE);
+            break;
+
+        case BABY_NUKE:
+            explode(m, m->bullets[b].x, m->bullets[b].y, 55, E_EXPLODE);
+            break;
+
+        case NUKE:
+            explode(m, m->bullets[b].x, m->bullets[b].y, 150, E_EXPLODE);
+            break;
+
+        case DIRT:
+            explode(m, m->bullets[b].x, m->bullets[b].y, 55, E_DIRT);
+            break;
+
+        case SUPER_DIRT:
+            explode(m, m->bullets[b].x, m->bullets[b].y, 300, E_DIRT);
+            break;
+
+        case COLLAPSE:
+            explode(m, m->bullets[b].x, m->bullets[b].y, 120, E_COLLAPSE);
+            break;
+
+        case LIQUID_DIRT:
+            liquid(m, (int)hitx, (int)hity, 3000);
+            break;
+
+        case BOUNCER:
+            if (m->bullets[b].active > 0)
+                m->bullets[b].active = -BOUNCER_BOUNCES;
+            m->bullets[b].active++;
+            bounce_bullet(m, b, hitx, hity);
+            m->bullets[b].vx *= 0.9;
+            m->bullets[b].vy *= 0.9;
+            explode(m, m->bullets[b].x, m->bullets[b].y, 12, E_EXPLODE);
+            break;
+
+        case TUNNELER:
+            if (m->bullets[b].active > 0)
+                m->bullets[b].active = -TUNNELER_TUNNELINGS;
+            m->bullets[b].active++;
+            explode(m, hitx, hity, 9, E_EXPLODE);
+            explode(m, hitx + 8 * dx, hity + 8 * dy, 9, E_EXPLODE);
+            break;
+
+        case LADDER: {
+            int x = m->bullets[b].x;
+            int y = m->bullets[b].y;
+            for (; y < LAND_HEIGHT; y++)
+                if (get_land_at(m, x, y) == 0)
+                    break;
+            for (; y < LAND_HEIGHT; y++)
+                if (get_land_at(m, x, y))
+                    break;
+            const int maxy = y + 1;
+            y = m->bullets[b].y;
+            for (; y > 0; y--)
+                if (get_land_at(m, x, y) == 0)
+                    break;
+            const int miny = y;
+            for(; y < maxy; y += 2)
+            {
+                set_land_at(m, x - 1, y,     0);
+                set_land_at(m, x    , y,     1);
+                set_land_at(m, x + 1, y,     0);
+                set_land_at(m, x - 1, y + 1, 1);
+                set_land_at(m, x    , y + 1, 1);
+                set_land_at(m, x + 1, y + 1, 1);
+            }
+            broadcast_land_chunk(m, x - 1, miny, 3, maxy - miny + 1);
+            break;
         }
-        broadcast_land_chunk(m, x-1,miny,3,maxy-miny+1);
-    } break;
-    case 11: //MIRV
-        bounce_bullet(m, b,hitx,hity);
-        explode(m, m->bullets[b].x,m->bullets[b].y, 12, 0);
-        for(int i=-3;i<4;i++)
-            fire_bullet(m, 12,m->bullets[b].x,m->bullets[b].y,m->bullets[b].vx+i,m->bullets[b].vy);
-        break;
-    case 12: //MIRV warhead
-        explode(m, m->bullets[b].x,m->bullets[b].y, 30, 0);
-        break;
-    case 13: //cluster bomb
-        bounce_bullet(m, b,hitx,hity);
-        explode(m, m->bullets[b].x,m->bullets[b].y, 20, 0);
-        for(int i=0;i<11;i++)
-            fire_bullet(m, 1,hitx,hity, 1.5*cosf(i*M_PI/5.5)+0.25*m->bullets[b].vx,
-                                    1.5*sinf(i*M_PI/5.5)+0.5*m->bullets[b].vy);
-        break;
-    default: break;
+
+        case MIRV:
+            bounce_bullet(m, b, hitx, hity);
+            explode(m, m->bullets[b].x, m->bullets[b].y, 12, E_EXPLODE);
+            for (int i = -3; i < 4; i++)
+                fire_bullet(m, MIRV_WARHEAD,
+                            m->bullets[b].x, m->bullets[b].y,
+                            m->bullets[b].vx + i, m->bullets[b].vy);
+            break;
+
+        case MIRV_WARHEAD:
+            explode(m, m->bullets[b].x, m->bullets[b].y, 30, E_EXPLODE);
+            break;
+
+        case CLUSTER_BOMB:
+            bounce_bullet(m, b,hitx, hity);
+            explode(m, m->bullets[b].x, m->bullets[b].y, 20, E_EXPLODE);
+            for (int i = 0; i < 11; i++)
+                fire_bullet(m, MISSILE, hitx, hity,
+                            1.5 * cosf(i * M_PI / 5.5) + 0.25 * m->bullets[b].vx,
+                            1.5 * sinf(i * M_PI / 5.5) + 0.50 * m->bullets[b].vy);
+            break;
+
+        default: break;
     }
-    if(m->bullets[b].active>=0) {
-        m->bullets[b].active=0;
+
+    if (m->bullets[b].active >= 0)
+    {
+        m->bullets[b].active = 0;
         broadcast_bullet_chunk(m, KILL, b);
     }
 }
 
 void bullet_update(struct moag *m, int b)
 {
-    if(!m->bullets[b].active)
+    if (!m->bullets[b].active)
         return;
-    if(m->bullets[b].type==10){ //special (ladder)
+
+    if (m->bullets[b].type == LADDER)
+    {
         m->bullets[b].active--;
-        m->bullets[b].fx+=m->bullets[b].vx;
-        m->bullets[b].fy+=m->bullets[b].vy;
-        m->bullets[b].x=(int)m->bullets[b].fx;
-        m->bullets[b].y=(int)m->bullets[b].fy;
-        if(get_land_at(m, m->bullets[b].x,m->bullets[b].y)==1){
-            explode(m, m->bullets[b].x,m->bullets[b].y+LADDER_LENGTH-m->bullets[b].active, 1, 2);
+        m->bullets[b].fx += m->bullets[b].vx;
+        m->bullets[b].fy += m->bullets[b].vy;
+        m->bullets[b].x = (int)m->bullets[b].fx;
+        m->bullets[b].y = (int)m->bullets[b].fy;
+
+        if (get_land_at(m, m->bullets[b].x, m->bullets[b].y) == 1)
+        {
+            explode(m, m->bullets[b].x,
+                       m->bullets[b].y + LADDER_LENGTH - m->bullets[b].active,
+                       1, E_CLEAR_DIRT);
             bullet_detonate(m, b);
         }
         return;
     }
-    m->bullets[b].fx+=m->bullets[b].vx;
-    m->bullets[b].fy+=m->bullets[b].vy;
-    m->bullets[b].vy+=GRAVITY;
-    m->bullets[b].x=(int)m->bullets[b].fx;
-    m->bullets[b].y=(int)m->bullets[b].fy;
-    if(get_land_at(m, m->bullets[b].x,m->bullets[b].y)){
+
+    m->bullets[b].fx += m->bullets[b].vx;
+    m->bullets[b].fy += m->bullets[b].vy;
+    m->bullets[b].vy += GRAVITY;
+    m->bullets[b].x = (int)m->bullets[b].fx;
+    m->bullets[b].y = (int)m->bullets[b].fy;
+    if (get_land_at(m, m->bullets[b].x, m->bullets[b].y))
+    {
         bullet_detonate(m, b);
         return;
     }
-    if(m->bullets[b].active>1){
+
+    if (m->bullets[b].active > 1)
+    {
         m->bullets[b].active--;
         return;
     }
-    if(m->bullets[b].type==8 && m->bullets[b].active==1)
-        m->bullets[b].active=-BOUNCER_BOUNCES;
-    if(m->bullets[b].type==9 && m->bullets[b].active==1)
-        m->bullets[b].active=-TUNNELER_TUNNELINGS;
-    for(int i=0;i<MAX_CLIENTS;i++)
-        if(SQ(m->tanks[i].x-m->bullets[b].x)+SQ(m->tanks[i].y-3-m->bullets[b].y)<72){
+
+    if (m->bullets[b].type == BOUNCER && m->bullets[b].active == 1)
+        m->bullets[b].active = -BOUNCER_BOUNCES;
+    if (m->bullets[b].type == TUNNELER && m->bullets[b].active == 1)
+        m->bullets[b].active = -TUNNELER_TUNNELINGS;
+
+    for (int i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(DIST(m->tanks[i].x, m->tanks[i].y - 3,
+                m->bullets[b].x, m->bullets[b].y) < 8.5)
+        {
             bullet_detonate(m, b);
             return;
         }
-    if(SQ(m->crate.x-m->bullets[b].x)+SQ(m->crate.y-4-m->bullets[b].y)<30){
+    }
+
+    if (DIST(m->crate.x, m->crate.y - 4,
+             m->bullets[b].x, m->bullets[b].y) < 5.5)
+    {
         bullet_detonate(m, b);
-        fire_bullet(m, m->crate.type, m->crate.x, m->crate.y-4, m->crate.type==8?(m->bullets[b].vx<0?-0.2:0.2):0, -0.2);
+        fire_bullet(m, m->crate.type, m->crate.x, m->crate.y - 4,
+                       m->crate.type != BOUNCER ? 0 :
+                       m->bullets[b].vx < 0 ? -0.2 :
+                                               0.2, -0.2);
         m->crate.active = false;
         return;
     }
-    if(m->bullets[b].type==11 && m->bullets[b].vy>0){
+
+    if (m->bullets[b].type == MIRV && m->bullets[b].vy > 0)
+    {
         bullet_detonate(m, b);
         return;
     }
@@ -494,39 +650,42 @@ void bullet_update(struct moag *m, int b)
 
 void crate_update(struct moag *m)
 {
-    if(!m->crate.active){
+    if (!m->crate.active)
+    {
         m->crate.active = true;
-        m->crate.x=rng_range(&m->rng, 20, LAND_WIDTH - 20);
-        m->crate.y=30;
-        explode(m, m->crate.x,m->crate.y-12, 12, 2);
+        m->crate.x = rng_range(&m->rng, 20, LAND_WIDTH - 20);
+        m->crate.y = 30;
+        explode(m, m->crate.x, m->crate.y - 12, 12, E_CLEAR_DIRT);
 
-        const int PBABYNUKE=100;
-        const int PNUKE=20;
-        const int PDIRT=75;
-        const int PSUPERDIRT=15;
-        const int PLIQUIDDIRT=60;
-        const int PCOLLAPSE=60;
-        const int PBOUNCER=100;
-        const int PTUNNELER=75;
-        const int PMIRV=40;
-        const int PCLUSTER=120;
+        const int PBABYNUKE = 100;
+        const int PNUKE = 20;
+        const int PDIRT = 75;
+        const int PSUPERDIRT = 15;
+        const int PLIQUIDDIRT = 60;
+        const int PCOLLAPSE = 60;
+        const int PBOUNCER = 100;
+        const int PTUNNELER = 75;
+        const int PMIRV = 40;
+        const int PCLUSTER = 120;
         // add new ones here:
-        const int TOTAL=PBABYNUKE+PNUKE+PDIRT+PSUPERDIRT+PLIQUIDDIRT+PCOLLAPSE
-                        +PBOUNCER+PTUNNELER+PMIRV+PCLUSTER;
-        int r= rng_range(&m->rng, 0, TOTAL);
-             if((r-=PBABYNUKE)<0)   m->crate.type=2;
-        else if((r-=PNUKE)<0)       m->crate.type=3;
-        else if((r-=PSUPERDIRT)<0)  m->crate.type=5;
-        else if((r-=PLIQUIDDIRT)<0) m->crate.type=7;
-        else if((r-=PCOLLAPSE)<0)   m->crate.type=6;
-        else if((r-=PBOUNCER)<0)    m->crate.type=8;
-        else if((r-=PTUNNELER)<0)   m->crate.type=9;
-        else if((r-=PMIRV)<0)       m->crate.type=11;
-        else if((r-=PCLUSTER)<0)    m->crate.type=13;
-        else                        m->crate.type=4;
+        const int TOTAL = PBABYNUKE + PNUKE + PDIRT + PSUPERDIRT + PLIQUIDDIRT +
+                          PCOLLAPSE + PBOUNCER + PTUNNELER + PMIRV + PCLUSTER;
+        int r = rng_range(&m->rng, 0, TOTAL);
+             if ((r -= PBABYNUKE) < 0)   m->crate.type = BABY_NUKE;
+        else if ((r -= PNUKE) < 0)       m->crate.type = NUKE;
+        else if ((r -= PSUPERDIRT) < 0)  m->crate.type = SUPER_DIRT;
+        else if ((r -= PLIQUIDDIRT) < 0) m->crate.type = LIQUID_DIRT;
+        else if ((r -= PCOLLAPSE) < 0)   m->crate.type = COLLAPSE;
+        else if ((r -= PBOUNCER) < 0)    m->crate.type = BOUNCER;
+        else if ((r -= PTUNNELER) < 0)   m->crate.type = TUNNELER;
+        else if ((r -= PMIRV) < 0)       m->crate.type = MIRV;
+        else if ((r -= PCLUSTER) < 0)    m->crate.type = CLUSTER_BOMB;
+        else                             m->crate.type = DIRT;
         broadcast_crate_chunk(m, SPAWN);
     }
-    if(get_land_at(m, m->crate.x,m->crate.y+1)==0) {
+
+    if (get_land_at(m, m->crate.x, m->crate.y + 1) == 0)
+    {
         m->crate.y++;
         broadcast_crate_chunk(m, MOVE);
     }
@@ -535,9 +694,9 @@ void crate_update(struct moag *m)
 void step_game(struct moag *m)
 {
     crate_update(m);
-    for(int i=0;i<MAX_CLIENTS;i++)
+    for (int i = 0; i < MAX_PLAYERS; i++)
         tank_update(m, i);
-    for(int i=0;i<MAX_BULLETS;i++)
+    for (int i = 0; i < MAX_BULLETS; i++)
         bullet_update(m, i);
 }
 
@@ -545,7 +704,7 @@ int client_connect(struct moag *m)
 {
     int i=0;
     while(m->tanks[i].active)
-        if(++i>=MAX_CLIENTS) {
+        if(++i>=MAX_PLAYERS) {
             printf("Client failed to connect, too many clients.\n");
             return -1;
         }
@@ -577,7 +736,7 @@ void handle_msg(struct moag *m, int id, const char* msg, int len)
 
 void init_game(struct moag *m)
 {
-    for(int i=0;i<MAX_CLIENTS;i++)
+    for(int i=0;i<MAX_PLAYERS;i++)
         m->tanks[i].active=0;
     for(int i=0;i<MAX_BULLETS;i++)
         m->bullets[i].active=0;
@@ -640,26 +799,29 @@ int main(int argc, char *argv[])
 
     ENetEvent event;
 
-    for (;;) {
-        while (enet_host_service(get_server_host(), &event, 10)) {
-            switch (event.type) {
-            case ENET_EVENT_TYPE_CONNECT:
-                INFO("Client connected.\n");
-                event.peer->data = (void *)client_connect(&moag);
-                break;
+    for (;;)
+    {
+        while (enet_host_service(get_server_host(), &event, 10))
+        {
+            switch (event.type)
+            {
+                case ENET_EVENT_TYPE_CONNECT:
+                    INFO("Client connected.\n");
+                    event.peer->data = (void *)client_connect(&moag);
+                    break;
 
-            case ENET_EVENT_TYPE_DISCONNECT:
-                INFO("Client disconnected.\n");
-                disconnect_client(&moag, (int)event.peer->data);
-                break;
+                case ENET_EVENT_TYPE_DISCONNECT:
+                    INFO("Client disconnected.\n");
+                    disconnect_client(&moag, (int)event.peer->data);
+                    break;
 
-            case ENET_EVENT_TYPE_RECEIVE:
-                on_receive(&moag, &event);
-                enet_packet_destroy(event.packet);
-                break;
+                case ENET_EVENT_TYPE_RECEIVE:
+                    on_receive(&moag, &event);
+                    enet_packet_destroy(event.packet);
+                    break;
 
-            default:
-                break;
+                default:
+                    break;
             }
         }
 

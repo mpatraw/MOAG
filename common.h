@@ -14,19 +14,6 @@
 
 #include "enet_aux.h"
 
-#ifndef M_PI
-#   define M_PI            3.14159
-#endif
-
-#define PORT            8080
-
-#define MAX_PLAYERS     MAX_CLIENTS
-#define MAX_BULLETS     32
-#define MAX_NAME_LEN    16
-
-#define LAND_WIDTH      800
-#define LAND_HEIGHT     600
-
 #if VERBOSITY == 5
 #   define LOG(...) \
     do { fprintf(stdout, "    "); fprintf(stdout, __VA_ARGS__); } while (0)
@@ -73,11 +60,31 @@
     do { fprintf(stderr, "XXX "); fprintf(stderr, __VA_ARGS__); } while (0)
 #endif
 
-#define DIE(...) \
-    do { ERR(__VA_ARGS__); exit(EXIT_FAILURE); } while (0)
+#ifndef M_PI
+#   define M_PI         3.14159
+#endif
+
+#define SQ(x)           ((x) * (x))
+
+#define DIST(x1, y1, x2, y2) sqrt(SQ(x1 - x2) + SQ(y1 - y2))
+
+#define DEG2RAD(deg)    ((deg) * (M_PI / 180))
+#define RAD2DEG(rad)    ((rad) * (180 / M_PI))
+
+#define PORT            8080
+
+#define MAX_PLAYERS     MAX_CLIENTS
+#define MAX_BULLETS     64
+#define MAX_NAME_LEN    16
+
+#define LAND_WIDTH      800
+#define LAND_HEIGHT     600
+
+#define DIE(...) do { ERR(__VA_ARGS__); exit(EXIT_FAILURE); } while (0)
 
 /* Chunk types. */
-enum {
+enum
+{
     /******************
      * Client -> Server
      */
@@ -139,16 +146,17 @@ enum {
      */
     CRATE_CHUNK,
     /* RELIABLE
-     * 1: MSG_CHUNK
+     * 1: SERVER_MSG_CHUNK
      * 1: id
      * 1: CHAT/NAME_CHANGE/SERVER_NOTICE
      * 1: length
      * length: characters
      */
-    MSG_CHUNK,
+    SERVER_MSG_CHUNK,
 };
 
-enum {
+enum
+{
     /* RELIABLE */
     SPAWN,
     /* RELIABLE */
@@ -157,14 +165,16 @@ enum {
     MOVE,
 };
 
-/* MSG_CHUNK commands */
-enum {
+/* SERVER_MSG_CHUNK commands */
+enum
+{
     CHAT,
     SERVER_NOTICE,
     NAME_CHANGE,
 };
 
-struct tank {
+struct tank
+{
     int x, y;
     int angle, power;
     char bullet;
@@ -177,20 +187,23 @@ struct tank {
     bool kleft, kright, kup, kdown, kfire;
 };
 
-struct bullet {
+struct bullet
+{
     int x, y;
     float fx, fy, vx, vy;
     char active;
     char type;
 };
 
-struct crate {
+struct crate
+{
     int x, y;
     bool active;
     char type;
 };
 
-struct player {
+struct player
+{
     struct tank tank;
 
     char name[MAX_NAME_LEN];
@@ -202,11 +215,13 @@ struct player {
 
 /* Fast speed. Low memory. Period = 2^128 - 1. */
 enum {XOR128_K = 4};
-struct rng_state {
+struct rng_state
+{
     uint32_t q[XOR128_K];
 };
 
-struct moag {
+struct moag
+{
     struct player players[MAX_PLAYERS];
     struct tank tanks[MAX_PLAYERS];
     struct bullet bullets[MAX_BULLETS];
@@ -220,9 +235,8 @@ static inline void rng_seed(struct rng_state *st, uint32_t seed)
     int i;
 
     srand(seed);
-    for (i = 0; i < XOR128_K; ++i) {
+    for (i = 0; i < XOR128_K; ++i)
         st->q[i] = rand();
-    }
 }
 
 static inline uint32_t rng_u32(struct rng_state *st)

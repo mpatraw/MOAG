@@ -47,21 +47,27 @@ void grab_events(void)
 {
     static SDL_Event ev;
 
-    while (SDL_PollEvent(&ev)) {
-        switch (ev.type) {
+    while (SDL_PollEvent(&ev))
+    {
+        switch (ev.type)
+        {
         case SDL_QUIT:
             _is_closed = true;
             break;
 
         case SDL_KEYDOWN:
             _key_table[ev.key.keysym.sym] = true;
-            if (_inputmode) {
-                if (ev.key.keysym.sym == SDLK_BACKSPACE) {
+            if (_inputmode)
+            {
+                if (ev.key.keysym.sym == SDLK_BACKSPACE)
+                {
                     if (_inputlen > 0)
                         _input[--_inputlen] = '\0';
                 }
-                else {
-                    if(_inputlen < 255){
+                else
+                {
+                    if(_inputlen < 255)
+                    {
                         char ch = ev.key.keysym.unicode;
                         if (ch >= 32 && ch <= 126)
                             _input[_inputlen++] = ch;

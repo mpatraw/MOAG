@@ -18,9 +18,8 @@ int zip(char *in_data, size_t in_size, char **out_data, size_t *out_size)
     strm.opaque = Z_NULL;
 
     ret = deflateInit2(&strm, 6, Z_DEFLATED, -15, 8, Z_DEFAULT_STRATEGY);
-    if (ret != Z_OK) {
+    if (ret != Z_OK)
         return ret;
-    }
 
     strm.avail_in = in_size;
     strm.next_in = (uint8_t*)in_data;
@@ -61,9 +60,8 @@ int unzip(char *in_data, size_t in_size, char **out_data, size_t *out_size)
     strm.opaque = Z_NULL;
 
     ret = inflateInit2(&strm, -15);
-    if (ret != Z_OK) {
+    if (ret != Z_OK)
         return ret;
-    }
 
     strm.avail_in = in_size;
     strm.next_in = (uint8_t*)in_data;
@@ -73,11 +71,11 @@ int unzip(char *in_data, size_t in_size, char **out_data, size_t *out_size)
     ret = inflate(&strm, Z_FINISH);
     if (ret == Z_STREAM_ERROR)
         return Z_STREAM_ERROR;
-    if ( ret != Z_STREAM_END )
+    if (ret != Z_STREAM_END)
         return Z_DATA_ERROR;
-    if ( strm.avail_in != 0 )
+    if (strm.avail_in != 0)
         return Z_ERRNO;
-    if ( strm.avail_out != 0 )
+    if (strm.avail_out != 0)
         return Z_ERRNO;
 
     *out_size = expected_dest_size;

@@ -22,7 +22,8 @@ static ENetPeer *_peer = NULL;
 
 void init_enet_client(const char *ip, unsigned port)
 {
-    if (!_initialized) {
+    if (!_initialized)
+    {
         if (enet_initialize() != 0)
             die("An error occurred while initializing ENet.\n");
         else
@@ -45,7 +46,8 @@ void init_enet_client(const char *ip, unsigned port)
     ENetEvent ev;
 
     if (enet_host_service(_client, &ev, CONNECT_TIMEOUT) == 0 ||
-        ev.type != ENET_EVENT_TYPE_CONNECT) {
+        ev.type != ENET_EVENT_TYPE_CONNECT)
+    {
         enet_peer_reset(_peer);
         die("Connection to %s timed out.\n", ip);
     }
@@ -53,7 +55,8 @@ void init_enet_client(const char *ip, unsigned port)
 
 void init_enet_server(unsigned port)
 {
-    if (!_initialized) {
+    if (!_initialized)
+    {
         if (enet_initialize() != 0)
             die("An error occurred while initializing ENet.\n");
         else
@@ -72,12 +75,15 @@ void init_enet_server(unsigned port)
 
 void uninit_enet(void)
 {
-    if (_peer) {
+    if (_peer)
+    {
         enet_peer_disconnect(_peer, 0);
 
         ENetEvent ev;
-        while (enet_host_service(_client, &ev, 3000)) {
-            switch (ev.type) {
+        while (enet_host_service(_client, &ev, 3000))
+        {
+            switch (ev.type)
+            {
             case ENET_EVENT_TYPE_RECEIVE:
                 enet_packet_destroy(ev.packet);
                 break;
