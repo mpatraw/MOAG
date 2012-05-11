@@ -60,7 +60,7 @@ int unzip(char *in_data, size_t in_size, char **out_data, size_t *out_size)
     strm.zfree = Z_NULL;
     strm.opaque = Z_NULL;
 
-    ret = inflateInit2(&strm,-15);
+    ret = inflateInit2(&strm, -15);
     if (ret != Z_OK) {
         return ret;
     }

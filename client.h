@@ -34,6 +34,11 @@ static inline void read_land_chunk(struct moag *m, unsigned char *packet, size_t
     if (x < 0 || y < 0 || x + w > LAND_WIDTH || y + h > LAND_HEIGHT)
         return;
 
+    if (pos == len) {
+        WARN("LAND_CHUNK length == 0.\n");
+        return;
+    }
+
     unsigned char *unzipped = NULL;
     size_t unzipped_len = 0;
     unzip((char *)packet + pos, len - pos, (char **)&unzipped, &unzipped_len);

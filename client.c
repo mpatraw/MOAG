@@ -301,6 +301,8 @@ int main(int argc, char *argv[])
 
     struct moag moag;
 
+    memset(&moag, 0, sizeof(moag));
+
     ENetEvent enet_ev;
 
     while (!is_closed()) {
