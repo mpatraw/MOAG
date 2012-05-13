@@ -125,6 +125,9 @@ void draw(struct moag *m)
                 set_pixel(x, y, COLOR_GRAY);
         }
     }
+    if (m->crate.active)
+        draw_crate(m->crate.x-4,m->crate.y-8);
+    draw_bullets(m);
     for (int i = 0; i < MAX_PLAYERS; i++)
     {
         if (m->tanks[i].active)
@@ -139,9 +142,6 @@ void draw(struct moag *m)
                                  m->tanks[i].name);
         }
     }
-    if (m->crate.active)
-        draw_crate(m->crate.x-4,m->crate.y-8);
-    draw_bullets(m);
     del_chat_line();
     for (int i = 0; i < CHAT_LINES; i++)
     {

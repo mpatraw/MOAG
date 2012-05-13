@@ -830,6 +830,7 @@ void on_receive(struct moag *m, ENetEvent *ev)
                     uint16_t power = read16(packet, &pos);
                     m->tanks[id].kfire = 0;
                     m->tanks[id].power = power / 2;
+                    m->tanks[id].power = CLAMP(0, 1000, m->tanks[id].power);
                     break;
                 }
             }
