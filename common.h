@@ -14,6 +14,9 @@
 
 #include "enet_aux.h"
 
+/******************************************************************************\
+\******************************************************************************/
+
 #if VERBOSITY == 5
 #   define LOG(...) \
     do { fprintf(stdout, "    "); fprintf(stdout, __VA_ARGS__); } while (0)
@@ -60,6 +63,11 @@
     do { fprintf(stderr, "XXX "); fprintf(stderr, __VA_ARGS__); } while (0)
 #endif
 
+#define DIE(...) do { ERR(__VA_ARGS__); exit(EXIT_FAILURE); } while (0)
+
+/******************************************************************************\
+\******************************************************************************/
+
 #ifndef M_PI
 #   define M_PI         3.14159
 #endif
@@ -71,6 +79,69 @@
 #define DEG2RAD(deg)    ((deg) * (M_PI / 180))
 #define RAD2DEG(rad)    ((rad) * (180 / M_PI))
 
+struct vec2
+{
+    double x;
+    double y;
+};
+
+#define VEC2(x, y) ((struct vec2){x, y})
+#define VEC2_MAG(a) sqrt((a).x * (a).x + (a).y * (a).y)
+#define VEC2_UNIT(a) VEC2((a).x / VEC2_MAG(a), (a).y / VEC2_MAG(a))
+#define VEC2_ADD(a, b) VEC2((a).x + (b).x, (a).y + (b).y)
+#define VEC2_ADD_CONST(a, f) VEC2((a).x + f, (a).y + f)
+#define VEC2_SUB(a, b) VEC2((a).x - (b).x, (a).y - (b).y)
+#define VEC2_SUB_CONST(a, f) VEC2((a).x - f, (a).y - f)
+#define VEC2_MUL(a, b) VEC2((a).x * (b).x, (a).y * (b).y)
+#define VEC2_MUL_CONST(a, f) VEC2((a).x * f, (a).y * f)
+#define VEC2_DIV(a, b) VEC2((a).x / (b).x, (a).y / (b).y)
+#define VEC2_DIV_CONST(a, f) VEC2((a).x / f, (a).y / f)
+#define VEC2_DOT(a, b) ((a).x * (b).x + (a).y * (b).y)
+
+/* Inclusive line intersection. Includes points. (0,0,0,0) intersects with
+ * (0,0,0,0) at (0,0).
+ */
+static inline bool line_intersection
+    (struct vec2 s1, struct vec2 e1
+    ,struct vec2 s2, struct vec2 e2
+    ,struct vec2 *out)
+{
+    struct vec2 e = VEC2_SUB(e1, s1);
+    struct vec2 f = VEC2_SUB(e2, s2);
+    struct vec2 p = VEC2(-e.y, e.x);
+
+    double fp = VEC2_DOT(f, p);
+    if (fp == 0)
+    {
+        if (s1.x <= e2.x || s1.y <= e2.y)
+        {
+            *out = VEC2(s1.x, s1.y);
+            return true;
+        }
+        else if (s2.x <= e1.x || s2.y <= e1.y)
+        {
+            *out = VEC2(s2.x, s2.y);
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    double h = VEC2_DOT(VEC2_SUB(s1, s2), p) / fp;
+    if (h >= 0.0 || h <= 1.0)
+    {
+        *out = VEC2_ADD(s2, VEC2_MUL_CONST(f, h));
+        return true;
+    }
+
+    return false;
+}
+
+/******************************************************************************\
+\******************************************************************************/
+
 #define PORT            8080
 
 #define MAX_PLAYERS     MAX_CLIENTS
@@ -79,8 +150,6 @@
 
 #define LAND_WIDTH      800
 #define LAND_HEIGHT     600
-
-#define DIE(...) do { ERR(__VA_ARGS__); exit(EXIT_FAILURE); } while (0)
 
 /* Chunk types. */
 enum
@@ -172,6 +241,14 @@ enum
     SERVER_NOTICE,
     NAME_CHANGE,
 };
+
+/* WIP. Object is effected by physics. */
+struct object
+{
+    struct vec2 pos;
+    struct vec2 vel;
+};
+#define OBJECT(derived) ((struct object)derived)
 
 struct tank
 {
