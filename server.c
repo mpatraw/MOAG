@@ -120,10 +120,8 @@ void launch_ladder(struct moag *m, int x, int y)
     m->bullets[i].type = LADDER;
     m->bullets[i].x = x;
     m->bullets[i].y = y;
-    m->bullets[i].fx = x;
-    m->bullets[i].fy = y;
-    m->bullets[i].vx = 0;
-    m->bullets[i].vy = -1;
+    m->bullets[i].obj.pos = VEC2(x, y);
+    m->bullets[i].obj.vel = VEC2(0, -1);
     broadcast_bullet_chunk(m, SPAWN, i);
 }
 
@@ -135,12 +133,10 @@ void fire_bullet(struct moag *m, char type, float x, float y, float vx, float vy
             return;
     m->bullets[i].active = 4;
     m->bullets[i].type = type;
-    m->bullets[i].fx = x;
-    m->bullets[i].fy = y;
-    m->bullets[i].x = (int)m->bullets[i].fx;
-    m->bullets[i].y = (int)m->bullets[i].fy;
-    m->bullets[i].vx = vx;
-    m->bullets[i].vy = vy;
+    m->bullets[i].obj.pos = VEC2(x, y);
+    m->bullets[i].x = (int)m->bullets[i].obj.pos.x;
+    m->bullets[i].y = (int)m->bullets[i].obj.pos.y;
+    m->bullets[i].obj.vel = VEC2(vx, vy);
     broadcast_bullet_chunk(m, SPAWN, i);
 }
 
@@ -402,22 +398,21 @@ void tank_update(struct moag *m, int id)
         broadcast_tank_chunk(m, MOVE, id);
 }
 
-void bounce_bullet(struct moag *m, int b, float hitx, float hity)
+void bounce_bullet(struct moag *m, int id, float hitx, float hity)
 {
+    struct bullet *b = &m->bullets[id];
     const int ix = (int)hitx;
     const int iy = (int)hity;
 
     if (get_land_at(m, ix, iy) == -1)
     {
-        m->bullets[b].vx = -m->bullets[b].vx;
-        m->bullets[b].vy = -m->bullets[b].vy;
+        b->obj.vel = VEC2_MUL_CONST(b->obj.vel, -1);
         return;
     }
 
-    m->bullets[b].fx = hitx;
-    m->bullets[b].fy = hity;
-    m->bullets[b].x = ix;
-    m->bullets[b].y = iy;
+    b->obj.pos = VEC2(hitx, hity);
+    b->x = ix;
+    b->y = iy;
 
     unsigned char hit = 0;
     if (get_land_at(m, ix - 1, iy - 1)) hit |= 1 << 7;
@@ -430,70 +425,71 @@ void bounce_bullet(struct moag *m, int b, float hitx, float hity)
     if (get_land_at(m, ix + 1, iy + 1)) hit |= 1;
 
     const float IRT2 = 0.70710678;
-    const float vx = m->bullets[b].vx;
-    const float vy = m->bullets[b].vy;
+    const float vx = b->obj.vel.x;
+    const float vy = b->obj.vel.y;
 
-    switch(hit)
+    switch (hit)
     {
         case 0x00: break;
 
         case 0x07: case 0xe0: case 0x02: case 0x40:
-            m->bullets[b].vy = -vy;
+            b->obj.vel.y = -vy;
             break;
 
         case 0x94: case 0x29: case 0x10: case 0x08:
-            m->bullets[b].vx = -vx;
+            b->obj.vel.x = -vx;
             break;
 
         case 0x16: case 0x68: case 0x04: case 0x20:
-            m->bullets[b].vy = vx;
-            m->bullets[b].vx = vy;
+            b->obj.vel.y = vx;
+            b->obj.vel.x = vy;
             break;
 
         case 0xd0: case 0x0b: case 0x80: case 0x01:
-            m->bullets[b].vy = -vx;
-            m->bullets[b].vx = -vy;
+            b->obj.vel.y = -vx;
+            b->obj.vel.x = -vy;
             break;
 
         case 0x17: case 0xe8: case 0x06: case 0x60:
-            m->bullets[b].vx = +vx * IRT2 + vy * IRT2;
-            m->bullets[b].vy = -vy * IRT2 + vx * IRT2;
+            b->obj.vel.x = +vx * IRT2 + vy * IRT2;
+            b->obj.vel.y = -vy * IRT2 + vx * IRT2;
             break;
 
         case 0x96: case 0x69: case 0x14: case 0x28:
-            m->bullets[b].vx = -vx * IRT2 + vy * IRT2;
-            m->bullets[b].vy = +vy * IRT2 + vx * IRT2;
+            b->obj.vel.x = -vx * IRT2 + vy * IRT2;
+            b->obj.vel.y = +vy * IRT2 + vx * IRT2;
             break;
 
         case 0xf0: case 0x0f: case 0xc0: case 0x03:
-            m->bullets[b].vx = +vx * IRT2 - vy * IRT2;
-            m->bullets[b].vy = -vy * IRT2 - vx * IRT2;
+            b->obj.vel.x = +vx * IRT2 - vy * IRT2;
+            b->obj.vel.y = -vy * IRT2 - vx * IRT2;
             break;
 
         case 0xd4: case 0x2b: case 0x90: case 0x09:
-            m->bullets[b].vx = -vx * IRT2 - vy * IRT2;
-            m->bullets[b].vy = +vy * IRT2 - vx * IRT2;
+            b->obj.vel.x = -vx * IRT2 - vy * IRT2;
+            b->obj.vel.y = +vy * IRT2 - vx * IRT2;
             break;
 
         default:
-            m->bullets[b].vx = -vx;
-            m->bullets[b].vy = -vy;
+            b->obj.vel.x = -vx;
+            b->obj.vel.y = -vy;
             break;
     }
 }
 
-void bullet_detonate(struct moag *m, int b)
+void bullet_detonate(struct moag *m, int id)
 {
-    float d = DIST(m->bullets[b].vx, m->bullets[b].vy, 0, 0);
+    struct bullet *b = &m->bullets[id];
+    float d = VEC2_MAG(b->obj.vel);
 
     if (d < 0.001 && d >- 0.001)
         d = d < 0 ? -1 : 1;
 
-    const float dx = m->bullets[b].vx / d;
-    const float dy = m->bullets[b].vy / d;
+    const float dx = b->obj.vel.x / d;
+    const float dy = b->obj.vel.y / d;
 
-    float hitx = m->bullets[b].fx;
-    float hity = m->bullets[b].fy;
+    float hitx = b->obj.pos.x;
+    float hity = b->obj.pos.y;
 
     for (int i = 40; i > 0 && get_land_at(m, (int)hitx, (int)hity); i--)
     {
@@ -501,30 +497,30 @@ void bullet_detonate(struct moag *m, int b)
         hity -= dy;
     }
 
-    switch (m->bullets[b].type)
+    switch (b->type)
     {
         case MISSILE:
-            explode(m, m->bullets[b].x, m->bullets[b].y, 12, E_EXPLODE);
+            explode(m, b->x, b->y, 12, E_EXPLODE);
             break;
 
         case BABY_NUKE:
-            explode(m, m->bullets[b].x, m->bullets[b].y, 55, E_EXPLODE);
+            explode(m, b->x, b->y, 55, E_EXPLODE);
             break;
 
         case NUKE:
-            explode(m, m->bullets[b].x, m->bullets[b].y, 150, E_EXPLODE);
+            explode(m, b->x, b->y, 150, E_EXPLODE);
             break;
 
         case DIRT:
-            explode(m, m->bullets[b].x, m->bullets[b].y, 55, E_DIRT);
+            explode(m, b->x, b->y, 55, E_DIRT);
             break;
 
         case SUPER_DIRT:
-            explode(m, m->bullets[b].x, m->bullets[b].y, 300, E_DIRT);
+            explode(m, b->x, b->y, 300, E_DIRT);
             break;
 
         case COLLAPSE:
-            explode(m, m->bullets[b].x, m->bullets[b].y, 120, E_COLLAPSE);
+            explode(m, b->x, b->y, 120, E_COLLAPSE);
             break;
 
         case LIQUID_DIRT:
@@ -532,26 +528,25 @@ void bullet_detonate(struct moag *m, int b)
             break;
 
         case BOUNCER:
-            if (m->bullets[b].active > 0)
-                m->bullets[b].active = -BOUNCER_BOUNCES;
-            m->bullets[b].active++;
-            bounce_bullet(m, b, hitx, hity);
-            m->bullets[b].vx *= 0.9;
-            m->bullets[b].vy *= 0.9;
-            explode(m, m->bullets[b].x, m->bullets[b].y, 12, E_EXPLODE);
+            if (b->active > 0)
+                b->active = -BOUNCER_BOUNCES;
+            b->active++;
+            bounce_bullet(m, id, hitx, hity);
+            b->obj.vel = VEC2_MUL_CONST(b->obj.vel, 0.9);
+            explode(m, b->x, b->y, 12, E_EXPLODE);
             break;
 
         case TUNNELER:
-            if (m->bullets[b].active > 0)
-                m->bullets[b].active = -TUNNELER_TUNNELINGS;
-            m->bullets[b].active++;
+            if (b->active > 0)
+                b->active = -TUNNELER_TUNNELINGS;
+            b->active++;
             explode(m, hitx, hity, 9, E_EXPLODE);
             explode(m, hitx + 8 * dx, hity + 8 * dy, 9, E_EXPLODE);
             break;
 
         case LADDER: {
-            int x = m->bullets[b].x;
-            int y = m->bullets[b].y;
+            int x = b->x;
+            int y = b->y;
             for (; y < LAND_HEIGHT; y++)
                 if (get_land_at(m, x, y) == 0)
                     break;
@@ -559,7 +554,7 @@ void bullet_detonate(struct moag *m, int b)
                 if (get_land_at(m, x, y))
                     break;
             const int maxy = y + 1;
-            y = m->bullets[b].y;
+            y = b->y;
             for (; y > 0; y--)
                 if (get_land_at(m, x, y) == 0)
                     break;
@@ -578,121 +573,119 @@ void bullet_detonate(struct moag *m, int b)
         }
 
         case MIRV:
-            bounce_bullet(m, b, hitx, hity);
-            explode(m, m->bullets[b].x, m->bullets[b].y, 12, E_EXPLODE);
+            bounce_bullet(m, id, hitx, hity);
+            explode(m, b->x, b->y, 12, E_EXPLODE);
             for (int i = -3; i < 4; i++)
                 fire_bullet(m, MIRV_WARHEAD,
-                            m->bullets[b].x, m->bullets[b].y,
-                            m->bullets[b].vx + i, m->bullets[b].vy);
+                            b->x, b->y,
+                            b->obj.vel.x + i, b->obj.vel.y);
             break;
 
         case MIRV_WARHEAD:
-            explode(m, m->bullets[b].x, m->bullets[b].y, 30, E_EXPLODE);
+            explode(m, b->x, b->y, 30, E_EXPLODE);
             break;
 
         case CLUSTER_BOMB:
-            bounce_bullet(m, b,hitx, hity);
-            explode(m, m->bullets[b].x, m->bullets[b].y, 20, E_EXPLODE);
+            bounce_bullet(m, id, hitx, hity);
+            explode(m, b->x, b->y, 20, E_EXPLODE);
             for (int i = 0; i < 11; i++)
                 fire_bullet(m, MISSILE, hitx, hity,
-                            1.5 * cosf(i * M_PI / 5.5) + 0.25 * m->bullets[b].vx,
-                            1.5 * sinf(i * M_PI / 5.5) + 0.50 * m->bullets[b].vy);
+                            1.5 * cosf(i * M_PI / 5.5) + 0.25 * b->obj.vel.x,
+                            1.5 * sinf(i * M_PI / 5.5) + 0.50 * b->obj.vel.y);
             break;
 
         case CLUSTER_BOUNCER:
-            bounce_bullet(m, b,hitx, hity);
-            explode(m, m->bullets[b].x, m->bullets[b].y, 20, E_EXPLODE);
+            bounce_bullet(m, id, hitx, hity);
+            explode(m, b->x, b->y, 20, E_EXPLODE);
             for (int i = 0; i < 11; i++)
                 fire_bullet(m, BOUNCER, hitx, hity,
-                            1.5 * cosf(i * M_PI / 5.5) + 0.25 * m->bullets[b].vx,
-                            1.5 * sinf(i * M_PI / 5.5) + 0.50 * m->bullets[b].vy);
+                            1.5 * cosf(i * M_PI / 5.5) + 0.25 * b->obj.vel.x,
+                            1.5 * sinf(i * M_PI / 5.5) + 0.50 * b->obj.vel.y);
             break;
 
         default: break;
     }
 
-    if (m->bullets[b].active >= 0)
+    if (b->active >= 0)
     {
-        m->bullets[b].active = 0;
-        broadcast_bullet_chunk(m, KILL, b);
+        b->active = 0;
+        broadcast_bullet_chunk(m, KILL, id);
     }
 }
 
-void bullet_update(struct moag *m, int b)
+void bullet_update(struct moag *m, int id)
 {
-    if (!m->bullets[b].active)
+    struct bullet *b = &m->bullets[id];
+
+    if (!b->active)
         return;
 
-    if (m->bullets[b].type == LADDER)
+    if (b->type == LADDER)
     {
-        m->bullets[b].active--;
-        m->bullets[b].fx += m->bullets[b].vx;
-        m->bullets[b].fy += m->bullets[b].vy;
-        m->bullets[b].x = (int)m->bullets[b].fx;
-        m->bullets[b].y = (int)m->bullets[b].fy;
+        b->active--;
+        b->obj.pos = VEC2_ADD(b->obj.pos, b->obj.vel);
+        b->x = (int)b->obj.pos.x;
+        b->y = (int)b->obj.pos.y;
 
-        if (get_land_at(m, m->bullets[b].x, m->bullets[b].y) == 1)
+        if (get_land_at(m, b->x, b->y) == 1)
         {
-            explode(m, m->bullets[b].x,
-                       m->bullets[b].y + LADDER_LENGTH - m->bullets[b].active,
-                       1, E_SAFE_EXPLODE);
-            bullet_detonate(m, b);
+            explode(m, b->x, b->y + LADDER_LENGTH - b->active, 1, E_SAFE_EXPLODE);
+            bullet_detonate(m, id);
         }
         return;
     }
 
-    m->bullets[b].fx += m->bullets[b].vx;
-    m->bullets[b].fy += m->bullets[b].vy;
-    m->bullets[b].vy += GRAVITY;
-    m->bullets[b].x = (int)m->bullets[b].fx;
-    m->bullets[b].y = (int)m->bullets[b].fy;
-    if (get_land_at(m, m->bullets[b].x, m->bullets[b].y))
+    b->obj.pos = VEC2_ADD(b->obj.pos, b->obj.vel);
+    b->obj.vel = VEC2_ADD(b->obj.vel, VEC2(0, GRAVITY));
+    b->x = (int)b->obj.pos.x;
+    b->y = (int)b->obj.pos.y;
+    if (get_land_at(m, b->x, b->y))
     {
-        bullet_detonate(m, b);
+        bullet_detonate(m, id);
         return;
     }
 
-    if (m->bullets[b].active > 1)
+    if (b->active > 1)
     {
-        m->bullets[b].active--;
+        b->active--;
         return;
     }
 
-    if (m->bullets[b].type == BOUNCER && m->bullets[b].active == 1)
-        m->bullets[b].active = -BOUNCER_BOUNCES;
-    if (m->bullets[b].type == TUNNELER && m->bullets[b].active == 1)
-        m->bullets[b].active = -TUNNELER_TUNNELINGS;
+    if (b->type == BOUNCER && b->active == 1)
+        b->active = -BOUNCER_BOUNCES;
+    if (b->type == TUNNELER && b->active == 1)
+        b->active = -TUNNELER_TUNNELINGS;
 
     for (int i = 0; i < MAX_PLAYERS; i++)
     {
         if(DIST(m->tanks[i].x, m->tanks[i].y - 3,
-                m->bullets[b].x, m->bullets[b].y) < 8.5)
+                b->x, b->y) < 8.5)
         {
-            bullet_detonate(m, b);
+            bullet_detonate(m, id);
             return;
         }
     }
 
     if (DIST(m->crate.x, m->crate.y - 4,
-             m->bullets[b].x, m->bullets[b].y) < 5.5)
+             b->x, b->y) < 5.5)
     {
-        bullet_detonate(m, b);
+        bullet_detonate(m, id);
         fire_bullet(m, m->crate.type, m->crate.x, m->crate.y - 4,
                        m->crate.type != BOUNCER ? 0 :
-                       m->bullets[b].vx < 0 ? -0.2 :
-                                               0.2, -0.2);
+                       b->obj.vel.x < 0 ? -0.2 :
+                                           0.2, -0.2);
         m->crate.active = false;
         return;
     }
 
-    if (m->bullets[b].type == MIRV && m->bullets[b].vy > 0)
+    if (b->type == MIRV && b->obj.vel.y > 0)
     {
-        bullet_detonate(m, b);
+        bullet_detonate(m, id);
         return;
     }
 
-    if (m->bullets[b].active)
-        broadcast_bullet_chunk(m, MOVE, b);
+    if (b->active)
+        broadcast_bullet_chunk(m, MOVE, id);
 }
 
 void crate_update(struct moag *m)

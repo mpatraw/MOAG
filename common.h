@@ -266,8 +266,8 @@ struct tank
 
 struct bullet
 {
+    struct object obj;
     int x, y;
-    float fx, fy, vx, vy;
     char active;
     char type;
 };
