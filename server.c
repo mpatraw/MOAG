@@ -6,9 +6,9 @@
 
 void kill_tank(struct moag *m, int id)
 {
-    m->tanks[id].x=-30;
-    m->tanks[id].y=-30;
-    m->tanks[id].spawntimer=RESPAWN_TIME;
+    m->tanks[id].x = -30;
+    m->tanks[id].y = -30;
+    m->tanks[id].spawntimer = RESPAWN_TIME;
     broadcast_tank_chunk(m, KILL, id);
 }
 
@@ -154,49 +154,86 @@ void fire_bullet_ang(struct moag *m, char type, int x, int y, float angle, float
 
 void liquid(struct moag *m, int x, int y, int n)
 {
-    if(x<0) x=0;
-    if(y<0) y=0;
-    if(x>=LAND_WIDTH) x=LAND_WIDTH-1;
-    if(y>=LAND_HEIGHT) y=LAND_HEIGHT-1;
-    int minx=LAND_WIDTH;
-    int miny=LAND_HEIGHT;
-    int maxx=0;
-    int maxy=0;
-    for(int i=0;i<n;i++){
-        if(y<0) break;
-        int nx=x;
-        if(get_land_at(m, x,y+1)==0) y++;
-        else if(get_land_at(m, x-1,y)==0) x--;
-        else if(get_land_at(m, x+1,y)==0) x++;
+    if (x < 0)
+        x = 0;
+    if (y < 0)
+        y = 0;
+    if (x >= LAND_WIDTH)
+        x = LAND_WIDTH - 1;
+    if (y >= LAND_HEIGHT)
+        y = LAND_HEIGHT - 1;
+
+    int minx = LAND_WIDTH;
+    int miny = LAND_HEIGHT;
+    int maxx = 0;
+    int maxy = 0;
+    for (int i = 0; i < n; i++)
+    {
+        if (y < 0)
+            break;
+
+        int nx = x;
+        if (get_land_at(m, x, y + 1) == 0)
+        {
+            y++;
+        }
+        else if (get_land_at(m, x - 1, y) == 0)
+        {
+            x--;
+        }
+        else if (get_land_at(m, x + 1, y) == 0)
+        {
+            x++;
+        }
         else
-            for(int i=x;i<LAND_WIDTH+1;i++){
-                if(nx==x && get_land_at(m, i,y-1)==0)
-                    nx=i;
-                if(get_land_at(m, i,y)==0){
-                    x=i; break;
-                }else if(get_land_at(m, i,y)!=3){
-                    for(int i=x;i>=-1;i--){
-                        if(nx==x && get_land_at(m, i,y-1)==0)
-                            nx=i;
-                        if(get_land_at(m, i,y)==0){
+        {
+            for (int i = x; i < LAND_WIDTH + 1; i++)
+            {
+                if (nx == x && get_land_at(m, i, y - 1) == 0)
+                    nx = i;
+                if (get_land_at(m, i, y) == 0)
+                {
+                    x=i;
+                    break;
+                }
+                else if (get_land_at(m, i, y) != 3)
+                {
+                    for (int i=x;i>=-1;i--)
+                    {
+                        if (nx == x && get_land_at(m, i,y - 1) == 0)
+                            nx = i;
+                        if (get_land_at(m, i, y) == 0)
+                        {
                             x=i; break;
-                        }else if(get_land_at(m, i,y)!=3){
-                            y--; x=nx; break;
                         }
-                    } break;
+                        else if (get_land_at(m, i, y) != 3)
+                        {
+                            y--;
+                            x=nx;
+                            break;
+                        }
+                    }
+                    break;
                 }
             }
-        set_land_at(m, x,y,3);
-        if(x<minx) minx=x;
-        else if(x>maxx) maxx=x;
-        if(y<miny) miny=y;
-        else if(y>maxy) maxy=y;
+        }
+        set_land_at(m, x, y, 3);
+
+        if (x < minx)
+            minx = x;
+        else if (x > maxx)
+            maxx = x;
+
+        if (y < miny)
+            miny = y;
+        else if (y > maxy)
+            maxy = y;
     }
-    for(int iy=miny;iy<=maxy;iy++)
-    for(int ix=minx;ix<=maxx;ix++)
-        if(get_land_at(m, ix,iy)==3)
-            set_land_at(m, ix,iy,1);
-    broadcast_land_chunk(m,minx,miny,maxx-minx+1,maxy-miny+1);
+    for (int iy = miny; iy <= maxy; iy++)
+        for (int ix = minx; ix <= maxx; ix++)
+            if (get_land_at(m, ix, iy) == 3)
+                set_land_at(m, ix, iy, 1);
+    broadcast_land_chunk(m, minx, miny, maxx - minx + 1, maxy - miny + 1);
 }
 
 void tank_update(struct moag *m, int id)
@@ -729,36 +766,41 @@ int client_connect(struct moag *m)
 
 void handle_msg(struct moag *m, int id, const char* msg, int len)
 {
-    if(msg[0]=='/' && msg[1]=='n' && msg[2]==' '){
-        char notice[64]="  ";
-        strcat(notice,m->tanks[id].name);
-        len-=3;
-        if(len>15)
-            len=15;
-        for(int i=0;i<len;i++)
-            m->tanks[id].name[i]=msg[i+3];
-        m->tanks[id].name[len]='\0';
-        strcat(notice," is now known as ");
-        strcat(notice,m->tanks[id].name);
-        broadcast_chat(id,NAME_CHANGE,m->tanks[id].name,strlen(m->tanks[id].name));
-        broadcast_chat(-1,SERVER_NOTICE,notice,strlen(notice));
-        return;
+    if (msg[0] == '/' && msg[1] == 'n' && msg[2] == ' ')
+    {
+        char notice[64] = "  ";
+        strcat(notice, m->tanks[id].name);
+        len -= 3;
+        if (len > 15)
+            len = 15;
+        for (int i = 0; i < len; i++)
+            m->tanks[id].name[i] = msg[i + 3];
+        m->tanks[id].name[len] = '\0';
+        strcat(notice, " is now known as ");
+        strcat(notice, m->tanks[id].name);
+        broadcast_chat(id, NAME_CHANGE, m->tanks[id].name, strlen(m->tanks[id].name));
+        broadcast_chat(-1, SERVER_NOTICE, notice, strlen(notice));
     }
-    broadcast_chat(id,CHAT,msg,len);
+    else
+    {
+        broadcast_chat(id, CHAT, msg, len);
+    }
 }
 
 void init_game(struct moag *m)
 {
-    for(int i=0;i<MAX_PLAYERS;i++)
-        m->tanks[i].active=0;
-    for(int i=0;i<MAX_BULLETS;i++)
-        m->bullets[i].active=0;
+    for (int i = 0; i < MAX_PLAYERS; i++)
+        m->tanks[i].active = 0;
+    for (int i = 0; i < MAX_BULLETS; i++)
+        m->bullets[i].active = 0;
     m->crate.active = false;
 
     rng_seed(&m->rng, time(NULL));
 
-    for (int y = 0; y < LAND_HEIGHT; ++y) {
-        for (int x = 0; x < LAND_WIDTH; ++x){
+    for (int y = 0; y < LAND_HEIGHT; ++y)
+    {
+        for (int x = 0; x < LAND_WIDTH; ++x)
+        {
             if (y < LAND_HEIGHT / 3)
                 set_land_at(m, x, y, 0);
             else
@@ -771,31 +813,34 @@ void on_receive(struct moag *m, ENetEvent *ev)
 {
     unsigned char *packet = ev->packet->data;
     size_t pos = 0;
-    int i = (int)ev->peer->data;
+    int id = (int)ev->peer->data;
 
     char byte = read8(packet, &pos);
 
-    switch(byte){
-    case KLEFT_PRESSED_CHUNK: m->tanks[i].kleft=1; break;
-    case KLEFT_RELEASED_CHUNK: m->tanks[i].kleft=0; break;
-    case KRIGHT_PRESSED_CHUNK: m->tanks[i].kright=1; break;
-    case KRIGHT_RELEASED_CHUNK: m->tanks[i].kright=0; break;
-    case KUP_PRESSED_CHUNK: m->tanks[i].kup=1; break;
-    case KUP_RELEASED_CHUNK: m->tanks[i].kup=0; break;
-    case KDOWN_PRESSED_CHUNK: m->tanks[i].kdown=1; break;
-    case KDOWN_RELEASED_CHUNK: m->tanks[i].kdown=0; break;
-    case KFIRE_PRESSED_CHUNK: m->tanks[i].kfire=1; break;
-    case KFIRE_RELEASED_CHUNK: m->tanks[i].kfire=0; break;
-    case CLIENT_MSG_CHUNK: { //msg
-        unsigned char len = read8(packet, &pos);
-        char* msg=malloc(len);
-        for(int j=0;j<len;j++)
-            msg[j] = read8(packet, &pos);
-        handle_msg(m, i,msg,len);
-        free(msg);
-        break;
-    }
-    default: break;
+    switch (byte)
+    {
+        case KLEFT_PRESSED_CHUNK:   m->tanks[id].kleft = 1; break;
+        case KLEFT_RELEASED_CHUNK:  m->tanks[id].kleft = 0; break;
+        case KRIGHT_PRESSED_CHUNK:  m->tanks[id].kright = 1; break;
+        case KRIGHT_RELEASED_CHUNK: m->tanks[id].kright = 0; break;
+        case KUP_PRESSED_CHUNK:     m->tanks[id].kup = 1; break;
+        case KUP_RELEASED_CHUNK:    m->tanks[id].kup = 0; break;
+        case KDOWN_PRESSED_CHUNK:   m->tanks[id].kdown = 1; break;
+        case KDOWN_RELEASED_CHUNK:  m->tanks[id].kdown = 0; break;
+        case KFIRE_PRESSED_CHUNK:   m->tanks[id].kfire = 1; break;
+        case KFIRE_RELEASED_CHUNK:  m->tanks[id].kfire = 0; break;
+
+        case CLIENT_MSG_CHUNK: {
+            unsigned char len = read8(packet, &pos);
+            char *msg = malloc(len);
+            for (int i = 0; i < len; i++)
+                msg[i] = read8(packet, &pos);
+            handle_msg(m, id, msg, len);
+            free(msg);
+            break;
+        }
+
+        default: break;
     }
 }
 
