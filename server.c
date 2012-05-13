@@ -745,12 +745,15 @@ void step_game(struct moag *m)
 
 int client_connect(struct moag *m)
 {
-    int i=0;
-    while(m->tanks[i].active)
-        if(++i>=MAX_PLAYERS) {
+    int i = 0;
+    while (m->tanks[i].active)
+    {
+        if(++i >= MAX_PLAYERS)
+        {
             printf("Client failed to connect, too many clients.\n");
             return -1;
         }
+    }
 
     spawn_client(m, i);
 

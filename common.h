@@ -79,6 +79,12 @@
 #define DEG2RAD(deg)    ((deg) * (M_PI / 180))
 #define RAD2DEG(rad)    ((rad) * (180 / M_PI))
 
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+#define CLAMP(min, max, val) MAX(min, MIN(max, val))
+#define WITHIN(min, max, val) ((val) >= (min) && (val) <= (max))
+#define LERP(a, b, t) ((a) + (t) * ((b) - (a))
+
 struct vec2
 {
     double x;
@@ -137,6 +143,40 @@ static inline bool line_intersection
     }
 
     return false;
+}
+
+struct rect
+{
+    struct vec2 topleft;
+    struct vec2 botright;
+};
+
+#define RECT_VV(v1, v2) ((struct rect){v1, v2})
+#define RECT_XYXY(x1, y1, x2, y2) RECT_VV(VEC2(x1, y1), VEC2(x2, y2))
+#define RECT_XYWH(x, y, w, h) RECT_XYXY(x, y, x + w, y + w)
+#define RECT_X(r) ((r).topleft.x)
+#define RECT_Y(r) ((r).topleft.y)
+#define RECT_WIDTH(r) ((r).botright.x - (r).topleft.x)
+#define RECT_HEIGHT(r) ((r).botright.y - (r).topleft.y)
+
+#define RECT_ADD(r, v) RECT_VV(VEC2_ADD((r).topleft, (v)), \
+                               VEC2_ADD((r).botright, (v))
+#define RECT_SUB(r, v) RECT_VV(VEC2_SUB((r).topleft, (v)), \
+                               VEC2_SUB((r).botright, (v))
+#define RECT_MUL(r, v) RECT_VV(VEC2_MUL((r).topleft, (v)), \
+                               VEC2_MUL((r).botright, (v))
+#define RECT_DIV(r, v) RECT_VV(VEC2_DIV((r).topleft, (v)), \
+                               VEC2_DIV((r).botright, (v))
+
+static inline bool rect_intersecting(struct rect r1, struct rect r2)
+{
+    bool xoverlap = WITHIN(r1.topleft.x, r1.botright.x, RECT_X(r2)) ||
+                    WITHIN(r2.topleft.x, r2.botright.x, RECT_X(r1));
+
+    bool yoverlap = WITHIN(r1.topleft.y, r1.botright.y, RECT_Y(r2)) ||
+                    WITHIN(r2.topleft.y, r2.botright.y, RECT_Y(r1));
+
+    return xoverlap && yoverlap;
 }
 
 /******************************************************************************\
