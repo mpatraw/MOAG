@@ -1,35 +1,51 @@
 
 #include "client.h"
 
-const char tanksprite[14][19] =
+#define X true
+#define _ false
+
+#define TANK_WIDTH  18
+#define TANK_HEIGHT 14
+const bool tanksprite[TANK_WIDTH * TANK_HEIGHT] =
 {
-    "..................",
-    "..................",
-    "..................",
-    "..................",
-    "..................",
-    "........xx........",
-    ".......xxxx.......",
-    "......xxxxxx......",
-    "...xxxxxxxxxxxx...",
-    ".xxxxxxxxxxxxxxxx.",
-    "xxxxxxxxxxxxxxxxxx",
-    "xxx.xx.xx.xx.xx.xx",
-    ".x..x..x..x..x..x.",
-    "..xxxxxxxxxxxxxx..",
+    _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
+    _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
+    _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
+    _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
+    _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
+    _,_,_,_,_,_,_,_,X,X,_,_,_,_,_,_,_,_,
+    _,_,_,_,_,_,_,X,X,X,X,_,_,_,_,_,_,_,
+    _,_,_,_,_,_,X,X,X,X,X,X,_,_,_,_,_,_,
+    _,_,_,X,X,X,X,X,X,X,X,X,X,X,X,_,_,_,
+    _,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,_,
+    X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,
+    X,X,X,_,X,X,_,X,X,_,X,X,_,X,X,_,X,X,
+    _,X,_,_,X,X,_,X,_,_,X,_,_,X,_,_,X,_,
+    _,_,X,X,X,X,X,X,X,X,X,X,X,X,X,X,_,_,
 };
 
-const char cratesprite[9][10] =
+#define CRATE_WIDTH  9
+#define CRATE_HEIGHT 9
+bool cratesprite[CRATE_WIDTH * CRATE_HEIGHT] =
 {
-    ".xxxxxxx.",
-    "xx.....xx",
-    "x.x...x.x",
-    "x..x.x..x",
-    "x...x...x",
-    "x..x.x..x",
-    "x.x...x.x",
-    "xx.....xx",
-    ".xxxxxxx.",
+    _,X,X,X,X,X,X,X,_,
+    X,X,_,_,_,_,_,X,X,
+    X,_,X,_,_,_,X,_,X,
+    X,_,_,X,_,X,_,_,X,
+    X,_,_,_,X,_,_,_,X,
+    X,_,_,X,_,X,_,_,X,
+    X,_,X,_,_,_,X,_,X,
+    X,X,_,_,_,_,_,X,X,
+    _,X,X,X,X,X,X,X,_,
+};
+
+#define BULLET_WIDTH  3
+#define BULLET_HEIGHT 3
+bool bulletsprite[BULLET_WIDTH * BULLET_HEIGHT] =
+{
+    _,X,_,
+    X,X,X,
+    _,X,_,
 };
 
 struct chatline chatlines[CHAT_LINES] = {{0}};
@@ -41,50 +57,30 @@ bool kup = false;
 bool kdown = false;
 bool kfire = false;
 
-void draw_tank(int x, int y, int turretangle, bool facing_left)
+void draw_tank(int x, int y, int turretangle, bool facingleft)
 {
-    if (x<0 || x>LAND_WIDTH-18 || y<0 || y>LAND_HEIGHT-14)
-        return;
-    for (int iy=0;iy<14;iy++)
-    for (int ix=0;ix<18;ix++)
-        if(tanksprite[iy][ix]=='x')
-            set_pixel(x+ix,y+iy,240,240,240);
-    if(turretangle==90)
-        turretangle=89;
+    draw_sprite(x, y, COLOR(240, 240, 240), tanksprite, TANK_WIDTH, TANK_HEIGHT);
 
-    float step=tanf((float)turretangle*M_PI/180.0);
-    int xlen=6.5*cosf((float)turretangle*M_PI/180.0);
-    float rise=0;
-    for(int ix=0;ix<=xlen;ix++){
-        int next=rise+step;
-        if(next>6) next=6;
-        for(int iy=-(int)rise;iy>=-next;iy--)
-            set_pixel(x+(facing_left?9-ix:8+ix),y+6+iy,240,240,240);
-        rise+=step;
-    }
+    /* 9 is the length of the cannon. */
+    int ex = 9 * cos(DEG2RAD(turretangle)) * (facingleft ? -1 : 1);
+    int ey = 9 * sin(DEG2RAD(turretangle)) * -1;
+    draw_line(x + TANK_WIDTH / 2, y + TANK_HEIGHT / 2,
+              x + TANK_WIDTH / 2 + ex, y + TANK_HEIGHT / 2 + ey,
+              COLOR(240, 240, 240));
 }
 
-void draw_crate(int x, int y){
-    if(x<0 || x>LAND_WIDTH-9 || y<0 || y>LAND_HEIGHT-9)
-        return;
-    for(int iy=0;iy<9;iy++)
-    for(int ix=0;ix<9;ix++)
-        if(cratesprite[iy][ix]=='x')
-            set_pixel(x+ix,y+iy,150, 75, 0);
+void draw_crate(int x, int y)
+{
+    draw_sprite(x, y, COLOR_BROWN, cratesprite, CRATE_WIDTH, CRATE_HEIGHT);
 }
 
 void draw_bullets(struct moag *m)
 {
-    for(int i=0;i<MAX_BULLETS;i++){
-        if (m->bullets[i].x<1 || m->bullets[i].x>=LAND_WIDTH-1 ||
-            m->bullets[i].y<1 || m->bullets[i].y>=LAND_HEIGHT-1 ||
-            !m->bullets[i].active)
-            continue;
-        set_pixel(m->bullets[i].x,m->bullets[i].y-1,255,155,155);
-        set_pixel(m->bullets[i].x-1,m->bullets[i].y,255,155,155);
-        set_pixel(m->bullets[i].x,  m->bullets[i].y,255,155,155);
-        set_pixel(m->bullets[i].x+1,m->bullets[i].y,255,155,155);
-        set_pixel(m->bullets[i].x,m->bullets[i].y+1,255,155,155);
+    for (int i = 0; i < MAX_BULLETS; i++)
+    {
+        struct bullet *b = &m->bullets[i];
+        if (b->active)
+            draw_sprite(b->x, b->y, COLOR_RED, bulletsprite, BULLET_WIDTH, BULLET_HEIGHT);
     }
 }
 
@@ -119,13 +115,19 @@ void draw(struct moag *m)
     for (int x = 0; x < LAND_WIDTH; ++x) {
         for (int y = 0; y < LAND_HEIGHT; ++y) {
             if (get_land_at(m, x, y))
-                set_pixel(x, y, 155, 155, 155);
+                set_pixel(x, y, COLOR(155, 155, 155));
         }
     }
     for(int i=0;i<MAX_PLAYERS;i++)
         if(m->tanks[i].active) {
-            draw_tank(m->tanks[i].x-9,m->tanks[i].y-13,m->tanks[i].angle,m->tanks[i].facingleft);
-            draw_string_centered(m->tanks[i].x,m->tanks[i].y-36,240,240,240,m->tanks[i].name);
+            draw_tank(m->tanks[i].x - 9,
+                      m->tanks[i].y - 13,
+                      m->tanks[i].angle,
+                      m->tanks[i].facingleft);
+            draw_string_centered(m->tanks[i].x,
+                                 m->tanks[i].y - 36,
+                                 COLOR(240, 240, 240),
+                                 m->tanks[i].name);
         }
     if(m->crate.active)
         draw_crate(m->crate.x-4,m->crate.y-8);
@@ -134,13 +136,13 @@ void draw(struct moag *m)
     for(int i=0;i<CHAT_LINES;i++)
         if(chatlines[i].str)
         {
-            draw_string(4,4+12*i,255,255,255,chatlines[i].str);
+            draw_string(4,4+12*i, COLOR_WHITE, chatlines[i].str);
             int w, h;
             get_string_size(chatlines[i].str, &w, &h);
         }
     if (typing_str){
-        draw_block(6,8+12*(CHAT_LINES),4,4,210,210,210);
-        draw_string(16,4+12*(CHAT_LINES),210,210,210,typing_str);
+        draw_block(6,8+12*(CHAT_LINES),4,4,COLOR(210,210,210));
+        draw_string(16,4+12*(CHAT_LINES),COLOR(210,210,210),typing_str);
     }
 }
 
@@ -411,11 +413,11 @@ int main(int argc, char *argv[])
             }
         }
 
-        SDL_FillRect(SDL_GetVideoSurface(), NULL, 0);
+        SDL_FillRect(SDL_GetVideoSurface(), NULL, COLOR_BLACK);
         draw(&moag);
         char buf[256];
         sprintf(buf, "%u", get_peer()->roundTripTime);
-        draw_string_right(LAND_WIDTH, 0, 0, 155, 0, buf);
+        draw_string_right(LAND_WIDTH, 0, COLOR_GREEN, buf);
         SDL_Flip(SDL_GetVideoSurface());
 
         struct timespec t;

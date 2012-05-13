@@ -142,15 +142,12 @@ bool set_font(const char *ttf, int ptsize)
     return true;
 }
 
-void draw_string(int x, int y, Uint8 r, Uint8 g, Uint8 b, const char *str)
+void draw_string(int x, int y, color_type color, const char *str)
 {
     if (!_font)
         return;
-    SDL_Color color;
-    color.r = r;
-    color.g = g;
-    color.b = b;
-    SDL_Surface *text = TTF_RenderText_Solid(_font, str, color);
+    SDL_Surface *text = TTF_RenderText_Solid(_font, str,
+                                             color_to_sdl_color(color));
     if (!text)
         return;
     SDL_Rect pos;
@@ -160,15 +157,12 @@ void draw_string(int x, int y, Uint8 r, Uint8 g, Uint8 b, const char *str)
     SDL_FreeSurface(text);
 }
 
-void draw_string_centered(int x, int y, Uint8 r, Uint8 g, Uint8 b, const char *str)
+void draw_string_centered(int x, int y, color_type color, const char *str)
 {
     if (!_font)
         return;
-    SDL_Color color;
-    color.r = r;
-    color.g = g;
-    color.b = b;
-    SDL_Surface *text = TTF_RenderText_Solid(_font, str, color);
+    SDL_Surface *text = TTF_RenderText_Solid(_font, str,
+                                             color_to_sdl_color(color));
     if (!text)
         return;
     x -= text->w / 2;
@@ -179,15 +173,12 @@ void draw_string_centered(int x, int y, Uint8 r, Uint8 g, Uint8 b, const char *s
     SDL_FreeSurface(text);
 }
 
-void draw_string_right(int x, int y, Uint8 r, Uint8 g, Uint8 b, const char *str)
+void draw_string_right(int x, int y, color_type color, const char *str)
 {
     if (!_font)
         return;
-    SDL_Color color;
-    color.r = r;
-    color.g = g;
-    color.b = b;
-    SDL_Surface *text = TTF_RenderText_Solid(_font, str, color);
+    SDL_Surface *text = TTF_RenderText_Solid(_font, str,
+                                             color_to_sdl_color(color));
     if (!text)
         return;
     x -= text->w;
@@ -203,4 +194,42 @@ bool get_string_size(const char *str, int *w, int *h)
     if (!_font)
         return false;
     return TTF_SizeText(_font, str, w, h) == 0 ? true : false;
+}
+
+void draw_sprite(int x, int y, color_type color, const bool *sprite, int w, int h)
+{
+    SDL_Surface *s = SDL_GetVideoSurface();
+    for (int ix = 0; ix < w; ++ix)
+        for (int iy = 0; iy < h; ++iy)
+            if (ix + x >= 0 && ix + x < s->w && iy + y >= 0 && iy + y < s->h)
+                if (sprite[iy * w + ix])
+                    set_pixel(ix + x, iy + y, color);
+}
+
+void draw_colored_sprite(int x, int y, const color_type *sprite, int w, int h)
+{
+    SDL_Surface *s = SDL_GetVideoSurface();
+    for (int ix = 0; ix < w; ++ix)
+        for (int iy = 0; iy < h; ++iy)
+            if (ix + x >= 0 && ix + x < s->w && iy + y >= 0 && iy + y < s->h)
+                set_pixel(ix + x, iy + y, sprite[iy * w + ix]);
+}
+
+void draw_line(int x1, int y1, int x2, int y2, color_type color)
+{
+    SDL_Surface *s = SDL_GetVideoSurface();
+    int dx = abs(x2 - x1), sx = x1 < x2 ? 1 : -1;
+    int dy = abs(y2 - y1), sy = y1 < y2 ? 1 : -1;
+    int err = (dx > dy ? dx : -dy) / 2, e2;
+
+    for (;;)
+    {
+        if (x1 >= 0 && x1 < s->w && y1 >= 0 && y1 < s->h)
+            set_pixel(x1, y1, color);
+
+        if (x1 == x2 && y1 == y2) break;
+        e2 = err;
+        if (e2 > -dx) { err -= dy; x1 += sx; }
+        if (e2 <  dy) { err += dx; y1 += sy; }
+    }
 }

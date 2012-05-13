@@ -118,16 +118,17 @@ struct line
 #define LINE_VV(v1, v2) ((struct line){v1, v2})
 #define LINE_XYXY(x1, y1, x2, y2) LINE_VV(VEC2(x1, y1), VEC2(x2, y2))
 
-static inline bool line_vec_inbetween(struct line l, struct vec2 v)
+static inline bool vec_inbetween_line(struct line l, struct vec2 v)
 {
-    return fabs(VEC2_DIST(l.beg, v) + VEC2_DIST(l.end, v) -
+    return fabs(VEC2_DIST(l.beg, v) +
+                VEC2_DIST(l.end, v) -
                 VEC2_DIST(l.beg, l.end)) < EPSILON;
 }
 
 /* Inclusive line intersection. Includes points. (0,0,0,0) intersects with
  * (0,0,0,0) at (0,0).
  */
-static inline bool line_intersection
+static inline bool lines_intersection
     (struct line first
     ,struct line second
     ,struct vec2 *out)
@@ -140,13 +141,13 @@ static inline bool line_intersection
     double fp = VEC2_DOT(f, p);
     if (fabs(fp) < EPSILON)
     {
-        if (line_vec_inbetween(first, second.beg))
+        if (vec_inbetween_line(first, second.beg))
         {
             if (out)
                 *out = second.beg;
             return true;
         }
-        else if (line_vec_inbetween(first, second.end))
+        else if (vec_inbetween_line(first, second.end))
         {
             if (out)
                 *out = second.end;
@@ -195,7 +196,7 @@ struct rect
 #define RECT_TOP_LINE(r) LINE((r).tl.x, (r).tl.y, (r).br.x, (r).tl.y)
 #define RECT_BOTTOM_LINE(r) LINE((r).tl.x, (r).br.y, (r).br.x, (r).br.y)
 
-static inline bool rect_intersecting(struct rect r1, struct rect r2)
+static inline bool rects_intersecting(struct rect r1, struct rect r2)
 {
     bool xoverlap = WITHIN(r1.tl.x, r1.br.x, RECT_X(r2)) ||
                     WITHIN(r2.tl.x, r2.br.x, RECT_X(r1));
@@ -206,15 +207,30 @@ static inline bool rect_intersecting(struct rect r1, struct rect r2)
     return xoverlap && yoverlap;
 }
 
-static inline bool rect_line_intersection
-    (struct rect r
-    ,struct line l
-    ,struct vec2 *out)
+static inline bool rect_intersecting_line(struct rect r, struct line l)
 {
-    return line_intersection(l, RECT_LEFT_LINE(r), out) ||
-           line_intersection(l, RECT_RIGHT_LINE(r), out) ||
-           line_intersection(l, RECT_TOP_LINE(r), out) ||
-           line_intersection(l, RECT_BOTTOM_LINE(r), out);
+    return lines_intersection(l, RECT_LEFT_LINE(r), NULL) ||
+           lines_intersection(l, RECT_RIGHT_LINE(r), NULL) ||
+           lines_intersection(l, RECT_TOP_LINE(r), NULL) ||
+           lines_intersection(l, RECT_BOTTOM_LINE(r), NULL);
+}
+
+static inline bool vec_within_rect(struct rect r, struct vec2 v)
+{
+    return WITHIN(r.tl.x, r.br.x, v.x) &&
+           WITHIN(r.tl.y, r.br.y, v.y);
+}
+
+static inline bool line_within_rect(struct rect r, struct line l)
+{
+    return vec_within_rect(r, l.beg) &&
+           vec_within_rect(r, l.end);
+}
+
+static inline bool line_overlaps_rect(struct rect r, struct line l)
+{
+    return vec_within_rect(r, l.beg) ||
+           vec_within_rect(r, l.end);
 }
 
 /******************************************************************************\
