@@ -125,9 +125,12 @@ void draw(struct moag *m)
                 set_pixel(x, y, COLOR_GRAY);
         }
     }
+
     if (m->crate.active)
         draw_crate(m->crate.x-4,m->crate.y-8);
+
     draw_bullets(m);
+
     for (int i = 0; i < MAX_PLAYERS; i++)
     {
         if (m->tanks[i].active)
@@ -142,6 +145,19 @@ void draw(struct moag *m)
                                  m->tanks[i].name);
         }
     }
+
+    for (int i = 0; i < 10; ++i)
+    {
+        if (kfire && SDL_GetTicks() - kfire_held_start >= (i * 200))
+        {
+            draw_block(LAND_WIDTH / 2 - 55 + i * 11, LAND_HEIGHT - 11, 5, 5, COLOR_RED);
+        }
+        else
+        {
+            draw_block(LAND_WIDTH / 2 - 55 + i * 11, LAND_HEIGHT - 11, 5, 5, COLOR_BLUE);
+        }
+    }
+
     del_chat_line();
     for (int i = 0; i < CHAT_LINES; i++)
     {
@@ -424,6 +440,7 @@ int main(int argc, char *argv[])
             {
                 send_input_chunk(KFIRE_RELEASED, SDL_GetTicks() - kfire_held_start);
                 kfire = false;
+                kfire_held_start = 0;
             }
 
             if (is_key_down('t'))
