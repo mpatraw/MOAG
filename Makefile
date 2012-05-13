@@ -9,10 +9,13 @@ client: client.o sdl_aux.o enet_aux.o common.o
 	$(CC) $^ -o $@ $(LDFLAGS) -lSDL -lSDL_ttf
 
 server: server.o enet_aux.o common.o
-	$(CC) $^ -o $@ $(LDFLAGS) 
+	$(CC) $^ -o $@ $(LDFLAGS)
+
+test: test.o common.o
+	$(CC) $^ -o $@ -lm -lz
 
 .c.o:
 	$(CC) $(CCFLAGS) $< -o $@
 
 clean:
-	rm -f *.o client server
+	rm -f *.o client server test

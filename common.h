@@ -72,6 +72,8 @@
 #   define M_PI         3.14159
 #endif
 
+#define EPSILON         0.000001
+
 #define SQ(x)           ((x) * (x))
 
 #define DIST(x1, y1, x2, y2) sqrt(SQ(x1 - x2) + SQ(y1 - y2))
@@ -104,29 +106,50 @@ struct vec2
 #define VEC2_DIV_CONST(a, f) VEC2((a).x / f, (a).y / f)
 #define VEC2_DOT(a, b) ((a).x * (b).x + (a).y * (b).y)
 
+#define VEC2_DIST(a, b) sqrt(SQ((a).x - (b.x)) + SQ((a).y - (b).y))
+
+struct line
+{
+    struct vec2 beg;
+    struct vec2 end;
+};
+
+#define LINE LINE_XYXY
+#define LINE_VV(v1, v2) ((struct line){v1, v2})
+#define LINE_XYXY(x1, y1, x2, y2) LINE_VV(VEC2(x1, y1), VEC2(x2, y2))
+
+static inline bool line_vec_inbetween(struct line l, struct vec2 v)
+{
+    return fabs(VEC2_DIST(l.beg, v) + VEC2_DIST(l.end, v) -
+                VEC2_DIST(l.beg, l.end)) < EPSILON;
+}
+
 /* Inclusive line intersection. Includes points. (0,0,0,0) intersects with
  * (0,0,0,0) at (0,0).
  */
 static inline bool line_intersection
-    (struct vec2 s1, struct vec2 e1
-    ,struct vec2 s2, struct vec2 e2
+    (struct line first
+    ,struct line second
     ,struct vec2 *out)
 {
-    struct vec2 e = VEC2_SUB(e1, s1);
-    struct vec2 f = VEC2_SUB(e2, s2);
+    struct vec2 e = VEC2_SUB(first.end, first.beg);
+    struct vec2 f = VEC2_SUB(second.end, second.beg);
     struct vec2 p = VEC2(-e.y, e.x);
+    struct vec2 q = VEC2(-f.y, f.x);
 
     double fp = VEC2_DOT(f, p);
-    if (fp == 0)
+    if (fabs(fp) < EPSILON)
     {
-        if (s1.x <= e2.x || s1.y <= e2.y)
+        if (line_vec_inbetween(first, second.beg))
         {
-            *out = VEC2(s1.x, s1.y);
+            if (out)
+                *out = second.beg;
             return true;
         }
-        else if (s2.x <= e1.x || s2.y <= e1.y)
+        else if (line_vec_inbetween(first, second.end))
         {
-            *out = VEC2(s2.x, s2.y);
+            if (out)
+                *out = second.end;
             return true;
         }
         else
@@ -135,10 +158,12 @@ static inline bool line_intersection
         }
     }
 
-    double h = VEC2_DOT(VEC2_SUB(s1, s2), p) / fp;
-    if (h >= 0.0 || h <= 1.0)
+    double h = VEC2_DOT(VEC2_SUB(first.beg, second.beg), p) / fp;
+    double g = VEC2_DOT(VEC2_SUB(first.beg, second.beg), q) / fp;
+    if (h >= 0.0 && h <= 1.0 && g >= 0.0 && g <= 1.0)
     {
-        *out = VEC2_ADD(s2, VEC2_MUL_CONST(f, h));
+        if (out)
+            *out = VEC2_ADD(second.beg, VEC2_MUL_CONST(f, h));
         return true;
     }
 
@@ -147,36 +172,49 @@ static inline bool line_intersection
 
 struct rect
 {
-    struct vec2 topleft;
-    struct vec2 botright;
+    struct vec2 tl;
+    struct vec2 br;
 };
 
+#define RECT RECT_XYWH
 #define RECT_VV(v1, v2) ((struct rect){v1, v2})
 #define RECT_XYXY(x1, y1, x2, y2) RECT_VV(VEC2(x1, y1), VEC2(x2, y2))
 #define RECT_XYWH(x, y, w, h) RECT_XYXY(x, y, x + w, y + w)
-#define RECT_X(r) ((r).topleft.x)
-#define RECT_Y(r) ((r).topleft.y)
-#define RECT_WIDTH(r) ((r).botright.x - (r).topleft.x)
-#define RECT_HEIGHT(r) ((r).botright.y - (r).topleft.y)
+#define RECT_X(r) ((r).tl.x)
+#define RECT_Y(r) ((r).tl.y)
+#define RECT_WIDTH(r) ((r).br.x - (r).tl.x)
+#define RECT_HEIGHT(r) ((r).br.y - (r).tl.y)
 
-#define RECT_ADD(r, v) RECT_VV(VEC2_ADD((r).topleft, (v)), \
-                               VEC2_ADD((r).botright, (v))
-#define RECT_SUB(r, v) RECT_VV(VEC2_SUB((r).topleft, (v)), \
-                               VEC2_SUB((r).botright, (v))
-#define RECT_MUL(r, v) RECT_VV(VEC2_MUL((r).topleft, (v)), \
-                               VEC2_MUL((r).botright, (v))
-#define RECT_DIV(r, v) RECT_VV(VEC2_DIV((r).topleft, (v)), \
-                               VEC2_DIV((r).botright, (v))
+#define RECT_ADD(r, v) RECT_VV(VEC2_ADD((r).tl, (v)), VEC2_ADD((r).br, (v))
+#define RECT_SUB(r, v) RECT_VV(VEC2_SUB((r).tl, (v)), VEC2_SUB((r).br, (v))
+#define RECT_MUL(r, v) RECT_VV(VEC2_MUL((r).tl, (v)), VEC2_MUL((r).br, (v))
+#define RECT_DIV(r, v) RECT_VV(VEC2_DIV((r).tl, (v)), VEC2_DIV((r).br, (v))
+
+#define RECT_LEFT_LINE(r) LINE((r).tl.x, (r).tl.y, (r).tl.x, (r).br.y)
+#define RECT_RIGHT_LINE(r) LINE((r).br.x, (r).tl.y, (r).br.x, (r).br.y)
+#define RECT_TOP_LINE(r) LINE((r).tl.x, (r).tl.y, (r).br.x, (r).tl.y)
+#define RECT_BOTTOM_LINE(r) LINE((r).tl.x, (r).br.y, (r).br.x, (r).br.y)
 
 static inline bool rect_intersecting(struct rect r1, struct rect r2)
 {
-    bool xoverlap = WITHIN(r1.topleft.x, r1.botright.x, RECT_X(r2)) ||
-                    WITHIN(r2.topleft.x, r2.botright.x, RECT_X(r1));
+    bool xoverlap = WITHIN(r1.tl.x, r1.br.x, RECT_X(r2)) ||
+                    WITHIN(r2.tl.x, r2.br.x, RECT_X(r1));
 
-    bool yoverlap = WITHIN(r1.topleft.y, r1.botright.y, RECT_Y(r2)) ||
-                    WITHIN(r2.topleft.y, r2.botright.y, RECT_Y(r1));
+    bool yoverlap = WITHIN(r1.tl.y, r1.br.y, RECT_Y(r2)) ||
+                    WITHIN(r2.tl.y, r2.br.y, RECT_Y(r1));
 
     return xoverlap && yoverlap;
+}
+
+static inline bool rect_line_intersection
+    (struct rect r
+    ,struct line l
+    ,struct vec2 *out)
+{
+    return line_intersection(l, RECT_LEFT_LINE(r), out) ||
+           line_intersection(l, RECT_RIGHT_LINE(r), out) ||
+           line_intersection(l, RECT_TOP_LINE(r), out) ||
+           line_intersection(l, RECT_BOTTOM_LINE(r), out);
 }
 
 /******************************************************************************\
