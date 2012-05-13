@@ -165,139 +165,152 @@ void on_receive(struct moag *m, ENetEvent *ev)
 
     char chunk_type = read8(packet, &pos);
 
-    switch(chunk_type) {
-    case LAND_CHUNK:
-        read_land_chunk(m, packet, ev->packet->dataLength);
-        break;
+    switch(chunk_type)
+    {
+        case LAND_CHUNK:
+            read_land_chunk(m, packet, ev->packet->dataLength);
+            break;
 
-    case TANK_CHUNK: {
-        int type = read8(packet, &pos);
-        int id = read8(packet, &pos);
+        case TANK_CHUNK: {
+            int type = read8(packet, &pos);
+            int id = read8(packet, &pos);
 
-        assert(id >= 0 && id <= MAX_PLAYERS);
+            assert(id >= 0 && id <= MAX_PLAYERS);
 
-        if (type == SPAWN) {
-            m->tanks[id].active = true;
+            if (type == SPAWN)
+            {
+                m->tanks[id].active = true;
 
-            m->tanks[id].x = read16(packet, &pos);
-            m->tanks[id].y = read16(packet, &pos);
-            char angle = read8(packet, &pos);
+                m->tanks[id].x = read16(packet, &pos);
+                m->tanks[id].y = read16(packet, &pos);
+                char angle = read8(packet, &pos);
 
-            m->tanks[id].facingleft = false;
-            if (angle < 0){
-                angle = -angle;
-                m->tanks[id].facingleft = true;
+                m->tanks[id].facingleft = false;
+                if (angle < 0){
+                    angle = -angle;
+                    m->tanks[id].facingleft = true;
+                }
+                m->tanks[id].angle = angle;
             }
-            m->tanks[id].angle = angle;
-        }
-        else if (type == MOVE) {
-            m->tanks[id].x = read16(packet, &pos);
-            m->tanks[id].y = read16(packet, &pos);
-            char angle = read8(packet, &pos);
+            else if (type == MOVE)
+            {
+                m->tanks[id].x = read16(packet, &pos);
+                m->tanks[id].y = read16(packet, &pos);
+                char angle = read8(packet, &pos);
 
-            m->tanks[id].facingleft = false;
-            if (angle < 0){
-                angle = -angle;
-                m->tanks[id].facingleft = true;
+                m->tanks[id].facingleft = false;
+                if (angle < 0){
+                    angle = -angle;
+                    m->tanks[id].facingleft = true;
+                }
+                m->tanks[id].angle = angle;
             }
-            m->tanks[id].angle = angle;
-        }
-        else if (type == KILL) {
-            m->tanks[id].x = -1;
-            m->tanks[id].y = -1;
-            m->tanks[id].active = false;
-        }
-        else {
-            DIE("Invalid TANK_CHUNK type.\n");
-        }
-        break;
-    }
-    case BULLET_CHUNK: {
-        int type = read8(packet, &pos);
-        int id = read8(packet, &pos);
-
-        if (type == SPAWN) {
-            m->bullets[id].active = true;
-            m->bullets[id].x = read16(packet, &pos);
-            m->bullets[id].y = read16(packet, &pos);
-        }
-        else if (type == MOVE) {
-            m->bullets[id].x = read16(packet, &pos);
-            m->bullets[id].y = read16(packet, &pos);
-        }
-        else if (type == KILL) {
-            m->bullets[id].active = false;
-        }
-        else {
-            DIE("Invalid BULLET_CHUNK type.\n");
-        }
-        break;
-    }
-    case SERVER_MSG_CHUNK: {
-        int id = read8(packet, &pos);
-        char cmd = read8(packet, &pos);
-        unsigned char len = read8(packet, &pos);
-        switch(cmd){
-        case CHAT: {
-            int namelen=strlen(m->tanks[id].name);
-            int linelen=namelen+len+4;
-            char* line=malloc(linelen);
-            line[0]='<';
-            for(int i=0;i<namelen;i++)
-                line[i+1]=m->tanks[id].name[i];
-            line[namelen+1]='>';
-            line[namelen+2]=' ';
-            for (int i = 0; i < len; ++i)
-                line[namelen + 3 + i] = read8(packet, &pos);
-            line[linelen-1]='\0';
-            add_chat_line(line);
+            else if (type == KILL)
+            {
+                m->tanks[id].x = -1;
+                m->tanks[id].y = -1;
+                m->tanks[id].active = false;
+            }
+            else
+            {
+                DIE("Invalid TANK_CHUNK type.\n");
+            }
             break;
         }
-        case NAME_CHANGE: {
-            if(len<1 || len>15){ // error!
-                break;
+        case BULLET_CHUNK: {
+            int type = read8(packet, &pos);
+            int id = read8(packet, &pos);
+
+            if (type == SPAWN)
+            {
+                m->bullets[id].active = true;
+                m->bullets[id].x = read16(packet, &pos);
+                m->bullets[id].y = read16(packet, &pos);
             }
-            for (int i = 0; i < len; ++i)
-                m->tanks[id].name[i] = read8(packet, &pos);
-            m->tanks[id].name[len]='\0';
+            else if (type == MOVE)
+            {
+                m->bullets[id].x = read16(packet, &pos);
+                m->bullets[id].y = read16(packet, &pos);
+            }
+            else if (type == KILL)
+            {
+                m->bullets[id].active = false;
+            }
+            else
+            {
+                DIE("Invalid BULLET_CHUNK type.\n");
+            }
             break;
         }
-        case SERVER_NOTICE: { //server notice
-            char* line=malloc(len+1);
-            for (int i = 0; i < len; ++i)
-                line[i] = read8(packet, &pos);
-            line[len]='\0';
-            add_chat_line(line);
+        case SERVER_MSG_CHUNK: {
+            int id = read8(packet, &pos);
+            char cmd = read8(packet, &pos);
+            unsigned char len = read8(packet, &pos);
+            switch (cmd)
+            {
+                case CHAT: {
+                    int namelen = strlen(m->tanks[id].name);
+                    int linelen = namelen + len + 4;
+                    char *line = malloc(linelen);
+                    line[0] = '<';
+                    for(int i = 0; i < namelen; i++)
+                        line[i + 1] = m->tanks[id].name[i];
+                    line[namelen+1] = '>';
+                    line[namelen+2] = ' ';
+                    for (int i = 0; i < len; ++i)
+                        line[namelen + 3 + i] = read8(packet, &pos);
+                    line[linelen - 1] = '\0';
+                    add_chat_line(line);
+                    break;
+                }
+                case NAME_CHANGE: {
+                    if (len < 1 || len > 15)
+                        break;
+                    for (int i = 0; i < len; ++i)
+                        m->tanks[id].name[i] = read8(packet, &pos);
+                    m->tanks[id].name[len]='\0';
+                    break;
+                }
+                case SERVER_NOTICE: { //server notice
+                    char *line = malloc(len + 1);
+                    for (int i = 0; i < len; ++i)
+                        line[i] = read8(packet, &pos);
+                    line[len] = '\0';
+                    add_chat_line(line);
+                    break;
+                }
+                default:
+                    break;
+            }
+            break;
+        }
+        case CRATE_CHUNK: {
+            int type = read8(packet, &pos);
+
+            if (type == SPAWN)
+            {
+                m->crate.active = true;
+                m->crate.x = read16(packet, &pos);
+                m->crate.y = read16(packet, &pos);
+            }
+            else if (type == MOVE)
+            {
+                m->crate.x = read16(packet, &pos);
+                m->crate.y = read16(packet, &pos);
+            }
+            else if (type == KILL)
+            {
+                m->crate.active = false;
+            }
+            else
+            {
+                DIE("Invalid CRATE_CHUNK type.\n");
+            }
             break;
         }
         default:
+            DIE("Invalid CHUNK type.\n");
             break;
-        }
-        break;
-    }
-    case CRATE_CHUNK: {
-        int type = read8(packet, &pos);
-
-        if (type == SPAWN) {
-            m->crate.active = true;
-            m->crate.x = read16(packet, &pos);
-            m->crate.y = read16(packet, &pos);
-        }
-        else if (type == MOVE) {
-            m->crate.x = read16(packet, &pos);
-            m->crate.y = read16(packet, &pos);
-        }
-        else if (type == KILL) {
-            m->crate.active = false;
-        }
-        else {
-            DIE("Invalid CRATE_CHUNK type.\n");
-        }
-        break;
-    }
-    default:
-        DIE("Invalid CHUNK type.\n");
-        break;
     }
 }
 
