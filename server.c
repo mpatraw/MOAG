@@ -1,5 +1,4 @@
 
-
 #include "server.h"
 
 #define SQ(x) ((x) * (x))
@@ -69,6 +68,8 @@ void spawn_tank(struct moag *m, int id)
     m->tanks[id].spawntimer = 0;
     m->tanks[id].x = rng_range(&m->rng, 20, LAND_WIDTH - 20);
     m->tanks[id].y = 60;
+    m->tanks[id].obj.pos = VEC2(m->tanks[id].x, m->tanks[id].y);
+    m->tanks[id].obj.vel = VEC2(0, 0);
     m->tanks[id].angle = 30;
     m->tanks[id].facingleft = 0;
     m->tanks[id].power = 0;
@@ -92,10 +93,10 @@ void spawn_client(struct moag *m, int id)
     broadcast_chat(-1,SERVER_NOTICE,notice,strlen(notice));
 
     spawn_tank(m, id);
-    m->tanks[id].angle=35;
-    m->tanks[id].facingleft=0;
-    broadcast_land_chunk(m, 0,0,LAND_WIDTH,LAND_HEIGHT);
-    broadcast_chat(id,NAME_CHANGE,m->tanks[id].name,strlen(m->tanks[id].name));
+    m->tanks[id].angle = 35;
+    m->tanks[id].facingleft = 0;
+    broadcast_land_chunk(m, 0, 0, LAND_WIDTH, LAND_HEIGHT);
+    broadcast_chat(id, NAME_CHANGE,m->tanks[id].name, strlen(m->tanks[id].name));
     if (m->crate.active)
         broadcast_crate_chunk(m, SPAWN);
 
@@ -253,9 +254,9 @@ void tank_update(struct moag *m, int id)
 
     if (t->kleft && t->kright)
     {
-        if(t->ladder > 0)
+        if (t->ladder > 0)
         {
-            if(get_land_at(m, t->x,t->y+1))
+            if (get_land_at(m, t->x, t->y + 1))
                 t->ladder--;
             else
                 t->ladder = LADDER_TIME;
@@ -269,11 +270,11 @@ void tank_update(struct moag *m, int id)
     else if (t->kleft)
     {
         t->facingleft = 1;
-        if (get_land_at(m, t->x-1,t->y) == 0 && t->x >= 10)
+        if (get_land_at(m, t->x - 1, t->y) == 0 && t->x >= 10)
         {
             t->x--;
         }
-        else if (get_land_at(m, t->x-1, t->y-1) == 0 && t->x >= 10)
+        else if (get_land_at(m, t->x - 1, t->y - 1) == 0 && t->x >= 10)
         {
             t->x--;
             t->y--;
@@ -338,7 +339,7 @@ void tank_update(struct moag *m, int id)
             moved = true;
         }
     }
-    // Pickup
+
     if (abs(t->x - m->crate.x) < 14 && abs(t->y - m->crate.y) < 14)
     {
         t->ladder = LADDER_TIME;
@@ -380,12 +381,7 @@ void tank_update(struct moag *m, int id)
     }
 
     // Fire
-    if (t->kfire)
-    {
-        if (t->power < 1000)
-            t->power += 10;
-    }
-    else if (t->power)
+    if (t->power)
     {
         fire_bullet_ang(m, t->bullet, t->x, t->y - 7,
                         t->facingleft ? 180 - t->angle : t->angle,
@@ -815,16 +811,30 @@ void on_receive(struct moag *m, ENetEvent *ev)
 
     switch (byte)
     {
-        case KLEFT_PRESSED_CHUNK:   m->tanks[id].kleft = 1; break;
-        case KLEFT_RELEASED_CHUNK:  m->tanks[id].kleft = 0; break;
-        case KRIGHT_PRESSED_CHUNK:  m->tanks[id].kright = 1; break;
-        case KRIGHT_RELEASED_CHUNK: m->tanks[id].kright = 0; break;
-        case KUP_PRESSED_CHUNK:     m->tanks[id].kup = 1; break;
-        case KUP_RELEASED_CHUNK:    m->tanks[id].kup = 0; break;
-        case KDOWN_PRESSED_CHUNK:   m->tanks[id].kdown = 1; break;
-        case KDOWN_RELEASED_CHUNK:  m->tanks[id].kdown = 0; break;
-        case KFIRE_PRESSED_CHUNK:   m->tanks[id].kfire = 1; break;
-        case KFIRE_RELEASED_CHUNK:  m->tanks[id].kfire = 0; break;
+        case INPUT_CHUNK:
+        {
+            char type = read8(packet, &pos);
+            switch (type)
+            {
+                case KLEFT_PRESSED:   m->tanks[id].kleft = 1; break;
+                case KLEFT_RELEASED:  m->tanks[id].kleft = 0; break;
+                case KRIGHT_PRESSED:  m->tanks[id].kright = 1; break;
+                case KRIGHT_RELEASED: m->tanks[id].kright = 0; break;
+                case KUP_PRESSED:     m->tanks[id].kup = 1; break;
+                case KUP_RELEASED:    m->tanks[id].kup = 0; break;
+                case KDOWN_PRESSED:   m->tanks[id].kdown = 1; break;
+                case KDOWN_RELEASED:  m->tanks[id].kdown = 0; break;
+                case KFIRE_PRESSED:   m->tanks[id].kfire = 1; break;
+                case KFIRE_RELEASED:
+                {
+                    uint16_t power = read16(packet, &pos);
+                    m->tanks[id].kfire = 0;
+                    m->tanks[id].power = power / 2;
+                    break;
+                }
+            }
+            break;
+        }
 
         case CLIENT_MSG_CHUNK: {
             unsigned char len = read8(packet, &pos);
@@ -855,7 +865,7 @@ int main(int argc, char *argv[])
 
     for (;;)
     {
-        while (enet_host_service(get_server_host(), &event, 10))
+        while (enet_host_service(get_server_host(), &event, 0))
         {
             switch (event.type)
             {
@@ -881,7 +891,7 @@ int main(int argc, char *argv[])
 
         struct timespec t;
         t.tv_sec = 0;
-        t.tv_nsec = 10000000;
+        t.tv_nsec = 20000000;
         while (nanosleep(&t, &t) == -1)
             continue;
 

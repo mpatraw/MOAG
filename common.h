@@ -248,6 +248,14 @@ static inline bool line_overlaps_rect(struct rect r, struct line l)
 #define LAND_WIDTH      800
 #define LAND_HEIGHT     600
 
+
+#define INPUT_CHUNK_SIZE        4
+#define CLIENT_MSG_CHUNK_SIZE   258
+#define TANK_CHUNK_SIZE         8
+#define BULLET_CHUNK_SIZE       7
+#define CRATE_CHUNK_SIZE        6
+#define SERVER_MSG_CHUNK_SIZE   260
+
 /* Chunk types. */
 enum
 {
@@ -256,13 +264,12 @@ enum
      */
 
     /* RELIABLE
+     * 1: INPUT_CHUNK
      * 1: *_*_CHUNK
+     * IF KFIRE_RELEASED:
+     *  2: Milliseconds held.
      */
-    KLEFT_PRESSED_CHUNK, KLEFT_RELEASED_CHUNK,
-    KRIGHT_PRESSED_CHUNK, KRIGHT_RELEASED_CHUNK,
-    KUP_PRESSED_CHUNK, KUP_RELEASED_CHUNK,
-    KDOWN_PRESSED_CHUNK, KDOWN_RELEASED_CHUNK,
-    KFIRE_PRESSED_CHUNK, KFIRE_RELEASED_CHUNK,
+    INPUT_CHUNK,
 
     /* RELIABLE
      * 1: CLIENT_MSG_CHUNK
@@ -321,6 +328,18 @@ enum
     SERVER_MSG_CHUNK,
 };
 
+/* Input types.
+ * KFIRE_RELEASED is special. It has extra info on the time spent charging up.
+ */
+enum
+{
+    KLEFT_PRESSED, KLEFT_RELEASED,
+    KRIGHT_PRESSED, KRIGHT_RELEASED,
+    KUP_PRESSED, KUP_RELEASED,
+    KDOWN_PRESSED, KDOWN_RELEASED,
+    KFIRE_PRESSED, KFIRE_RELEASED,
+};
+
 enum
 {
     /* RELIABLE */
@@ -349,6 +368,7 @@ struct object
 
 struct tank
 {
+    struct object obj;
     int x, y;
     int angle, power;
     char bullet;

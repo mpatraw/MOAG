@@ -56,6 +56,7 @@ bool kright = false;
 bool kup = false;
 bool kdown = false;
 bool kfire = false;
+uint32_t kfire_held_start = 0;
 
 void draw_tank(int x, int y, int turretangle, bool facingleft)
 {
@@ -371,56 +372,57 @@ int main(int argc, char *argv[])
         {
             if (is_key_down(SDLK_LEFT) && !kleft)
             {
-                send_byte(KLEFT_PRESSED_CHUNK);
+                send_input_chunk(KLEFT_PRESSED, 0);
                 kleft = true;
             }
             else if (!is_key_down(SDLK_LEFT) && kleft)
             {
-                send_byte(KLEFT_RELEASED_CHUNK);
+                send_input_chunk(KLEFT_RELEASED, 0);
                 kleft = false;
             }
 
             if (is_key_down(SDLK_RIGHT) && !kright)
             {
-                send_byte(KRIGHT_PRESSED_CHUNK);
+                send_input_chunk(KRIGHT_PRESSED, 0);
                 kright = true;
             }
             else if (!is_key_down(SDLK_RIGHT) && kright)
             {
-                send_byte(KRIGHT_RELEASED_CHUNK);
+                send_input_chunk(KRIGHT_RELEASED, 0);
                 kright = false;
             }
 
             if (is_key_down(SDLK_UP) && !kup)
             {
-                send_byte(KUP_PRESSED_CHUNK);
+                send_input_chunk(KUP_PRESSED, 0);
                 kup = true;
             }
             else if (!is_key_down(SDLK_UP) && kup)
             {
-                send_byte(KUP_RELEASED_CHUNK);
+                send_input_chunk(KUP_RELEASED, 0);
                 kup = false;
             }
 
             if (is_key_down(SDLK_DOWN) && !kdown)
             {
-                send_byte(KDOWN_PRESSED_CHUNK);
+                send_input_chunk(KDOWN_PRESSED, 0);
                 kdown = true;
             }
             else if (!is_key_down(SDLK_DOWN) && kdown)
             {
-                send_byte(KDOWN_RELEASED_CHUNK);
+                send_input_chunk(KDOWN_RELEASED, 0);
                 kdown = false;
             }
 
             if (is_key_down(' ') && !kfire)
             {
-                send_byte(KFIRE_PRESSED_CHUNK);
+                send_input_chunk(KFIRE_PRESSED, 0);
                 kfire = true;
+                kfire_held_start = SDL_GetTicks();
             }
             else if (!is_key_down(' ') && kfire)
             {
-                send_byte(KFIRE_RELEASED_CHUNK);
+                send_input_chunk(KFIRE_RELEASED, SDL_GetTicks() - kfire_held_start);
                 kfire = false;
             }
 
@@ -434,7 +436,7 @@ int main(int argc, char *argv[])
             }
         }
 
-        while (enet_host_service(get_client_host(), &enet_ev, 10))
+        while (enet_host_service(get_client_host(), &enet_ev, 0))
         {
             switch (enet_ev.type)
             {

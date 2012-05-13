@@ -37,12 +37,6 @@ enum
     E_COLLAPSE
 };
 
-#define CLIENT_MSG_CHUNK_SIZE   258
-#define TANK_CHUNK_SIZE         8
-#define BULLET_CHUNK_SIZE       7
-#define CRATE_CHUNK_SIZE        6
-#define SERVER_MSG_CHUNK_SIZE   260
-
 static inline void broadcast_land_chunk(struct moag *m, int x, int y, int w, int h)
 {
     if (x < 0) { w += x; x = 0; }

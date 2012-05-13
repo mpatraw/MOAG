@@ -20,6 +20,21 @@ static inline void send_byte(unsigned char c)
     send_packet(&c, 1, true);
 }
 
+static inline void send_input_chunk(int type, uint16_t t)
+{
+    unsigned char buffer[4];
+    size_t pos = 0;
+
+    write8(buffer, &pos, INPUT_CHUNK);
+    write8(buffer, &pos, type);
+
+    if (type == KFIRE_RELEASED)
+        write16(buffer, &pos, t);
+
+    send_packet(buffer, pos, true);
+    INFO("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);
+}
+
 static inline void read_land_chunk(struct moag *m, unsigned char *packet, size_t len)
 {
     /* Skip LAND_CHUNK */
