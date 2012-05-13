@@ -9,7 +9,8 @@
 #define CHAT_LINES      7
 #define CHAT_EXPIRETIME 18000
 
-struct chatline {
+struct chatline
+{
     int expire;
     char *str;
 };
