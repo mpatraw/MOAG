@@ -1,8 +1,6 @@
 
 #include "server.h"
 
-#define SQ(x) ((x) * (x))
-
 void kill_tank(struct moag *m, int id)
 {
     m->tanks[id].x = -30;
