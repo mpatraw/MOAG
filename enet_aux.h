@@ -7,7 +7,7 @@
 
 #include <enet/enet.h>
 
-#define CONNECT_TIMEOUT 5000
+#define CONNECT_TIMEOUT 10000
 #define MAX_CLIENTS     8
 #define NUM_CHANNELS    2
 

@@ -99,8 +99,13 @@ void spawn_client(struct moag *m, int id)
         broadcast_crate_chunk(m, SPAWN);
 
     for (int i = 0; i < MAX_PLAYERS; ++i)
+    {
         if (m->tanks[i].active)
+        {
             broadcast_tank_chunk(m, SPAWN, i);
+            broadcast_chat(i, NAME_CHANGE, m->tanks[i].name, strlen(m->tanks[i].name));
+        }
+    }
 }
 
 void disconnect_client(struct moag *m, int id)

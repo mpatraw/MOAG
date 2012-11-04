@@ -12,17 +12,21 @@ LDFLAGS = -lenet -lz -lm
 endif
 
 
+ifeq ($(PLATFORM),mingw32-linux)
+all: client.exe server.exe
+else
 all: client server
+endif
 
 ifeq ($(PLATFORM),mingw32-linux)
-client: client.o sdl_aux.o enet_aux.o common.o
+client.exe: client.o sdl_aux.o enet_aux.o common.o
 	$(CC) $^ -o $@ $(LDFLAGS) -lSDLmain -lSDL -lSDL_ttf
 
-server: server.o enet_aux.o common.o
+server.exe: server.o enet_aux.o common.o
 	$(CC) $^ -o $@ $(LDFLAGS) -lSDL
 else
 client: client.o sdl_aux.o enet_aux.o common.o
-	$(CC) $^ -o $@ $(LDFLAGS) -lSDLmain -lSDL -lSDL_ttf
+	$(CC) $^ -o $@ $(LDFLAGS) -lSDL -lSDL_ttf
 
 server: server.o enet_aux.o common.o
 	$(CC) $^ -o $@ $(LDFLAGS) -lSDL

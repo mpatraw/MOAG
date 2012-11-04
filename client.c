@@ -150,11 +150,11 @@ void draw(struct moag *m)
     {
         if (kfire && SDL_GetTicks() - kfire_held_start >= (i * 200))
         {
-            draw_block(LAND_WIDTH / 2 - 75 + i * 16, LAND_HEIGHT - 16, 10, 10, COLOR_RED);
+            draw_block(LAND_WIDTH / 2 - 75 + i * 10, LAND_HEIGHT - 17, 10, 7, COLOR_RED);
         }
         else
         {
-            draw_block(LAND_WIDTH / 2 - 75 + i * 16, LAND_HEIGHT - 16, 10, 10, COLOR_BLUE);
+            draw_block(LAND_WIDTH / 2 - 75 + i * 10, LAND_HEIGHT - 16, 10, 5, COLOR_BLUE);
         }
     }
 
