@@ -14,7 +14,7 @@ static void die(const char *fmt, ...)
     exit(EXIT_FAILURE);
 }
 
-bool _initialized = false;
+static bool _initialized = false;
 
 static ENetHost *_client = NULL;
 static ENetHost *_server = NULL;

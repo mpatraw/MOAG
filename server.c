@@ -888,11 +888,15 @@ int main(int argc, char *argv[])
             }
         }
 
+#ifdef WIN32
+        SDL_Delay(20);
+#else
         struct timespec t;
         t.tv_sec = 0;
         t.tv_nsec = 20000000;
         while (nanosleep(&t, &t) == -1)
             continue;
+#endif
 
         step_game(&moag);
     }

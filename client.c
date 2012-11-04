@@ -482,11 +482,15 @@ int main(int argc, char *argv[])
         draw_string_right(LAND_WIDTH, 0, COLOR_GREEN, buf);
         SDL_Flip(SDL_GetVideoSurface());
 
+#ifdef WIN32
+        SDL_Delay(10);
+#else
         struct timespec t;
         t.tv_sec = 0;
         t.tv_nsec = 10000000;
         while (nanosleep(&t, &t) == -1)
             continue;
+#endif
     }
 
     uninit_sdl();

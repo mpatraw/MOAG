@@ -2,10 +2,10 @@
 #ifndef ENET_AUX_H
 #define ENET_AUX_H
 
+#include <stdint.h>
 #include <string.h>
 
 #include <enet/enet.h>
-#include <netinet/in.h>
 
 #define CONNECT_TIMEOUT 5000
 #define MAX_CLIENTS     8
