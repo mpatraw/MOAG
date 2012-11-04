@@ -737,9 +737,9 @@ void step_game(struct moag *m)
         bullet_update(m, i);
 }
 
-int client_connect(struct moag *m)
+intptr_t client_connect(struct moag *m)
 {
-    int i = 0;
+    intptr_t i = 0;
     while (m->tanks[i].active)
     {
         if(++i >= MAX_PLAYERS)
@@ -803,7 +803,7 @@ void on_receive(struct moag *m, ENetEvent *ev)
 {
     unsigned char *packet = ev->packet->data;
     size_t pos = 0;
-    int id = (int)ev->peer->data;
+    intptr_t id = (intptr_t)ev->peer->data;
 
     char byte = read8(packet, &pos);
 
@@ -875,7 +875,7 @@ int main(int argc, char *argv[])
 
                 case ENET_EVENT_TYPE_DISCONNECT:
                     INFO("Client disconnected.\n");
-                    disconnect_client(&moag, (int)event.peer->data);
+                    disconnect_client(&moag, (intptr_t)event.peer->data);
                     break;
 
                 case ENET_EVENT_TYPE_RECEIVE:
