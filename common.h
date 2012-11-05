@@ -17,6 +17,12 @@
 /******************************************************************************\
 \******************************************************************************/
 
+int zip(char *in_data, size_t in_size, char **out_data, size_t *out_size);
+int unzip(char *in_data, size_t in_size, char **out_data, size_t *out_size);
+
+/******************************************************************************\
+\******************************************************************************/
+
 #if VERBOSITY == 5
 #   define LOG(...) \
     do { fprintf(stdout, "    "); fprintf(stdout, __VA_ARGS__); } while (0)
@@ -64,9 +70,6 @@
 #endif
 
 #define DIE(...) do { ERR(__VA_ARGS__); exit(EXIT_FAILURE); } while (0)
-
-/******************************************************************************\
-\******************************************************************************/
 
 /******************************************************************************\
 \******************************************************************************/
@@ -255,6 +258,141 @@ static inline bool line_overlaps_rect(struct rect r, struct line l)
 #define BULLET_CHUNK_SIZE       7
 #define CRATE_CHUNK_SIZE        6
 #define SERVER_MSG_CHUNK_SIZE   260
+
+struct input_chunk
+{
+    uint8_t key;
+    uint16_t ms;
+};
+
+struct client_msg_chunk
+{
+    uint8_t dummy[0];
+    uint8_t data[];
+};
+
+struct land_chunk
+{
+    uint16_t x;
+    uint16_t y;
+    uint16_t width;
+    uint16_t height;
+    uint8_t data[];
+};
+
+struct tank_chunk
+{
+    uint8_t action;
+    uint8_t id;
+    uint16_t x;
+    uint16_t y;
+    uint8_t angle;
+};
+
+struct bullet_chunk
+{
+    uint8_t action;
+    uint8_t id;
+    uint16_t x;
+    uint16_t y;
+};
+
+struct crate_chunk
+{
+    uint8_t action;
+    uint16_t x;
+    uint16_t y;
+};
+
+struct server_msg_chunk
+{
+    uint8_t id;
+    uint8_t action;
+    uint8_t data[];
+};
+
+static inline void read_header(ENetPacket *packet, uint8_t *chunk_type)
+{
+    *chunk_type = read8(packet->data, 0);
+}
+
+static inline void read_input_chunk(ENetPacket *packet, struct input_chunk *chunk)
+{
+    size_t pos = 1;
+    chunk->key = read8(packet->data, &pos);
+    chunk->ms = read16(packet->data, &pos);
+}
+
+static void read_client_msg_chunk(ENetPacket *packet, struct client_msg_chunk *chunk)
+{
+    memcpy(chunk->data, packet->data + 1, packet->dataLength - 1);
+}
+
+static void read_land_chunk_(ENetPacket *packet, struct land_chunk *chunk)
+{
+    /* Skip LAND_CHUNK */
+    size_t pos = 1;
+
+    chunk->x = read16(packet->data, &pos);
+    chunk->y = read16(packet->data, &pos);
+    chunk->width = read16(packet->data, &pos);
+    chunk->height = read16(packet->data, &pos);
+
+    if (chunk->width < 0) chunk->width = 0;
+    if (chunk->height < 0) chunk->height = 0;
+
+    if (chunk->x < 0 || chunk->y < 0 ||
+        chunk->x + chunk->width > LAND_WIDTH ||
+        chunk->y + chunk->height > LAND_HEIGHT)
+        DIE("Bad land chunk.");
+
+    if (pos == packet->dataLength)
+        DIE("0-sized land chunk.");
+
+    unsigned char *unzipped = NULL;
+    size_t unzipped_len = 0;
+    unzip((char *)packet + pos, packet->dataLength - pos,
+        (char **)&unzipped, &unzipped_len);
+
+    memcpy(chunk->data, unzipped, unzipped_len);
+
+    free(unzipped);
+}
+
+static inline void read_tank_chunk(ENetPacket *packet, struct tank_chunk *chunk)
+{
+    size_t pos = 1;
+    chunk->action = read8(packet->data, &pos);
+    chunk->id = read8(packet->data, &pos);
+    chunk->x = read16(packet->data, &pos);
+    chunk->y = read16(packet->data, &pos);
+    chunk->angle = read8(packet->data, &pos);
+}
+
+static inline void read_bullet_chunk(ENetPacket *packet, struct bullet_chunk *chunk)
+{
+    size_t pos = 1;
+    chunk->action = read8(packet->data, &pos);
+    chunk->id = read8(packet->data, &pos);
+    chunk->x = read16(packet->data, &pos);
+    chunk->y = read16(packet->data, &pos);
+}
+
+static inline void read_crate_chunk(ENetPacket *packet, struct crate_chunk *chunk)
+{
+    size_t pos = 1;
+    chunk->action = read8(packet->data, &pos);
+    chunk->x = read16(packet->data, &pos);
+    chunk->y = read16(packet->data, &pos);
+}
+
+static inline void read_server_msg_chunk(ENetPacket *packet, struct server_msg_chunk *chunk)
+{
+    size_t pos = 1;
+    chunk->id = read8(packet->data, &pos);
+    chunk->action = read8(packet->data, &pos);
+    memcpy(chunk->data, packet->data + pos, packet->dataLength - pos);
+}
 
 /* Chunk types. */
 enum
@@ -471,8 +609,5 @@ static inline void set_land_at(struct moag *m, int x, int y, char to)
         return;
     m->land[y * LAND_WIDTH + x] = to;
 }
-
-int zip(char *in_data, size_t in_size, char **out_data, size_t *out_size);
-int unzip(char *in_data, size_t in_size, char **out_data, size_t *out_size);
 
 #endif
