@@ -5,7 +5,7 @@ void kill_tank(struct moag *m, int id)
 {
     m->players[id].tank.x = -30;
     m->players[id].tank.y = -30;
-    m->players[id].spawntimer = RESPAWN_TIME;
+    m->players[id].spawn_timer = RESPAWN_TIME;
     broadcast_tank_chunk(m, KILL, id);
 }
 
@@ -63,8 +63,9 @@ void explode(struct moag *m, int x, int y, int rad, char type)
 void spawn_tank(struct moag *m, int id)
 {
     m->players[id].connected = true;
-    m->players[id].spawntimer = 0;
-    m->players[id].laddertimer = LADDER_TIME;
+    m->players[id].spawn_timer = 0;
+    m->players[id].ladder_timer = LADDER_TIME;
+    m->players[id].ladder_count = 3;
     m->players[id].kleft = false;
     m->players[id].kright = false;
     m->players[id].kup = false;
@@ -241,31 +242,35 @@ void tank_update(struct moag *m, int id)
     if (!m->players[id].connected)
         return;
 
-    if (m->players[id].spawntimer > 0)
+    if (m->players[id].spawn_timer > 0)
     {
-        if (--m->players[id].spawntimer <= 0)
+        if (--m->players[id].spawn_timer <= 0)
             spawn_tank(m, id);
         return;
     }
 
     bool moved = false;
     bool grav = true;
-    if (m->players[id].laddertimer >= 0 && (!m->players[id].kleft || !m->players[id].kright))
-        m->players[id].laddertimer = LADDER_TIME;
+    if (m->players[id].ladder_timer >= 0 && (!m->players[id].kleft || !m->players[id].kright))
+        m->players[id].ladder_timer = LADDER_TIME;
 
     if (m->players[id].kleft && m->players[id].kright)
     {
-        if (m->players[id].laddertimer > 0)
+        if (m->players[id].ladder_timer > 0)
         {
             if (get_land_at(m, t->x, t->y + 1))
-                m->players[id].laddertimer--;
+                m->players[id].ladder_timer--;
             else
-                m->players[id].laddertimer = LADDER_TIME;
+                m->players[id].ladder_timer = LADDER_TIME;
         }
-        else if (m->players[id].laddertimer == 0)
+        else if (m->players[id].ladder_timer == 0)
         {
-            launch_ladder(m, t->x, t->y);
-            m->players[id].laddertimer = -1;
+            if (m->players[id].ladder_count > 0)
+            {
+                launch_ladder(m, t->x, t->y);
+                m->players[id].ladder_count--;
+            }
+            m->players[id].ladder_timer = LADDER_TIME;
         }
     }
     else if (m->players[id].kleft)
@@ -343,7 +348,7 @@ void tank_update(struct moag *m, int id)
 
     if (abs(t->x - m->crate.x) < 14 && abs(t->y - m->crate.y) < 14)
     {
-        m->players[id].laddertimer = LADDER_TIME;
+        m->players[id].ladder_timer = LADDER_TIME;
         t->bullet = m->crate.type;
         m->crate.active = false;
         broadcast_crate_chunk(m, KILL);

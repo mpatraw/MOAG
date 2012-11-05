@@ -385,6 +385,7 @@ struct bullet
 
 struct crate
 {
+    struct object obj;
     int x, y;
     bool active;
     char type;
@@ -396,9 +397,9 @@ struct player
 
     char name[MAX_NAME_LEN];
     bool connected;
-    unsigned spawntimer;
-    unsigned num_ladders;
-    int laddertimer;
+    unsigned spawn_timer;
+    unsigned ladder_count;
+    int ladder_timer;
     bool kleft, kright, kup, kdown, kfire;
 };
 
