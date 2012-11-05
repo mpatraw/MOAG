@@ -3,9 +3,9 @@
 
 void kill_tank(struct moag *m, int id)
 {
-    m->tanks[id].x = -30;
-    m->tanks[id].y = -30;
-    m->tanks[id].spawntimer = RESPAWN_TIME;
+    m->players[id].tank.x = -30;
+    m->players[id].tank.y = -30;
+    m->players[id].spawntimer = RESPAWN_TIME;
     broadcast_tank_chunk(m, KILL, id);
 }
 
@@ -53,8 +53,8 @@ void explode(struct moag *m, int x, int y, int rad, char type)
                 set_land_at(m, x + ix, y + iy, p);
     if (type == E_EXPLODE)
         for (int i = 0; i < MAX_PLAYERS; i++)
-            if (m->tanks[i].active &&
-                SQ(m->tanks[i].x - x) + SQ(m->tanks[i].y - 3 - y) < SQ(rad + 4))
+            if (m->players[i].connected &&
+                SQ(m->players[i].tank.x - x) + SQ(m->players[i].tank.y - 3 - y) < SQ(rad + 4))
                 kill_tank(m, i);
 
     broadcast_land_chunk(m, x - rad, y - rad, rad * 2, rad * 2);
@@ -62,55 +62,53 @@ void explode(struct moag *m, int x, int y, int rad, char type)
 
 void spawn_tank(struct moag *m, int id)
 {
-    m->tanks[id].active = 1;
-    m->tanks[id].spawntimer = 0;
-    m->tanks[id].x = rng_range(&m->rng, 20, LAND_WIDTH - 20);
-    m->tanks[id].y = 60;
-    m->tanks[id].obj.pos = VEC2(m->tanks[id].x, m->tanks[id].y);
-    m->tanks[id].obj.vel = VEC2(0, 0);
-    m->tanks[id].angle = 30;
-    m->tanks[id].facingleft = 0;
-    m->tanks[id].power = 0;
-    m->tanks[id].bullet = MISSILE;
-    m->tanks[id].ladder = LADDER_TIME;
-    m->tanks[id].kleft = 0;
-    m->tanks[id].kright = 0;
-    m->tanks[id].kup = 0;
-    m->tanks[id].kdown = 0;
-    m->tanks[id].kfire = 0;
-    explode(m, m->tanks[id].x, m->tanks[id].y - 12, 12, E_SAFE_EXPLODE);
+    m->players[id].connected = true;
+    m->players[id].spawntimer = 0;
+    m->players[id].laddertimer = LADDER_TIME;
+    m->players[id].kleft = false;
+    m->players[id].kright = false;
+    m->players[id].kup = false;
+    m->players[id].kdown = false;
+    m->players[id].kfire = false;
+    m->players[id].tank.x = rng_range(&m->rng, 20, LAND_WIDTH - 20);
+    m->players[id].tank.y = 60;
+    m->players[id].tank.obj.pos = VEC2(m->players[id].tank.x, m->players[id].tank.y);
+    m->players[id].tank.obj.vel = VEC2(0, 0);
+    m->players[id].tank.angle = 35;
+    m->players[id].tank.facingleft = 0;
+    m->players[id].tank.power = 0;
+    m->players[id].tank.bullet = MISSILE;
+    explode(m, m->players[id].tank.x, m->players[id].tank.y - 12, 12, E_SAFE_EXPLODE);
     broadcast_tank_chunk(m, SPAWN, id);
 }
 
 void spawn_client(struct moag *m, int id)
 {
-    sprintf(m->tanks[id].name,"p%d",id);
-    char notice[64]="  ";
-    strcat(notice,m->tanks[id].name);
-    strcat(notice," has connected");
-    broadcast_chat(-1,SERVER_NOTICE,notice,strlen(notice));
+    sprintf(m->players[id].name,"p%d",id);
+    char notice[64] = "  ";
+    strcat(notice, m->players[id].name);
+    strcat(notice, " has connected");
+    broadcast_chat(-1, SERVER_NOTICE, notice, strlen(notice));
 
     spawn_tank(m, id);
-    m->tanks[id].angle = 35;
-    m->tanks[id].facingleft = 0;
     broadcast_land_chunk(m, 0, 0, LAND_WIDTH, LAND_HEIGHT);
-    broadcast_chat(id, NAME_CHANGE,m->tanks[id].name, strlen(m->tanks[id].name));
+    broadcast_chat(id, NAME_CHANGE,m->players[id].name, strlen(m->players[id].name));
     if (m->crate.active)
         broadcast_crate_chunk(m, SPAWN);
 
     for (int i = 0; i < MAX_PLAYERS; ++i)
     {
-        if (m->tanks[i].active)
+        if (m->players[i].connected)
         {
             broadcast_tank_chunk(m, SPAWN, i);
-            broadcast_chat(i, NAME_CHANGE, m->tanks[i].name, strlen(m->tanks[i].name));
+            broadcast_chat(i, NAME_CHANGE, m->players[i].name, strlen(m->players[i].name));
         }
     }
 }
 
 void disconnect_client(struct moag *m, int id)
 {
-    m->tanks[id].active = 0;
+    m->players[id].connected = 0;
     broadcast_tank_chunk(m, KILL, id);
 }
 
@@ -238,39 +236,39 @@ void liquid(struct moag *m, int x, int y, int n)
 
 void tank_update(struct moag *m, int id)
 {
-    struct tank *t = &m->tanks[id];
+    struct tank *t = &m->players[id].tank;
 
-    if (!t->active)
+    if (!m->players[id].connected)
         return;
 
-    if (t->spawntimer > 0)
+    if (m->players[id].spawntimer > 0)
     {
-        if (--t->spawntimer <= 0)
+        if (--m->players[id].spawntimer <= 0)
             spawn_tank(m, id);
         return;
     }
 
     bool moved = false;
     bool grav = true;
-    if (t->ladder >= 0 && (!t->kleft || !t->kright))
-        t->ladder = LADDER_TIME;
+    if (m->players[id].laddertimer >= 0 && (!m->players[id].kleft || !m->players[id].kright))
+        m->players[id].laddertimer = LADDER_TIME;
 
-    if (t->kleft && t->kright)
+    if (m->players[id].kleft && m->players[id].kright)
     {
-        if (t->ladder > 0)
+        if (m->players[id].laddertimer > 0)
         {
             if (get_land_at(m, t->x, t->y + 1))
-                t->ladder--;
+                m->players[id].laddertimer--;
             else
-                t->ladder = LADDER_TIME;
+                m->players[id].laddertimer = LADDER_TIME;
         }
-        else if (t->ladder == 0)
+        else if (m->players[id].laddertimer == 0)
         {
             launch_ladder(m, t->x, t->y);
-            t->ladder = -1;
+            m->players[id].laddertimer = -1;
         }
     }
-    else if (t->kleft)
+    else if (m->players[id].kleft)
     {
         t->facingleft = 1;
         if (get_land_at(m, t->x - 1, t->y) == 0 && t->x >= 10)
@@ -295,7 +293,7 @@ void tank_update(struct moag *m, int id)
         }
         moved = true;
     }
-    else if (t->kright)
+    else if (m->players[id].kright)
     {
         t->facingleft = 0;
         if (get_land_at(m, t->x + 1, t->y) == 0 && t->x < LAND_WIDTH - 10)
@@ -345,12 +343,12 @@ void tank_update(struct moag *m, int id)
 
     if (abs(t->x - m->crate.x) < 14 && abs(t->y - m->crate.y) < 14)
     {
-        t->ladder = LADDER_TIME;
+        m->players[id].laddertimer = LADDER_TIME;
         t->bullet = m->crate.type;
         m->crate.active = false;
         broadcast_crate_chunk(m, KILL);
         char notice[64] = "* ";
-        strcat(notice, t->name);
+        strcat(notice, m->players[id].name);
         strcat(notice, " got ");
         switch (t->bullet)
         {
@@ -372,12 +370,12 @@ void tank_update(struct moag *m, int id)
     }
 
     // Aim
-    if (t->kup && t->angle < 90)
+    if (m->players[id].kup && t->angle < 90)
     {
         t->angle++;
         moved = true;
     }
-    else if (t->kdown && t->angle > 1)
+    else if (m->players[id].kdown && t->angle > 1)
     {
         t->angle--;
         moved = true;
@@ -657,7 +655,7 @@ void bullet_update(struct moag *m, int id)
 
     for (int i = 0; i < MAX_PLAYERS; i++)
     {
-        if(DIST(m->tanks[i].x, m->tanks[i].y - 3,
+        if(DIST(m->players[i].tank.x, m->players[i].tank.y - 3,
                 b->x, b->y) < 8.5)
         {
             bullet_detonate(m, id);
@@ -745,7 +743,7 @@ void step_game(struct moag *m)
 intptr_t client_connect(struct moag *m)
 {
     intptr_t i = 0;
-    while (m->tanks[i].active)
+    while (m->players[i].connected)
     {
         if(++i >= MAX_PLAYERS)
         {
@@ -764,16 +762,16 @@ void handle_msg(struct moag *m, int id, const char* msg, int len)
     if (msg[0] == '/' && msg[1] == 'n' && msg[2] == ' ')
     {
         char notice[64] = "  ";
-        strcat(notice, m->tanks[id].name);
+        strcat(notice, m->players[id].name);
         len -= 3;
         if (len > 15)
             len = 15;
         for (int i = 0; i < len; i++)
-            m->tanks[id].name[i] = msg[i + 3];
-        m->tanks[id].name[len] = '\0';
+            m->players[id].name[i] = msg[i + 3];
+        m->players[id].name[len] = '\0';
         strcat(notice, " is now known as ");
-        strcat(notice, m->tanks[id].name);
-        broadcast_chat(id, NAME_CHANGE, m->tanks[id].name, strlen(m->tanks[id].name));
+        strcat(notice, m->players[id].name);
+        broadcast_chat(id, NAME_CHANGE, m->players[id].name, strlen(m->players[id].name));
         broadcast_chat(-1, SERVER_NOTICE, notice, strlen(notice));
     }
     else
@@ -785,7 +783,7 @@ void handle_msg(struct moag *m, int id, const char* msg, int len)
 void init_game(struct moag *m)
 {
     for (int i = 0; i < MAX_PLAYERS; i++)
-        m->tanks[i].active = 0;
+        m->players[i].connected = 0;
     for (int i = 0; i < MAX_BULLETS; i++)
         m->bullets[i].active = 0;
     m->crate.active = false;
@@ -819,21 +817,21 @@ void on_receive(struct moag *m, ENetEvent *ev)
             char type = read8(packet, &pos);
             switch (type)
             {
-                case KLEFT_PRESSED:   m->tanks[id].kleft = 1; break;
-                case KLEFT_RELEASED:  m->tanks[id].kleft = 0; break;
-                case KRIGHT_PRESSED:  m->tanks[id].kright = 1; break;
-                case KRIGHT_RELEASED: m->tanks[id].kright = 0; break;
-                case KUP_PRESSED:     m->tanks[id].kup = 1; break;
-                case KUP_RELEASED:    m->tanks[id].kup = 0; break;
-                case KDOWN_PRESSED:   m->tanks[id].kdown = 1; break;
-                case KDOWN_RELEASED:  m->tanks[id].kdown = 0; break;
-                case KFIRE_PRESSED:   m->tanks[id].kfire = 1; break;
+                case KLEFT_PRESSED:   m->players[id].kleft = true; break;
+                case KLEFT_RELEASED:  m->players[id].kleft = false; break;
+                case KRIGHT_PRESSED:  m->players[id].kright = true; break;
+                case KRIGHT_RELEASED: m->players[id].kright = false; break;
+                case KUP_PRESSED:     m->players[id].kup = true; break;
+                case KUP_RELEASED:    m->players[id].kup = false; break;
+                case KDOWN_PRESSED:   m->players[id].kdown = true; break;
+                case KDOWN_RELEASED:  m->players[id].kdown = false; break;
+                case KFIRE_PRESSED:   m->players[id].kfire = true; break;
                 case KFIRE_RELEASED:
                 {
                     uint16_t power = read16(packet, &pos);
-                    m->tanks[id].kfire = 0;
-                    m->tanks[id].power = power / 2;
-                    m->tanks[id].power = CLAMP(0, 1000, m->tanks[id].power);
+                    m->players[id].kfire = false;
+                    m->players[id].tank.power = power / 2;
+                    m->players[id].tank.power = CLAMP(0, 1000, m->players[id].tank.power);
                     break;
                 }
             }

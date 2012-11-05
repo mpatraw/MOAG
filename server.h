@@ -96,13 +96,13 @@ static inline void broadcast_tank_chunk(struct moag *m, int type, int id)
 
     if (type != KILL)
     {
-        write16(buffer, &pos, m->tanks[id].x);
-        write16(buffer, &pos, m->tanks[id].y);
+        write16(buffer, &pos, m->players[id].tank.x);
+        write16(buffer, &pos, m->players[id].tank.y);
 
-        if (m->tanks[id].facingleft)
-            write8(buffer, &pos, -m->tanks[id].angle);
+        if (m->players[id].tank.facingleft)
+            write8(buffer, &pos, -m->players[id].tank.angle);
         else
-            write8(buffer, &pos, m->tanks[id].angle);
+            write8(buffer, &pos, m->players[id].tank.angle);
     }
 
     if (type == SPAWN || type == KILL)

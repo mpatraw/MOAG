@@ -133,16 +133,16 @@ void draw(struct moag *m)
 
     for (int i = 0; i < MAX_PLAYERS; i++)
     {
-        if (m->tanks[i].active)
+        if (m->players[i].connected)
         {
-            draw_tank(m->tanks[i].x - 9,
-                      m->tanks[i].y - 13,
-                      m->tanks[i].angle,
-                      m->tanks[i].facingleft);
-            draw_string_centered(m->tanks[i].x,
-                                 m->tanks[i].y - 36,
+            draw_tank(m->players[i].tank.x - 9,
+                      m->players[i].tank.y - 13,
+                      m->players[i].tank.angle,
+                      m->players[i].tank.facingleft);
+            draw_string_centered(m->players[i].tank.x,
+                                 m->players[i].tank.y - 36,
                                  COLOR_WHITE,
-                                 m->tanks[i].name);
+                                 m->players[i].name);
         }
     }
 
@@ -196,37 +196,37 @@ void on_receive(struct moag *m, ENetEvent *ev)
 
             if (type == SPAWN)
             {
-                m->tanks[id].active = true;
+                m->players[id].connected = true;
 
-                m->tanks[id].x = read16(packet, &pos);
-                m->tanks[id].y = read16(packet, &pos);
+                m->players[id].tank.x = read16(packet, &pos);
+                m->players[id].tank.y = read16(packet, &pos);
                 char angle = read8(packet, &pos);
 
-                m->tanks[id].facingleft = false;
+                m->players[id].tank.facingleft = false;
                 if (angle < 0){
                     angle = -angle;
-                    m->tanks[id].facingleft = true;
+                    m->players[id].tank.facingleft = true;
                 }
-                m->tanks[id].angle = angle;
+                m->players[id].tank.angle = angle;
             }
             else if (type == MOVE)
             {
-                m->tanks[id].x = read16(packet, &pos);
-                m->tanks[id].y = read16(packet, &pos);
+                m->players[id].tank.x = read16(packet, &pos);
+                m->players[id].tank.y = read16(packet, &pos);
                 char angle = read8(packet, &pos);
 
-                m->tanks[id].facingleft = false;
+                m->players[id].tank.facingleft = false;
                 if (angle < 0){
                     angle = -angle;
-                    m->tanks[id].facingleft = true;
+                    m->players[id].tank.facingleft = true;
                 }
-                m->tanks[id].angle = angle;
+                m->players[id].tank.angle = angle;
             }
             else if (type == KILL)
             {
-                m->tanks[id].x = -1;
-                m->tanks[id].y = -1;
-                m->tanks[id].active = false;
+                m->players[id].tank.x = -1;
+                m->players[id].tank.y = -1;
+                m->players[id].connected = false;
             }
             else
             {
@@ -266,12 +266,12 @@ void on_receive(struct moag *m, ENetEvent *ev)
             switch (cmd)
             {
                 case CHAT: {
-                    int namelen = strlen(m->tanks[id].name);
+                    int namelen = strlen(m->players[id].name);
                     int linelen = namelen + len + 4;
                     char *line = malloc(linelen);
                     line[0] = '<';
                     for(int i = 0; i < namelen; i++)
-                        line[i + 1] = m->tanks[id].name[i];
+                        line[i + 1] = m->players[id].name[i];
                     line[namelen+1] = '>';
                     line[namelen+2] = ' ';
                     for (int i = 0; i < len; ++i)
@@ -284,8 +284,8 @@ void on_receive(struct moag *m, ENetEvent *ev)
                     if (len < 1 || len > 15)
                         break;
                     for (int i = 0; i < len; ++i)
-                        m->tanks[id].name[i] = read8(packet, &pos);
-                    m->tanks[id].name[len]='\0';
+                        m->players[id].name[i] = read8(packet, &pos);
+                    m->players[id].name[len]='\0';
                     break;
                 }
                 case SERVER_NOTICE: { //server notice

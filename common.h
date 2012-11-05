@@ -373,12 +373,6 @@ struct tank
     int angle, power;
     char bullet;
     bool facingleft;
-
-    bool active;
-    char name[16];
-    int spawntimer;
-    int ladder;
-    bool kleft, kright, kup, kdown, kfire;
 };
 
 struct bullet
@@ -404,6 +398,7 @@ struct player
     bool connected;
     unsigned spawntimer;
     unsigned num_ladders;
+    int laddertimer;
     bool kleft, kright, kup, kdown, kfire;
 };
 
@@ -417,7 +412,6 @@ struct rng_state
 struct moag
 {
     struct player players[MAX_PLAYERS];
-    struct tank tanks[MAX_PLAYERS];
     struct bullet bullets[MAX_BULLETS];
     struct crate crate;
     char land[LAND_WIDTH * LAND_HEIGHT];
