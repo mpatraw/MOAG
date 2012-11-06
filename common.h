@@ -4,6 +4,7 @@
 
 #include <assert.h>
 #include <math.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -12,77 +13,30 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "enet_aux.h"
+#include <enet/enet.h>
 
 /******************************************************************************\
+General macros.
 \******************************************************************************/
 
-int zip(char *in_data, size_t in_size, char **out_data, size_t *out_size);
-int unzip(char *in_data, size_t in_size, char **out_data, size_t *out_size);
-
-/******************************************************************************\
-\******************************************************************************/
-
-#if VERBOSITY == 5
+#if VERBOSE
 #   define LOG(...) \
-    do { fprintf(stdout, "    "); fprintf(stdout, __VA_ARGS__); } while (0)
-#   define INFO(...) \
-    do { fprintf(stdout, "::: "); fprintf(stdout, __VA_ARGS__); } while (0)
-#   define WARN(...) \
-    do { fprintf(stderr, "!!! "); fprintf(stderr, __VA_ARGS__); } while (0)
+    do { fprintf(stdout, "= "); fprintf(stdout, __VA_ARGS__); } while (0)
 #   define ERR(...) \
-    do { fprintf(stderr, "XXX "); fprintf(stderr, __VA_ARGS__); } while (0)
-#elif VERBOSITY == 4
-#   define LOG(...)
-#   define INFO(...) \
-    do { fprintf(stdout, "::: "); fprintf(stdout, __VA_ARGS__); } while (0)
-#   define WARN(...) \
-    do { fprintf(stderr, "!!! "); fprintf(stderr, __VA_ARGS__); } while (0)
-#   define ERR(...) \
-    do { fprintf(stderr, "XXX "); fprintf(stderr, __VA_ARGS__); } while (0)
-#elif VERBOSITY == 3
-#   define LOG(...)
-#   define INFO(...)
-#   define WARN(...) \
-    do { fprintf(stderr, "!!! "); fprintf(stderr, __VA_ARGS__); } while (0)
-#   define ERR(...) \
-    do { fprintf(stderr, "XXX "); fprintf(stderr, __VA_ARGS__); } while (0)
-#elif VERBOSITY == 2
-#   define LOG(...)
-#   define INFO(...)
-#   define WARN(...)
-#   define ERR(...) \
-    do { fprintf(stderr, "XXX "); fprintf(stderr, __VA_ARGS__); } while (0)
-#elif VERBOSITY == 1
-#   define LOG(...)
-#   define INFO(...)
-#   define WARN(...)
-#   define ERR(...)
+    do { fprintf(stderr, "! "); fprintf(stderr, __VA_ARGS__); } while (0)
 #else
-#   define LOG(...) \
-    do { fprintf(stdout, "    "); fprintf(stdout, __VA_ARGS__); } while (0)
-#   define INFO(...) \
-    do { fprintf(stdout, "::: "); fprintf(stdout, __VA_ARGS__); } while (0)
-#   define WARN(...) \
-    do { fprintf(stderr, "!!! "); fprintf(stderr, __VA_ARGS__); } while (0)
+#   define LOG(...)
 #   define ERR(...) \
-    do { fprintf(stderr, "XXX "); fprintf(stderr, __VA_ARGS__); } while (0)
+    do { fprintf(stderr, "! "); fprintf(stderr, __VA_ARGS__); } while (0)
 #endif
+#define DIE(...) \
+    do { ERR(__VA_ARGS__); exit(EXIT_FAILURE); } while (0)
 
-#define DIE(...) do { ERR(__VA_ARGS__); exit(EXIT_FAILURE); } while (0)
-
-/******************************************************************************\
-\******************************************************************************/
+#define SQ(x)           ((x) * (x))
 
 #ifndef M_PI
 #   define M_PI         3.14159
 #endif
-
-#define EPSILON         0.000001
-
-#define SQ(x)           ((x) * (x))
-
-#define DIST(x1, y1, x2, y2) sqrt(SQ(x1 - x2) + SQ(y1 - y2))
 
 #define DEG2RAD(deg)    ((deg) * (M_PI / 180))
 #define RAD2DEG(rad)    ((rad) * (180 / M_PI))
@@ -92,6 +46,141 @@ int unzip(char *in_data, size_t in_size, char **out_data, size_t *out_size);
 #define CLAMP(min, max, val) MAX(min, MIN(max, val))
 #define WITHIN(min, max, val) ((val) >= (min) && (val) <= (max))
 #define LERP(a, b, t) ((a) + (t) * ((b) - (a))
+
+#define DIST(x1, y1, x2, y2) sqrt(SQ(x1 - x2) + SQ(y1 - y2))
+
+/******************************************************************************\
+Core utility functions.
+\******************************************************************************/
+
+void safe_malloc_set_callback(void (*callback) (int, size_t));
+void *safe_malloc(size_t len);
+void *safe_realloc(void *mem, size_t len);
+char *string_duplicate(const char *str);
+
+/******************************************************************************\
+Random number generator.
+\******************************************************************************/
+
+/* Fast speed. Low memory. Period = 2^128 - 1. */
+enum {XOR128_K = 4};
+struct rng_state
+{
+    uint32_t q[XOR128_K];
+};
+
+static inline void rng_seed(struct rng_state *st, uint32_t seed)
+{
+    int i;
+
+    srand(seed);
+    for (i = 0; i < XOR128_K; ++i)
+        st->q[i] = rand();
+}
+
+static inline uint32_t rng_u32(struct rng_state *st)
+{
+    uint32_t t;
+    t = (st->q[0] ^ (st->q[0] << 11));
+    st->q[0] = st->q[1];
+    st->q[1] = st->q[2];
+    st->q[2] = st->q[3];
+    return st->q[3] = st->q[3] ^ (st->q[3] >> 19) ^ (t ^ (t >> 8));
+}
+
+static inline double rng_unit(struct rng_state *st)
+{
+    return rng_u32(st) * 2.3283064365386963e-10;
+}
+
+static inline double rng_under(struct rng_state *st, int32_t max)
+{
+    return rng_unit(st) * max;
+}
+
+static inline double rng_between(struct rng_state *st, int32_t min, int32_t max)
+{
+    return rng_under(st, max - min) + min;
+}
+
+static inline int32_t rng_range(struct rng_state *st, int32_t min, int32_t max)
+{
+    return floor(rng_between(st, min, max + 1));
+}
+
+/******************************************************************************\
+Networking.
+\******************************************************************************/
+
+#define PORT            8080
+
+#define MAX_PLAYERS     MAX_CLIENTS
+#define CONNECT_TIMEOUT 10000
+#define MAX_CLIENTS     8
+#define NUM_CHANNELS    2
+
+void init_enet_client(const char *ip, unsigned port);
+void init_enet_server(unsigned port);
+void uninit_enet(void);
+
+ENetHost *get_client_host(void);
+ENetHost *get_server_host(void);
+ENetPeer *get_peer(void);
+
+static inline void send_packet(uint8_t *buf, size_t len, bool broadcast, bool reliable)
+{
+    ENetPacket *packet = enet_packet_create(NULL, len, reliable);
+    memcpy(packet->data, buf, len);
+    if (broadcast)
+        enet_host_broadcast(get_server_host(), 0, packet);
+    else
+        enet_peer_send(get_peer(), 1, packet);
+}
+
+static inline void write8(unsigned char *buf, size_t *pos, uint8_t val)
+{
+    *(unsigned char *)(&buf[*pos]) = val;
+    (*pos) += 1;
+}
+
+static inline void write16(unsigned char *buf, size_t *pos, uint16_t val)
+{
+    *(uint16_t *)(&buf[*pos]) = htons(val);
+    (*pos) += 2;
+}
+
+static inline void write32(unsigned char *buf, size_t *pos, uint32_t val)
+{
+    *(uint32_t *)(&buf[*pos]) = htonl(val);
+    (*pos) += 4;
+}
+
+static inline uint8_t read8(unsigned char *buf, size_t *pos)
+{
+    uint8_t val = *(char *)(&buf[*pos]);
+    (*pos) += 1;
+    return val;
+}
+
+static inline uint16_t read16(unsigned char *buf, size_t *pos)
+{
+    uint16_t val = ntohs(*(uint16_t *)(&buf[*pos]));
+    (*pos) += 2;
+    return val;
+}
+
+static inline uint32_t read32(unsigned char *buf, size_t *pos)
+{
+    uint32_t val = ntohl(*(uint32_t *)(&buf[*pos]));
+    (*pos) += 4;
+    return val;
+}
+
+/******************************************************************************\
+Physics.
+\******************************************************************************/
+
+#define EPSILON         0.000001
 
 struct vec2
 {
@@ -240,17 +329,8 @@ static inline bool line_overlaps_rect(struct rect r, struct line l)
 }
 
 /******************************************************************************\
+Shared structures.
 \******************************************************************************/
-
-#define PORT            8080
-
-#define MAX_PLAYERS     MAX_CLIENTS
-#define MAX_BULLETS     64
-#define MAX_NAME_LEN    16
-
-#define LAND_WIDTH      800
-#define LAND_HEIGHT     600
-
 
 #define INPUT_CHUNK_SIZE        4
 #define CLIENT_MSG_CHUNK_SIZE   258
@@ -258,141 +338,6 @@ static inline bool line_overlaps_rect(struct rect r, struct line l)
 #define BULLET_CHUNK_SIZE       7
 #define CRATE_CHUNK_SIZE        6
 #define SERVER_MSG_CHUNK_SIZE   260
-
-struct input_chunk
-{
-    uint8_t key;
-    uint16_t ms;
-};
-
-struct client_msg_chunk
-{
-    uint8_t dummy[0];
-    uint8_t data[];
-};
-
-struct land_chunk
-{
-    uint16_t x;
-    uint16_t y;
-    uint16_t width;
-    uint16_t height;
-    uint8_t data[];
-};
-
-struct tank_chunk
-{
-    uint8_t action;
-    uint8_t id;
-    uint16_t x;
-    uint16_t y;
-    uint8_t angle;
-};
-
-struct bullet_chunk
-{
-    uint8_t action;
-    uint8_t id;
-    uint16_t x;
-    uint16_t y;
-};
-
-struct crate_chunk
-{
-    uint8_t action;
-    uint16_t x;
-    uint16_t y;
-};
-
-struct server_msg_chunk
-{
-    uint8_t id;
-    uint8_t action;
-    uint8_t data[];
-};
-
-static inline void read_header(ENetPacket *packet, uint8_t *chunk_type)
-{
-    *chunk_type = read8(packet->data, 0);
-}
-
-static inline void read_input_chunk(ENetPacket *packet, struct input_chunk *chunk)
-{
-    size_t pos = 1;
-    chunk->key = read8(packet->data, &pos);
-    chunk->ms = read16(packet->data, &pos);
-}
-
-static void read_client_msg_chunk(ENetPacket *packet, struct client_msg_chunk *chunk)
-{
-    memcpy(chunk->data, packet->data + 1, packet->dataLength - 1);
-}
-
-static void read_land_chunk_(ENetPacket *packet, struct land_chunk *chunk)
-{
-    /* Skip LAND_CHUNK */
-    size_t pos = 1;
-
-    chunk->x = read16(packet->data, &pos);
-    chunk->y = read16(packet->data, &pos);
-    chunk->width = read16(packet->data, &pos);
-    chunk->height = read16(packet->data, &pos);
-
-    if (chunk->width < 0) chunk->width = 0;
-    if (chunk->height < 0) chunk->height = 0;
-
-    if (chunk->x < 0 || chunk->y < 0 ||
-        chunk->x + chunk->width > LAND_WIDTH ||
-        chunk->y + chunk->height > LAND_HEIGHT)
-        DIE("Bad land chunk.");
-
-    if (pos == packet->dataLength)
-        DIE("0-sized land chunk.");
-
-    unsigned char *unzipped = NULL;
-    size_t unzipped_len = 0;
-    unzip((char *)packet + pos, packet->dataLength - pos,
-        (char **)&unzipped, &unzipped_len);
-
-    memcpy(chunk->data, unzipped, unzipped_len);
-
-    free(unzipped);
-}
-
-static inline void read_tank_chunk(ENetPacket *packet, struct tank_chunk *chunk)
-{
-    size_t pos = 1;
-    chunk->action = read8(packet->data, &pos);
-    chunk->id = read8(packet->data, &pos);
-    chunk->x = read16(packet->data, &pos);
-    chunk->y = read16(packet->data, &pos);
-    chunk->angle = read8(packet->data, &pos);
-}
-
-static inline void read_bullet_chunk(ENetPacket *packet, struct bullet_chunk *chunk)
-{
-    size_t pos = 1;
-    chunk->action = read8(packet->data, &pos);
-    chunk->id = read8(packet->data, &pos);
-    chunk->x = read16(packet->data, &pos);
-    chunk->y = read16(packet->data, &pos);
-}
-
-static inline void read_crate_chunk(ENetPacket *packet, struct crate_chunk *chunk)
-{
-    size_t pos = 1;
-    chunk->action = read8(packet->data, &pos);
-    chunk->x = read16(packet->data, &pos);
-    chunk->y = read16(packet->data, &pos);
-}
-
-static inline void read_server_msg_chunk(ENetPacket *packet, struct server_msg_chunk *chunk)
-{
-    size_t pos = 1;
-    chunk->id = read8(packet->data, &pos);
-    chunk->action = read8(packet->data, &pos);
-    memcpy(chunk->data, packet->data + pos, packet->dataLength - pos);
-}
 
 /* Chunk types. */
 enum
@@ -404,14 +349,12 @@ enum
     /* RELIABLE
      * 1: INPUT_CHUNK
      * 1: *_*_CHUNK
-     * IF KFIRE_RELEASED:
-     *  2: Milliseconds held.
+     * 2: Milliseconds held.
      */
     INPUT_CHUNK,
 
     /* RELIABLE
      * 1: CLIENT_MSG_CHUNK
-     * 1: length
      * length: characters
      */
     CLIENT_MSG_CHUNK,
@@ -460,7 +403,6 @@ enum
      * 1: SERVER_MSG_CHUNK
      * 1: id
      * 1: CHAT/NAME_CHANGE/SERVER_NOTICE
-     * 1: length
      * length: characters
      */
     SERVER_MSG_CHUNK,
@@ -495,6 +437,81 @@ enum
     SERVER_NOTICE,
     NAME_CHANGE,
 };
+
+struct __attribute__((packed)) chunk_header
+{
+    uint8_t type;
+};
+
+struct __attribute__((packed)) input_chunk
+{
+    struct chunk_header _;
+    uint8_t key;
+    uint16_t ms;
+};
+
+struct __attribute__((packed)) client_msg_chunk
+{
+    struct chunk_header _;
+    uint8_t data[];
+};
+
+struct __attribute__((packed)) land_chunk
+{
+    struct chunk_header _;
+    int16_t x;
+    int16_t y;
+    int16_t width;
+    int16_t height;
+    uint8_t data[];
+};
+
+struct __attribute__((packed)) tank_chunk
+{
+    struct chunk_header _;
+    uint8_t action;
+    uint8_t id;
+    uint16_t x;
+    uint16_t y;
+    uint8_t angle;
+};
+
+struct __attribute__((packed)) bullet_chunk
+{
+    struct chunk_header _;
+    uint8_t action;
+    uint8_t id;
+    uint16_t x;
+    uint16_t y;
+};
+
+struct __attribute__((packed)) crate_chunk
+{
+    struct chunk_header _;
+    uint8_t action;
+    uint16_t x;
+    uint16_t y;
+};
+
+struct __attribute__((packed)) server_msg_chunk
+{
+    struct chunk_header _;
+    uint8_t id;
+    uint8_t action;
+    uint8_t data[];
+};
+
+struct chunk_header *receive_chunk(ENetPacket *packet);
+void send_chunk(struct chunk_header *chunk, size_t len, bool broadcast, bool reliable);
+
+/******************************************************************************\
+\******************************************************************************/
+
+#define MAX_BULLETS     64
+#define MAX_NAME_LEN    16
+
+#define LAND_WIDTH      800
+#define LAND_HEIGHT     600
 
 /* WIP. Object is effected by physics. */
 struct object
@@ -541,13 +558,6 @@ struct player
     bool kleft, kright, kup, kdown, kfire;
 };
 
-/* Fast speed. Low memory. Period = 2^128 - 1. */
-enum {XOR128_K = 4};
-struct rng_state
-{
-    uint32_t q[XOR128_K];
-};
-
 struct moag
 {
     struct player players[MAX_PLAYERS];
@@ -556,45 +566,6 @@ struct moag
     char land[LAND_WIDTH * LAND_HEIGHT];
     struct rng_state rng;
 };
-
-static inline void rng_seed(struct rng_state *st, uint32_t seed)
-{
-    int i;
-
-    srand(seed);
-    for (i = 0; i < XOR128_K; ++i)
-        st->q[i] = rand();
-}
-
-static inline uint32_t rng_u32(struct rng_state *st)
-{
-    uint32_t t;
-    t = (st->q[0] ^ (st->q[0] << 11));
-    st->q[0] = st->q[1];
-    st->q[1] = st->q[2];
-    st->q[2] = st->q[3];
-    return st->q[3] = st->q[3] ^ (st->q[3] >> 19) ^ (t ^ (t >> 8));
-}
-
-static inline double rng_unit(struct rng_state *st)
-{
-    return rng_u32(st) * 2.3283064365386963e-10;
-}
-
-static inline double rng_under(struct rng_state *st, int32_t max)
-{
-    return rng_unit(st) * max;
-}
-
-static inline double rng_between(struct rng_state *st, int32_t min, int32_t max)
-{
-    return rng_under(st, max - min) + min;
-}
-
-static inline int32_t rng_range(struct rng_state *st, int32_t min, int32_t max)
-{
-    return floor(rng_between(st, min, max + 1));
-}
 
 static inline char get_land_at(struct moag *m, int x, int y)
 {

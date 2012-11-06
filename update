@@ -1,6 +1,0 @@
-#!/bin/bash
-
-curl -L https://github.com/jabb/MOAG/tarball/master | tar zx
-mv jabb-MOAG*/* .
-rm -r jabb-MOAG*
-make

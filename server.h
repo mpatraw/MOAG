@@ -46,130 +46,98 @@ static inline void broadcast_land_chunk(struct moag *m, int x, int y, int w, int
     if (w <= 0 || h <= 0 || x + w > LAND_WIDTH || y + h > LAND_HEIGHT)
         return;
 
-    size_t pos = 0;
+    struct land_chunk *chunk = safe_malloc(sizeof *chunk + w * h);
 
-    unsigned char *land_buffer = malloc(w * h);
-    if (!land_buffer)
-        goto cleanup;
+    chunk->_.type = LAND_CHUNK;
+    chunk->x = x;
+    chunk->y = y;
+    chunk->width = w;
+    chunk->height = h;
 
+    int i = 0;
     for (int yy = y; yy < h + y; ++yy)
+    {
         for (int xx = x; xx < w + x; ++xx)
-            write8(land_buffer, &pos, get_land_at(m, xx, yy));
-
-    unsigned char *zipped = NULL;
-    size_t zipped_len = 0, zipped_pos = 0;
-    zip((char *)land_buffer, pos, (char **)&zipped, &zipped_len);
-
-    unsigned char *buffer = malloc(1 + sizeof(uint16_t) * 4 + zipped_len);
-    if (!buffer)
-        goto cleanup;
-
-    pos = 0;
-    write8(buffer, &pos, LAND_CHUNK);
-    write16(buffer, &pos, x);
-    write16(buffer, &pos, y);
-    write16(buffer, &pos, w);
-    write16(buffer, &pos, h);
-    for (size_t i = 0; i < zipped_len; ++i)
-        write8(buffer, &pos, read8(zipped, &zipped_pos));
-
-    broadcast_packet(buffer, pos, true);
-    INFO("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, zipped_len);
-
-cleanup:
-    if (land_buffer)
-        free(land_buffer);
-    if (zipped)
-        free(zipped);
-    if (buffer)
-        free(buffer);
-}
-
-static inline void broadcast_tank_chunk(struct moag *m, int type, int id)
-{
-    unsigned char buffer[TANK_CHUNK_SIZE];
-    size_t pos = 0;
-
-    write8(buffer, &pos, TANK_CHUNK);
-    write8(buffer, &pos, type);
-    write8(buffer, &pos, id);
-
-    if (type != KILL)
-    {
-        write16(buffer, &pos, m->players[id].tank.x);
-        write16(buffer, &pos, m->players[id].tank.y);
-
-        if (m->players[id].tank.facingleft)
-            write8(buffer, &pos, -m->players[id].tank.angle);
-        else
-            write8(buffer, &pos, m->players[id].tank.angle);
+        {
+            chunk->data[i] = get_land_at(m, xx, yy);
+            i++;
+        }
     }
+    send_chunk((void *)chunk, sizeof *chunk + w * h, true, true);
 
-    if (type == SPAWN || type == KILL)
-        broadcast_packet(buffer, pos, true);
-    else
-        broadcast_packet(buffer, pos, false);
-    INFO("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);
+    LOG("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, sizeof *chunk + w * h);
+    free(chunk);
 }
 
-static inline void broadcast_bullet_chunk(struct moag *m, int type, int id)
+static inline void broadcast_tank_chunk(struct moag *m, int action, int id)
 {
-    unsigned char buffer[BULLET_CHUNK_SIZE];
-    size_t pos = 0;
-
-    write8(buffer, &pos, BULLET_CHUNK);
-    write8(buffer, &pos, type);
-    write8(buffer, &pos, id);
-
-    if (type != KILL)
-    {
-        write16(buffer, &pos, m->bullets[id].x);
-        write16(buffer, &pos, m->bullets[id].y);
-    }
-
-    if (type == SPAWN || type == KILL)
-        broadcast_packet(buffer, pos, true);
+    struct tank_chunk chunk;
+    chunk._.type = TANK_CHUNK;
+    chunk.action = action;
+    chunk.id = id;
+    chunk.x = m->players[id].tank.x;
+    chunk.y = m->players[id].tank.y;
+    if (m->players[id].tank.facingleft)
+        chunk.angle = -m->players[id].tank.angle;
     else
-        broadcast_packet(buffer, pos, false);
-    INFO("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);
+        chunk.angle = m->players[id].tank.angle;
+
+    if (action == SPAWN || action == KILL)
+        send_chunk((void *)&chunk, sizeof chunk, true, true);
+    else
+        send_chunk((void *)&chunk, sizeof chunk, true, false);
+
+    LOG("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, sizeof chunk);
 }
 
-static inline void broadcast_crate_chunk(struct moag *m, int type)
+static inline void broadcast_bullet_chunk(struct moag *m, int action, int id)
 {
-    unsigned char buffer[CRATE_CHUNK_SIZE];
-    size_t pos = 0;
+    struct bullet_chunk chunk;
+    chunk._.type = BULLET_CHUNK;
+    chunk.action = action;
+    chunk.id = id;
+    chunk.x = m->bullets[id].x;
+    chunk.y = m->bullets[id].y;
 
-    write8(buffer, &pos, CRATE_CHUNK);
-    write8(buffer, &pos, type);
-
-    if (type != KILL)
-    {
-        write16(buffer, &pos, m->crate.x);
-        write16(buffer, &pos, m->crate.y);
-    }
-
-    if (type == SPAWN || type == KILL)
-        broadcast_packet(buffer, pos, true);
+    if (action == SPAWN || action == KILL)
+        send_chunk((void *)&chunk, sizeof chunk, true, true);
     else
-        broadcast_packet(buffer, pos, false);
+        send_chunk((void *)&chunk, sizeof chunk, true, false);
 
-    INFO("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);
+    LOG("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, sizeof chunk);
 }
 
-static inline void broadcast_chat(int id, char cmd, const char *msg, unsigned char len)
+static inline void broadcast_crate_chunk(struct moag *m, int action)
 {
-    unsigned char buffer[SERVER_MSG_CHUNK_SIZE];
-    size_t pos = 0;
+    struct crate_chunk chunk;
+    chunk._.type = CRATE_CHUNK;
+    chunk.action = action;
+    chunk.x = m->crate.x;
+    chunk.y = m->crate.y;
 
-    write8(buffer, &pos, SERVER_MSG_CHUNK);
-    write8(buffer, &pos, id);
-    write8(buffer, &pos, cmd);
-    write8(buffer, &pos, len);
-    for(int i=0;i<len;i++)
-        write8(buffer, &pos, msg[i]);
+    if (action == SPAWN || action == KILL)
+        send_chunk((void *)&chunk, sizeof chunk, true, true);
+    else
+        send_chunk((void *)&chunk, sizeof chunk, true, false);
 
-    broadcast_packet(buffer, pos, true);
-    INFO("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, pos);
+    LOG("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, sizeof chunk);
+}
+
+static inline void broadcast_chat(int id, char action, const char *msg, unsigned char len)
+{
+    struct server_msg_chunk *chunk = safe_malloc(sizeof *chunk + len);
+
+    chunk->_.type = SERVER_MSG_CHUNK;
+    chunk->id = id;
+    chunk->action = action;
+
+    for (int i = 0; i < len; ++i)
+        chunk->data[i] = msg[i];
+
+    send_chunk((void *)chunk, sizeof *chunk + len, true, true);
+
+    LOG("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, sizeof *chunk + len);
+    free(chunk);
 }
 
 

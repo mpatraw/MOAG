@@ -89,11 +89,11 @@ void spawn_client(struct moag *m, int id)
     char notice[64] = "  ";
     strcat(notice, m->players[id].name);
     strcat(notice, " has connected");
-    broadcast_chat(-1, SERVER_NOTICE, notice, strlen(notice));
+    broadcast_chat(-1, SERVER_NOTICE, notice, strlen(notice) + 1);
 
     spawn_tank(m, id);
     broadcast_land_chunk(m, 0, 0, LAND_WIDTH, LAND_HEIGHT);
-    broadcast_chat(id, NAME_CHANGE,m->players[id].name, strlen(m->players[id].name));
+    broadcast_chat(id, NAME_CHANGE,m->players[id].name, strlen(m->players[id].name) + 1);
     if (m->crate.active)
         broadcast_crate_chunk(m, SPAWN);
 
@@ -102,7 +102,7 @@ void spawn_client(struct moag *m, int id)
         if (m->players[i].connected)
         {
             broadcast_tank_chunk(m, SPAWN, i);
-            broadcast_chat(i, NAME_CHANGE, m->players[i].name, strlen(m->players[i].name));
+            broadcast_chat(i, NAME_CHANGE, m->players[i].name, strlen(m->players[i].name) + 1);
         }
     }
 }
@@ -369,9 +369,9 @@ void tank_update(struct moag *m, int id)
             case 10: strcat(notice, "MIRV"); break;
             case 12: strcat(notice, "Cluster Bomb"); break;
             case 13: strcat(notice, "Cluster Bouncer"); break;
-            default: strcat(notice, "???"); WARN("BTYPE: %d\n", t->bullet); break;
+            default: strcat(notice, "???"); ERR("BTYPE: %d\n", t->bullet); break;
         }
-        broadcast_chat(-1, SERVER_NOTICE, notice, strlen(notice));
+        broadcast_chat(-1, SERVER_NOTICE, notice, strlen(notice) + 1);
     }
 
     // Aim
@@ -776,12 +776,12 @@ void handle_msg(struct moag *m, int id, const char* msg, int len)
         m->players[id].name[len] = '\0';
         strcat(notice, " is now known as ");
         strcat(notice, m->players[id].name);
-        broadcast_chat(id, NAME_CHANGE, m->players[id].name, strlen(m->players[id].name));
-        broadcast_chat(-1, SERVER_NOTICE, notice, strlen(notice));
+        broadcast_chat(id, NAME_CHANGE, m->players[id].name, strlen(m->players[id].name) + 1);
+        broadcast_chat(-1, SERVER_NOTICE, notice, strlen(notice) + 1);
     }
     else
     {
-        broadcast_chat(id, CHAT, msg, len);
+        broadcast_chat(id, CHAT, msg, len + 1);
     }
 }
 
@@ -809,18 +809,17 @@ void init_game(struct moag *m)
 
 void on_receive(struct moag *m, ENetEvent *ev)
 {
-    unsigned char *packet = ev->packet->data;
-    size_t pos = 0;
+    struct chunk_header *chunk;
+
+    chunk = receive_chunk(ev->packet);
     intptr_t id = (intptr_t)ev->peer->data;
 
-    char byte = read8(packet, &pos);
-
-    switch (byte)
+    switch (chunk->type)
     {
         case INPUT_CHUNK:
         {
-            char type = read8(packet, &pos);
-            switch (type)
+            struct input_chunk *input = (void *)chunk;
+            switch (input->key)
             {
                 case KLEFT_PRESSED:   m->players[id].kleft = true; break;
                 case KLEFT_RELEASED:  m->players[id].kleft = false; break;
@@ -833,7 +832,7 @@ void on_receive(struct moag *m, ENetEvent *ev)
                 case KFIRE_PRESSED:   m->players[id].kfire = true; break;
                 case KFIRE_RELEASED:
                 {
-                    uint16_t power = read16(packet, &pos);
+                    uint16_t power = input->ms;
                     m->players[id].kfire = false;
                     m->players[id].tank.power = power / 2;
                     m->players[id].tank.power = CLAMP(0, 1000, m->players[id].tank.power);
@@ -843,30 +842,29 @@ void on_receive(struct moag *m, ENetEvent *ev)
             break;
         }
 
-        case CLIENT_MSG_CHUNK: {
-            unsigned char len = read8(packet, &pos);
-            char *msg = malloc(len);
-            for (int i = 0; i < len; i++)
-                msg[i] = read8(packet, &pos);
-            handle_msg(m, id, msg, len);
-            free(msg);
+        case CLIENT_MSG_CHUNK:
+        {
+            struct client_msg_chunk *client_msg = (void *)chunk;
+            handle_msg(m, id, (char *)client_msg->data, ev->packet->dataLength - 1);
             break;
         }
 
         default: break;
     }
+
+    free(chunk);
 }
 
 int main(int argc, char *argv[])
 {
     init_enet_server(PORT);
 
-    INFO("Started server.\n");
+    LOG("Started server.\n");
 
     struct moag moag;
     init_game(&moag);
 
-    INFO("Initialized game.\n");
+    LOG("Initialized game.\n");
 
     ENetEvent event;
 
@@ -877,12 +875,12 @@ int main(int argc, char *argv[])
             switch (event.type)
             {
                 case ENET_EVENT_TYPE_CONNECT:
-                    INFO("Client connected.\n");
+                    LOG("Client connected.\n");
                     event.peer->data = (void *)client_connect(&moag);
                     break;
 
                 case ENET_EVENT_TYPE_DISCONNECT:
-                    INFO("Client disconnected.\n");
+                    LOG("Client disconnected.\n");
                     disconnect_client(&moag, (intptr_t)event.peer->data);
                     break;
 
@@ -911,7 +909,7 @@ int main(int argc, char *argv[])
 
     uninit_enet();
 
-    INFO("Stopped server.\n");
+    LOG("Stopped server.\n");
 
     return EXIT_SUCCESS;
 }

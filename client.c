@@ -177,30 +177,41 @@ void draw(struct moag *m)
 
 void on_receive(struct moag *m, ENetEvent *ev)
 {
-    size_t pos = 0;
-    unsigned char *packet = ev->packet->data;
+    struct chunk_header *chunk;
 
-    char chunk_type = read8(packet, &pos);
+    chunk = receive_chunk(ev->packet);
 
-    switch(chunk_type)
+    switch (chunk->type)
     {
         case LAND_CHUNK:
-            read_land_chunk(m, packet, ev->packet->dataLength);
+        {
+            struct land_chunk *land = (void *)chunk;
+            int i = 0;
+            for (int y = land->y; y < land->height + land->y; ++y)
+            {
+                for (int x = land->x; x < land->width + land->x; ++x)
+                {
+                    set_land_at(m, x, y, land->data[i]);
+                    i++;
+                }
+            }
             break;
+        }
 
-        case TANK_CHUNK: {
-            int type = read8(packet, &pos);
-            int id = read8(packet, &pos);
+        case TANK_CHUNK:
+        {
+            struct tank_chunk *tank = (void *)chunk;
+            int id = tank->id;
 
             assert(id >= 0 && id <= MAX_PLAYERS);
 
-            if (type == SPAWN)
+            if (tank->action == SPAWN)
             {
                 m->players[id].connected = true;
 
-                m->players[id].tank.x = read16(packet, &pos);
-                m->players[id].tank.y = read16(packet, &pos);
-                char angle = read8(packet, &pos);
+                m->players[id].tank.x = tank->x;
+                m->players[id].tank.y = tank->y;
+                char angle = tank->angle;
 
                 m->players[id].tank.facingleft = false;
                 if (angle < 0){
@@ -209,11 +220,11 @@ void on_receive(struct moag *m, ENetEvent *ev)
                 }
                 m->players[id].tank.angle = angle;
             }
-            else if (type == MOVE)
+            else if (tank->action == MOVE)
             {
-                m->players[id].tank.x = read16(packet, &pos);
-                m->players[id].tank.y = read16(packet, &pos);
-                char angle = read8(packet, &pos);
+                m->players[id].tank.x = tank->x;
+                m->players[id].tank.y = tank->y;
+                char angle = tank->angle;
 
                 m->players[id].tank.facingleft = false;
                 if (angle < 0){
@@ -222,7 +233,7 @@ void on_receive(struct moag *m, ENetEvent *ev)
                 }
                 m->players[id].tank.angle = angle;
             }
-            else if (type == KILL)
+            else if (tank->action == KILL)
             {
                 m->players[id].tank.x = -1;
                 m->players[id].tank.y = -1;
@@ -234,22 +245,24 @@ void on_receive(struct moag *m, ENetEvent *ev)
             }
             break;
         }
-        case BULLET_CHUNK: {
-            int type = read8(packet, &pos);
-            int id = read8(packet, &pos);
 
-            if (type == SPAWN)
+        case BULLET_CHUNK:
+        {
+            struct bullet_chunk *bullet = (void *)chunk;
+            int id = bullet->id;
+
+            if (bullet->action == SPAWN)
             {
                 m->bullets[id].active = true;
-                m->bullets[id].x = read16(packet, &pos);
-                m->bullets[id].y = read16(packet, &pos);
+                m->bullets[id].x = bullet->x;
+                m->bullets[id].y = bullet->y;
             }
-            else if (type == MOVE)
+            else if (bullet->action == MOVE)
             {
-                m->bullets[id].x = read16(packet, &pos);
-                m->bullets[id].y = read16(packet, &pos);
+                m->bullets[id].x = bullet->x;
+                m->bullets[id].y = bullet->y;
             }
-            else if (type == KILL)
+            else if (bullet->action == KILL)
             {
                 m->bullets[id].active = false;
             }
@@ -259,63 +272,70 @@ void on_receive(struct moag *m, ENetEvent *ev)
             }
             break;
         }
-        case SERVER_MSG_CHUNK: {
-            int id = read8(packet, &pos);
-            char cmd = read8(packet, &pos);
-            unsigned char len = read8(packet, &pos);
-            switch (cmd)
+
+        case SERVER_MSG_CHUNK:
+        {
+            struct server_msg_chunk *server_msg = (void *)chunk;
+            int id = server_msg->id;
+            unsigned char len = ev->packet->dataLength - sizeof(struct server_msg_chunk);
+
+            switch (server_msg->action)
             {
-                case CHAT: {
+                case CHAT:
+                {
                     int namelen = strlen(m->players[id].name);
                     int linelen = namelen + len + 4;
-                    char *line = malloc(linelen);
+                    char *line = safe_malloc(linelen);
                     line[0] = '<';
                     for(int i = 0; i < namelen; i++)
                         line[i + 1] = m->players[id].name[i];
                     line[namelen+1] = '>';
                     line[namelen+2] = ' ';
                     for (int i = 0; i < len; ++i)
-                        line[namelen + 3 + i] = read8(packet, &pos);
+                        line[namelen + 3 + i] = server_msg->data[i];
                     line[linelen - 1] = '\0';
                     add_chat_line(line);
                     break;
                 }
-                case NAME_CHANGE: {
+
+                case NAME_CHANGE:
+                {
                     if (len < 1 || len > 15)
                         break;
                     for (int i = 0; i < len; ++i)
-                        m->players[id].name[i] = read8(packet, &pos);
+                        m->players[id].name[i] = server_msg->data[i];
                     m->players[id].name[len]='\0';
                     break;
                 }
-                case SERVER_NOTICE: { //server notice
-                    char *line = malloc(len + 1);
-                    for (int i = 0; i < len; ++i)
-                        line[i] = read8(packet, &pos);
-                    line[len] = '\0';
-                    add_chat_line(line);
+
+                case SERVER_NOTICE:
+                {
+                    add_chat_line(string_duplicate((char *)server_msg->data));
                     break;
                 }
+
                 default:
-                    break;
+                    DIE("Invalid SERVER_MSG_CHUNK action (%d).\n", server_msg->action);
             }
             break;
         }
-        case CRATE_CHUNK: {
-            int type = read8(packet, &pos);
 
-            if (type == SPAWN)
+        case CRATE_CHUNK:
+        {
+            struct crate_chunk *crate = (void *)chunk;
+
+            if (crate->action == SPAWN)
             {
                 m->crate.active = true;
-                m->crate.x = read16(packet, &pos);
-                m->crate.y = read16(packet, &pos);
+                m->crate.x = crate->x;
+                m->crate.y = crate->y;
             }
-            else if (type == MOVE)
+            else if (crate->action == MOVE)
             {
-                m->crate.x = read16(packet, &pos);
-                m->crate.y = read16(packet, &pos);
+                m->crate.x = crate->x;
+                m->crate.y = crate->y;
             }
-            else if (type == KILL)
+            else if (crate->action == KILL)
             {
                 m->crate.active = false;
             }
@@ -325,15 +345,16 @@ void on_receive(struct moag *m, ENetEvent *ev)
             }
             break;
         }
+
         default:
-            DIE("Invalid CHUNK type.\n");
-            break;
+            DIE("Invalid CHUNK type (%d).\n", chunk->type);
     }
+
+    free(chunk);
 }
 
 int main(int argc, char *argv[])
 {
-
     if (argc < 2) {
         printf("usage:  %s [address]\n", argv[0]);
         return EXIT_SUCCESS;
@@ -377,7 +398,7 @@ int main(int argc, char *argv[])
                 for (int i = 0; i < len; ++i)
                     write8(buffer, &pos, typing_str[i]);
 
-                send_packet(buffer, pos, true);
+                send_packet(buffer, pos, false, true);
 
                 stop_text_input();
                 typing_str = NULL;
@@ -461,7 +482,7 @@ int main(int argc, char *argv[])
                     break;
 
                 case ENET_EVENT_TYPE_DISCONNECT:
-                    INFO("Disconnected from server.\n");
+                    LOG("Disconnected from server.\n");
                     close_window();
                     break;
 
