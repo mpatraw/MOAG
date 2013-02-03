@@ -438,25 +438,34 @@ enum
     NAME_CHANGE,
 };
 
-struct __attribute__((packed)) chunk_header
+/* The following structs must be tightly packed
+ * because they're used to read packet data. */
+#ifdef _MSC_VER
+#  define PACKED_STRUCT(name) \
+    __pragma(pack(push, 1)) struct name __pragma(pack(pop))
+#elif defined(__GNUC__)
+#  define PACKED_STRUCT(name) struct __attribute__((packed)) name
+#endif
+
+PACKED_STRUCT(chunk_header)
 {
     uint8_t type;
 };
 
-struct __attribute__((packed)) input_chunk
+PACKED_STRUCT(input_chunk)
 {
     struct chunk_header _;
     uint8_t key;
     uint16_t ms;
 };
 
-struct __attribute__((packed)) client_msg_chunk
+PACKED_STRUCT(client_msg_chunk)
 {
     struct chunk_header _;
     uint8_t data[];
 };
 
-struct __attribute__((packed)) land_chunk
+PACKED_STRUCT(land_chunk)
 {
     struct chunk_header _;
     int16_t x;
@@ -466,7 +475,7 @@ struct __attribute__((packed)) land_chunk
     uint8_t data[];
 };
 
-struct __attribute__((packed)) tank_chunk
+PACKED_STRUCT(tank_chunk)
 {
     struct chunk_header _;
     uint8_t action;
@@ -476,7 +485,7 @@ struct __attribute__((packed)) tank_chunk
     uint8_t angle;
 };
 
-struct __attribute__((packed)) bullet_chunk
+PACKED_STRUCT(bullet_chunk)
 {
     struct chunk_header _;
     uint8_t action;
@@ -485,7 +494,7 @@ struct __attribute__((packed)) bullet_chunk
     uint16_t y;
 };
 
-struct __attribute__((packed)) crate_chunk
+PACKED_STRUCT(crate_chunk)
 {
     struct chunk_header _;
     uint8_t action;
@@ -493,7 +502,7 @@ struct __attribute__((packed)) crate_chunk
     uint16_t y;
 };
 
-struct __attribute__((packed)) server_msg_chunk
+PACKED_STRUCT(server_msg_chunk)
 {
     struct chunk_header _;
     uint8_t id;
