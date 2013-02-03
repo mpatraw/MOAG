@@ -12,11 +12,13 @@ AddOption('--platform',
 client_objects = ['client.o', 'common.o', 'sdl_aux.o']
 server_objects = ['server.o', 'common.o']
 
+# NOTE: compiler flag -mno-ms-bitfields allows __attribute__((packed)) to work properly for gcc versions >= 4.7.0
+
 if GetOption('platform') == 'linux':
     env = Environment(ENV={'PATH' : os.environ['PATH']})
     env['FRAMEWORKS'] = ['OpenGL', 'Foundation', 'Cocoa']
     env.Append(CPPPATH = ['/opt/local/include/'])
-    env.Append(CCFLAGS='-Wall -pedantic -g -std=c99 -D_POSIX_C_SOURCE=199309L -DVERBOSE')
+    env.Append(CCFLAGS='-Wall -pedantic -g -std=c99 -mno-ms-bitfields -D_POSIX_C_SOURCE=199309L -DVERBOSE')
     env.Append(LIBPATH='.')
 
     env.Object(glob.glob('*.c'))
@@ -30,7 +32,7 @@ else:
     env = Environment(ENV={'PATH' : os.environ['PATH']})
     env['FRAMEWORKS'] = ['OpenGL', 'Foundation', 'Cocoa']
     env.Append(CPPPATH = ['/opt/local/include/'])
-    env.Append(CCFLAGS='-Wall -pedantic -g -std=c99 -D_POSIX_C_SOURCE=199309L -DVERBOSE -DWIN32')
+    env.Append(CCFLAGS='-Wall -pedantic -g -std=c99 -mno-ms-bitfields -D_POSIX_C_SOURCE=199309L -DVERBOSE -DWIN32')
     env.Append(LIBPATH='.')
     if GetOption('platform') == 'mingw32-linux':
         env.Replace(CC='i486-mingw32-gcc')
