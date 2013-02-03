@@ -1,2 +1,6 @@
+To build:
+scons
 
-TODO
+To build on Windows:
+scons --platform=mingw32
+

@@ -7,7 +7,7 @@ AddOption('--platform',
           nargs=1,
           action='store',
           metavar='PLATFORM',
-          help='target platform (linux, mingw32-linux)')
+          help='target platform (linux, mingw32, mingw32-linux)')
 
 client_objects = ['client.o', 'common.o', 'sdl_aux.o']
 server_objects = ['server.o', 'common.o']
@@ -32,7 +32,10 @@ else:
     env.Append(CPPPATH = ['/opt/local/include/'])
     env.Append(CCFLAGS='-Wall -pedantic -g -std=c99 -D_POSIX_C_SOURCE=199309L -DVERBOSE -DWIN32')
     env.Append(LIBPATH='.')
-    env.Replace(CC='i486-mingw32-gcc')
+    if GetOption('platform') == 'mingw32-linux':
+        env.Replace(CC='i486-mingw32-gcc')
+    else:
+        env.Replace(CC='mingw32-gcc')
 
     env.Object(glob.glob('*.c'))
 
