@@ -48,6 +48,11 @@ bool bulletsprite[BULLET_WIDTH * BULLET_HEIGHT] =
     _,X,_,
 };
 
+#define COLOR_MOAG_WHITE COLOR(0xf0, 0xf0, 0xf0)
+#define COLOR_MOAG_GRAY COLOR(0x9b, 0x9b, 0x9b)
+#define COLOR_MOAG_LIGHT_GRAY COLOR(0xd2, 0xd2, 0xd2)
+#define COLOR_MOAG_DARK_GRAY COLOR(0x1e, 0x1e, 0x1e)
+
 struct chatline chatlines[CHAT_LINES] = {{0}};
 
 char *typing_str = NULL;
@@ -60,19 +65,19 @@ uint32_t kfire_held_start = 0;
 
 void draw_tank(int x, int y, int turretangle, bool facingleft)
 {
-    draw_sprite(x, y, COLOR_WHITE, tanksprite, TANK_WIDTH, TANK_HEIGHT);
+    draw_sprite(x, y, COLOR_MOAG_WHITE, tanksprite, TANK_WIDTH, TANK_HEIGHT);
 
     /* 9 is the length of the cannon. */
     int ex = 9 * cos(DEG2RAD(turretangle)) * (facingleft ? -1 : 1);
     int ey = 9 * sin(DEG2RAD(turretangle)) * -1;
     draw_line(x + TANK_WIDTH / 2, y + TANK_HEIGHT / 2,
               x + TANK_WIDTH / 2 + ex, y + TANK_HEIGHT / 2 + ey,
-              COLOR_WHITE);
+              COLOR_MOAG_WHITE);
 }
 
 void draw_crate(int x, int y)
 {
-    draw_sprite(x, y, COLOR_BROWN, cratesprite, CRATE_WIDTH, CRATE_HEIGHT);
+    draw_sprite(x, y, COLOR_MOAG_WHITE, cratesprite, CRATE_WIDTH, CRATE_HEIGHT);
 }
 
 void draw_bullets(struct moag *m)
@@ -81,7 +86,7 @@ void draw_bullets(struct moag *m)
     {
         struct bullet *b = &m->bullets[i];
         if (b->active)
-            draw_sprite(b->x, b->y, COLOR_RED, bulletsprite, BULLET_WIDTH, BULLET_HEIGHT);
+            draw_sprite(b->x, b->y, COLOR_MOAG_WHITE, bulletsprite, BULLET_WIDTH, BULLET_HEIGHT);
     }
 }
 
@@ -122,7 +127,7 @@ void draw(struct moag *m)
         for (int y = 0; y < LAND_HEIGHT; ++y)
         {
             if (get_land_at(m, x, y))
-                set_pixel(x, y, COLOR_GRAY);
+                set_pixel(x, y, COLOR_MOAG_GRAY);
         }
     }
 
@@ -141,7 +146,7 @@ void draw(struct moag *m)
                       m->players[i].tank.facingleft);
             draw_string_centered(m->players[i].tank.x,
                                  m->players[i].tank.y - 36,
-                                 COLOR_WHITE,
+                                 COLOR_MOAG_WHITE,
                                  m->players[i].name);
         }
     }
@@ -150,11 +155,11 @@ void draw(struct moag *m)
     {
         if (kfire && SDL_GetTicks() - kfire_held_start >= (i * 200))
         {
-            draw_block(LAND_WIDTH / 2 - 75 + i * 10, LAND_HEIGHT - 17, 10, 7, COLOR_RED);
+            draw_block(LAND_WIDTH / 2 - 75 + i * 10, LAND_HEIGHT - 17, 10, 7, COLOR_MOAG_LIGHT_GRAY);
         }
         else
         {
-            draw_block(LAND_WIDTH / 2 - 75 + i * 10, LAND_HEIGHT - 16, 10, 5, COLOR_BLUE);
+            draw_block(LAND_WIDTH / 2 - 75 + i * 10, LAND_HEIGHT - 16, 10, 5, COLOR_MOAG_DARK_GRAY);
         }
     }
 
@@ -163,15 +168,15 @@ void draw(struct moag *m)
     {
         if (chatlines[i].str)
         {
-            draw_string(4, 4 + 12 * i, COLOR_WHITE, chatlines[i].str);
+            draw_string(4, 4 + 12 * i, COLOR_MOAG_WHITE, chatlines[i].str);
             int w, h;
             get_string_size(chatlines[i].str, &w, &h);
         }
     }
     if (typing_str)
     {
-        draw_block(6, 8 + 12 * (CHAT_LINES), 4, 4, COLOR_DARK_GRAY);
-        draw_string(16, 4 + 12 * (CHAT_LINES), COLOR_DARK_GRAY, typing_str);
+        draw_block(6, 8 + 12 * (CHAT_LINES), 4, 4, COLOR_MOAG_LIGHT_GRAY);
+        draw_string(16, 4 + 12 * (CHAT_LINES), COLOR_MOAG_LIGHT_GRAY, typing_str);
     }
 }
 
