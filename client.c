@@ -389,12 +389,13 @@ int main(int argc, char *argv[])
             }
             else if (is_key_down(SDLK_RETURN))
             {
-                unsigned char buffer[256];
+                // length of typing_str including null + sizeof(client_msg_chunk)
+                unsigned char buffer[257];
                 size_t pos = 0;
 
-                unsigned char len = strlen(typing_str);
+                unsigned char len = strlen(typing_str)+1;
                 write8(buffer, &pos, CLIENT_MSG_CHUNK);
-                write8(buffer, &pos, len);
+                //write8(buffer, &pos, len);
                 for (int i = 0; i < len; ++i)
                     write8(buffer, &pos, typing_str[i]);
 
