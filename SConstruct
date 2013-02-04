@@ -9,6 +9,12 @@ AddOption('--platform',
           metavar='PLATFORM',
           help='target platform (linux, mingw32, mingw32-linux)')
 
+AddOption('--with-logging',
+          default=False,
+          dest='with-logging',
+          action='store_true',
+          help='enable logging (adds -DVERBOSE)')
+
 client_objects = ['client.o', 'common.o', 'sdl_aux.o']
 server_objects = ['server.o', 'common.o']
 
@@ -18,7 +24,9 @@ if GetOption('platform') == 'linux':
     env = Environment(ENV={'PATH' : os.environ['PATH']})
     env['FRAMEWORKS'] = ['OpenGL', 'Foundation', 'Cocoa']
     env.Append(CPPPATH = ['/opt/local/include/'])
-    env.Append(CCFLAGS='-Wall -pedantic -g -std=c99 -mno-ms-bitfields -D_POSIX_C_SOURCE=199309L -DVERBOSE')
+    env.Append(CCFLAGS='-Wall -pedantic -g -std=c99 -mno-ms-bitfields -D_POSIX_C_SOURCE=199309L')
+    if GetOption('with-logging'):
+        env.Append(CCFLAGS='-DVERBOSE')
     env.Append(LIBPATH='.')
 
     env.Object(glob.glob('*.c'))
@@ -32,7 +40,9 @@ else:
     env = Environment(ENV={'PATH' : os.environ['PATH']})
     env['FRAMEWORKS'] = ['OpenGL', 'Foundation', 'Cocoa']
     env.Append(CPPPATH = ['/opt/local/include/'])
-    env.Append(CCFLAGS='-Wall -pedantic -g -std=c99 -mno-ms-bitfields -D_POSIX_C_SOURCE=199309L -DVERBOSE -DWIN32')
+    env.Append(CCFLAGS='-Wall -pedantic -g -std=c99 -mno-ms-bitfields -D_POSIX_C_SOURCE=199309L -DWIN32')
+    if GetOption('with-logging'):
+        env.Append(CCFLAGS='-DVERBOSE')
     env.Append(LIBPATH='.')
     if GetOption('platform') == 'mingw32-linux':
         env.Replace(CC='i486-mingw32-gcc')
