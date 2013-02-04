@@ -201,6 +201,16 @@ void liquid(struct moag *m, int x, int y, int n)
                 }
             }
             set_land_at(m, x, y, 3);
+
+            if (x < minx)
+                minx = x;
+            else if (x > maxx)
+                maxx = x;
+
+            if (y < miny)
+                miny = y;
+            else if (y > maxy)
+                maxy = y;
         }
 
         /* nx keeps track of where to start filling next layer */
