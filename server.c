@@ -609,8 +609,8 @@ void bullet_detonate(struct moag *m, int id)
             explode(m, b->x, b->y, 20, E_EXPLODE);
             for (int i = 0; i < 11; i++)
                 fire_bullet(m, MISSILE, hitx, hity,
-                            1.5 * cosf(i * M_PI / 5.5) + 0.25 * b->obj.vel.x,
-                            1.5 * sinf(i * M_PI / 5.5) + 0.50 * b->obj.vel.y);
+                            2.0 * cosf(i * M_PI / 5.5) + 0.50 * b->obj.vel.x,
+                            2.0 * sinf(i * M_PI / 5.5) + 0.50 * b->obj.vel.y);
             break;
 
         case CLUSTER_BOUNCER:
@@ -618,8 +618,8 @@ void bullet_detonate(struct moag *m, int id)
             explode(m, b->x, b->y, 20, E_EXPLODE);
             for (int i = 0; i < 11; i++)
                 fire_bullet(m, BOUNCER, hitx, hity,
-                            1.5 * cosf(i * M_PI / 5.5) + 0.25 * b->obj.vel.x,
-                            1.5 * sinf(i * M_PI / 5.5) + 0.50 * b->obj.vel.y);
+                            2.0 * cosf(i * M_PI / 5.5) + 0.50 * b->obj.vel.x,
+                            2.0 * sinf(i * M_PI / 5.5) + 0.50 * b->obj.vel.y);
             break;
 
         default: break;
@@ -731,10 +731,10 @@ void crate_update(struct moag *m)
         const int PLIQUIDDIRT = 60;
         const int PCOLLAPSE = 60;
         const int PBOUNCER = 100;
-        const int PTUNNELER = 60;
+        const int PTUNNELER = 75;
         const int PMIRV = 40;
-        const int PCLUSTER = 100;
-        const int PCLUSTERB = 15;
+        const int PCLUSTER = 60;
+        const int PCLUSTERB = 10;
         const int PSHOTGUN = 100;
         // add new ones here:
         const int TOTAL = PBABYNUKE + PNUKE + PDIRT + PSUPERDIRT + PLIQUIDDIRT +
