@@ -93,6 +93,7 @@ void spawn_tank(struct moag *m, int id)
     m->players[id].tank.facingleft = 0;
     m->players[id].tank.power = 0;
     m->players[id].tank.bullet = MISSILE;
+    m->players[id].tank.num_burst = 1;
     explode(m, m->players[id].tank.x, m->players[id].tank.y - 12, 12, E_SAFE_EXPLODE);
     broadcast_tank_chunk(m, SPAWN, id);
 }
@@ -387,13 +388,16 @@ void tank_update(struct moag *m, int id)
     if (abs(t->x - m->crate.x) < 14 && abs(t->y - m->crate.y) < 14)
     {
         m->players[id].ladder_timer = LADDER_TIME;
-        t->bullet = m->crate.type;
+        if (m->crate.type == TRIPLER)
+            t->num_burst *= 3;
+        else
+            t->bullet = m->crate.type;
         m->crate.active = false;
         broadcast_crate_chunk(m, KILL);
         char notice[64] = "* ";
         strcat(notice, m->players[id].name);
         strcat(notice, " got ");
-        switch (t->bullet)
+        switch (m->crate.type)
         {
             case  0: strcat(notice, "Missile"); break;
             case  1: strcat(notice, "Baby Nuke"); break;
@@ -408,7 +412,8 @@ void tank_update(struct moag *m, int id)
             case 12: strcat(notice, "Cluster Bomb"); break;
             case 13: strcat(notice, "Cluster Bouncer"); break;
             case 14: strcat(notice, "Shotgun"); break;
-            default: strcat(notice, "???"); ERR("BTYPE: %d\n", t->bullet); break;
+            case 16: strcat(notice, "*Triple*"); break;
+            default: strcat(notice, "???"); ERR("BTYPE: %d\n", m->crate.type); break;
         }
         broadcast_chat(-1, SERVER_NOTICE, notice, strlen(notice) + 1);
     }
@@ -428,21 +433,23 @@ void tank_update(struct moag *m, int id)
     // Fire
     if (t->power)
     {
+        float burst_spread = 4.0;
         if (t->bullet == SHOTGUN)
         {
-            t->angle -= 5;
-            for (int i = 0; i < 6; i++)
-            {
-                fire_bullet_ang(m, t->bullet, t->x, t->y - 7,
-                                t->facingleft ? 180 - t->angle : t->angle,
-                                (float)t->power * 0.01);
-                t->angle += 2;
-            }
-        } else {
+            t->num_burst *= SHOTGUN_PELLETS;
+            burst_spread = 2.0;
+        }
+        int num_burst = t->bullet == MISSILE ? 1 : t->num_burst;
+        float start_angle = t->facingleft ? 180 - t->angle : t->angle;
+        start_angle -= (num_burst-1)*burst_spread/2.0;
+        for (int i = 0; i < num_burst; i++)
+        {
             fire_bullet_ang(m, t->bullet, t->x, t->y - 7,
-                            t->facingleft ? 180 - t->angle : t->angle,
+                            start_angle + i*burst_spread,
                             (float)t->power * 0.01);
         }
+        if (t->bullet != MISSILE)
+            t->num_burst = 1;
         t->bullet = MISSILE;
         t->power = 0;
     }
@@ -731,15 +738,21 @@ void bullet_update(struct moag *m, int id)
 
     if (m->crate.active && DIST(m->crate.x, m->crate.y - 4, b->x, b->y) < 5.5)
     {
-        bullet_detonate(m, id);
-        if (m->crate.type == SHOTGUN)
-        {
-            float angle = 0-RAD2DEG(atan2(b->obj.vel.y, b->obj.vel.x));
+        if (m->crate.type == TRIPLER) {
+            float angle = -RAD2DEG(atan2(b->obj.vel.y, b->obj.vel.x));
             float speed = VEC2_MAG(b->obj.vel);
-            for (int i = 0; i < 6; i++)
+            fire_bullet_ang(m, b->type, b->x, b->y, angle - 20.0, speed);
+            fire_bullet_ang(m, b->type, b->x, b->y, angle + 20.0, speed);
+        } else if (m->crate.type == SHOTGUN) {
+            bullet_detonate(m, id);
+            float angle = -RAD2DEG(atan2(b->obj.vel.y, b->obj.vel.x));
+            float speed = VEC2_MAG(b->obj.vel);
+            int shots = SHOTGUN_PELLETS;
+            for (int i = 0; i < shots; i++)
                 fire_bullet_ang(m, m->crate.type, m->crate.x, m->crate.y - 4,
-                        angle - 10 + i*4, speed*0.5);
+                        angle - (shots-1)*2 + i*4, speed*0.5);
         } else {
+            bullet_detonate(m, id);
             fire_bullet(m, m->crate.type, m->crate.x, m->crate.y - 4,
                            m->crate.type != BOUNCER ? 0 :
                            b->obj.vel.x < 0 ? -0.2 :
@@ -780,10 +793,11 @@ void crate_update(struct moag *m)
         const int PCLUSTER = 60;
         const int PCLUSTERB = 10;
         const int PSHOTGUN = 100;
+        const int PTRIPLER = 40;
         // add new ones here:
         const int TOTAL = PBABYNUKE + PNUKE + PDIRT + PSUPERDIRT + PLIQUIDDIRT +
                           PCOLLAPSE + PBOUNCER + PTUNNELER + PMIRV + PCLUSTER +
-                          PCLUSTERB + PSHOTGUN;
+                          PCLUSTERB + PSHOTGUN + PTRIPLER;
         int r = rng_range(&m->rng, 0, TOTAL);
              if ((r -= PBABYNUKE) < 0)   m->crate.type = BABY_NUKE;
         else if ((r -= PNUKE) < 0)       m->crate.type = NUKE;
@@ -796,6 +810,7 @@ void crate_update(struct moag *m)
         else if ((r -= PCLUSTER) < 0)    m->crate.type = CLUSTER_BOMB;
         else if ((r -= PCLUSTERB) < 0)   m->crate.type = CLUSTER_BOUNCER;
         else if ((r -= PSHOTGUN) < 0)    m->crate.type = SHOTGUN;
+        else if ((r -= PTRIPLER) < 0)    m->crate.type = TRIPLER;
         else                             m->crate.type = DIRT;
         broadcast_crate_chunk(m, SPAWN);
     }

@@ -537,6 +537,7 @@ struct tank
     int x, y;
     int angle, power;
     char bullet;
+    int num_burst;
     bool facingleft;
 };
 
