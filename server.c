@@ -1,6 +1,20 @@
 
 #include "server.h"
 
+void set_timer(struct moag *m, int frame, char type, float x, float y, float vx, float vy)
+{
+    int i = 0;
+    while (m->timers[i].frame)
+        if (++i >= MAX_TIMERS)
+            return;
+    m->timers[i].frame = frame;
+    m->timers[i].type = type;
+    m->timers[i].x = x;
+    m->timers[i].y = y;
+    m->timers[i].vx = vx;
+    m->timers[i].vy = vy;
+}
+
 void kill_tank(struct moag *m, int id)
 {
     m->players[id].tank.x = -30;
@@ -169,8 +183,26 @@ void liquid(struct moag *m, int x, int y, int n)
     for (int i = 0; i < n; i++)
     {
         if (y < 0)
-            break;
+        {
+            /* hit top of map, try going sideways */
+            y = 0;
+            for (int i = 1; i < LAND_WIDTH; i++)
+            {
+                if (get_land_at(m, x-i, y) == 0)
+                {
+                    x -= i;
+                    break;
+                }
+                if (get_land_at(m, x+i, y) == 0)
+                {
+                    x += i;
+                    break;
+                }
+            }
+            set_land_at(m, x, y, 3);
+        }
 
+        /* nx keeps track of where to start filling next layer */
         int nx = x;
         if (get_land_at(m, x, y + 1) == 0)
         {
@@ -186,29 +218,35 @@ void liquid(struct moag *m, int x, int y, int n)
         }
         else
         {
+            /* no space below, left, right */
+            /* try going right, skipping already-filled pixels */
             for (int i = x; i < LAND_WIDTH + 1; i++)
             {
                 if (nx == x && get_land_at(m, i, y - 1) == 0)
                     nx = i;
                 if (get_land_at(m, i, y) == 0)
                 {
-                    x=i;
+                    x = i;
                     break;
                 }
                 else if (get_land_at(m, i, y) != 3)
                 {
-                    for (int i=x;i>=-1;i--)
+                    /* hit a wall */
+                    /* try other direction */
+                    for (int i = x; i >= -1; i--)
                     {
-                        if (nx == x && get_land_at(m, i,y - 1) == 0)
+                        if (nx == x && get_land_at(m, i, y - 1) == 0)
                             nx = i;
                         if (get_land_at(m, i, y) == 0)
                         {
-                            x=i; break;
+                            x = i;
+                            break;
                         }
                         else if (get_land_at(m, i, y) != 3)
                         {
+                            /* hit a wall again, go up */
                             y--;
-                            x=nx;
+                            x = nx;
                             break;
                         }
                     }
@@ -543,7 +581,13 @@ void bullet_detonate(struct moag *m, int id)
             break;
 
         case LIQUID_DIRT:
-            liquid(m, (int)hitx, (int)hity, 3000);
+            for (int i = 0; i < 4; i++)
+                set_timer(m, m->frame + 65*i, LIQUID_DIRT_WARHEAD,
+                        b->x, b->y, 0, 0);
+            break;
+
+        case LIQUID_DIRT_WARHEAD:
+            liquid(m, (int)hitx, (int)hity, 2000);
             break;
 
         case BOUNCER:
@@ -763,6 +807,16 @@ void crate_update(struct moag *m)
     }
 }
 
+void timer_update(struct moag *m, int id)
+{
+    struct timer *t = &m->timers[id];
+    if (t->frame && t->frame <= m->frame)
+    {
+        fire_bullet(m, t->type, t->x, t->y, t->vx, t->vy);
+        t->frame = 0;
+    }
+}
+
 void step_game(struct moag *m)
 {
     crate_update(m);
@@ -770,6 +824,9 @@ void step_game(struct moag *m)
         tank_update(m, i);
     for (int i = 0; i < MAX_BULLETS; i++)
         bullet_update(m, i);
+    for (int i = 0; i < MAX_TIMERS; i++)
+        timer_update(m, i);
+    m->frame += 1;
 }
 
 intptr_t client_connect(struct moag *m)
@@ -818,7 +875,10 @@ void init_game(struct moag *m)
         m->players[i].connected = 0;
     for (int i = 0; i < MAX_BULLETS; i++)
         m->bullets[i].active = 0;
+    for (int i = 0; i < MAX_TIMERS; i++)
+        m->timers[i].frame = 0;
     m->crate.active = false;
+    m->frame = 1;
 
     rng_seed(&m->rng, time(NULL));
 

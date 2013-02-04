@@ -517,6 +517,7 @@ void send_chunk(struct chunk_header *chunk, size_t len, bool broadcast, bool rel
 \******************************************************************************/
 
 #define MAX_BULLETS     64
+#define MAX_TIMERS      64
 #define MAX_NAME_LEN    16
 
 #define LAND_WIDTH      800
@@ -567,13 +568,22 @@ struct player
     bool kleft, kright, kup, kdown, kfire;
 };
 
+struct timer
+{
+    int frame; // 0 for inactive
+    char type;
+    float x, y, vx, vy;
+};
+
 struct moag
 {
     struct player players[MAX_PLAYERS];
     struct bullet bullets[MAX_BULLETS];
+    struct timer timers[MAX_TIMERS];
     struct crate crate;
     char land[LAND_WIDTH * LAND_HEIGHT];
     struct rng_state rng;
+    int frame;
 };
 
 static inline char get_land_at(struct moag *m, int x, int y)

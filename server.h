@@ -28,6 +28,7 @@ enum
     CLUSTER_BOMB,
     CLUSTER_BOUNCER,
     SHOTGUN,
+    LIQUID_DIRT_WARHEAD,
 };
 
 enum
