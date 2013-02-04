@@ -369,6 +369,7 @@ void tank_update(struct moag *m, int id)
             case 10: strcat(notice, "MIRV"); break;
             case 12: strcat(notice, "Cluster Bomb"); break;
             case 13: strcat(notice, "Cluster Bouncer"); break;
+            case 14: strcat(notice, "Shotgun"); break;
             default: strcat(notice, "???"); ERR("BTYPE: %d\n", t->bullet); break;
         }
         broadcast_chat(-1, SERVER_NOTICE, notice, strlen(notice) + 1);
@@ -389,9 +390,21 @@ void tank_update(struct moag *m, int id)
     // Fire
     if (t->power)
     {
-        fire_bullet_ang(m, t->bullet, t->x, t->y - 7,
-                        t->facingleft ? 180 - t->angle : t->angle,
-                        (float)t->power * 0.01);
+        if (t->bullet == SHOTGUN)
+        {
+            t->angle -= 5;
+            for (int i = 0; i < 6; i++)
+            {
+                fire_bullet_ang(m, t->bullet, t->x, t->y - 7,
+                                t->facingleft ? 180 - t->angle : t->angle,
+                                (float)t->power * 0.01);
+                t->angle += 2;
+            }
+        } else {
+            fire_bullet_ang(m, t->bullet, t->x, t->y - 7,
+                            t->facingleft ? 180 - t->angle : t->angle,
+                            (float)t->power * 0.01);
+        }
         t->bullet = MISSILE;
         t->power = 0;
     }
@@ -503,6 +516,10 @@ void bullet_detonate(struct moag *m, int id)
     {
         case MISSILE:
             explode(m, b->x, b->y, 12, E_EXPLODE);
+            break;
+
+        case SHOTGUN:
+            explode(m, b->x, b->y, 6, E_EXPLODE);
             break;
 
         case BABY_NUKE:
@@ -668,14 +685,22 @@ void bullet_update(struct moag *m, int id)
         }
     }
 
-    if (DIST(m->crate.x, m->crate.y - 4,
-             b->x, b->y) < 5.5)
+    if (m->crate.active && DIST(m->crate.x, m->crate.y - 4, b->x, b->y) < 5.5)
     {
         bullet_detonate(m, id);
-        fire_bullet(m, m->crate.type, m->crate.x, m->crate.y - 4,
-                       m->crate.type != BOUNCER ? 0 :
-                       b->obj.vel.x < 0 ? -0.2 :
-                                           0.2, -0.2);
+        if (m->crate.type == SHOTGUN)
+        {
+            float angle = 0-RAD2DEG(atan2(b->obj.vel.y, b->obj.vel.x));
+            float speed = VEC2_MAG(b->obj.vel);
+            for (int i = 0; i < 6; i++)
+                fire_bullet_ang(m, m->crate.type, m->crate.x, m->crate.y - 4,
+                        angle - 10 + i*4, speed*0.5);
+        } else {
+            fire_bullet(m, m->crate.type, m->crate.x, m->crate.y - 4,
+                           m->crate.type != BOUNCER ? 0 :
+                           b->obj.vel.x < 0 ? -0.2 :
+                                               0.2, -0.2);
+        }
         m->crate.active = false;
         return;
     }
@@ -706,14 +731,15 @@ void crate_update(struct moag *m)
         const int PLIQUIDDIRT = 60;
         const int PCOLLAPSE = 60;
         const int PBOUNCER = 100;
-        const int PTUNNELER = 75;
+        const int PTUNNELER = 60;
         const int PMIRV = 40;
-        const int PCLUSTER = 120;
+        const int PCLUSTER = 100;
         const int PCLUSTERB = 15;
+        const int PSHOTGUN = 100;
         // add new ones here:
         const int TOTAL = PBABYNUKE + PNUKE + PDIRT + PSUPERDIRT + PLIQUIDDIRT +
                           PCOLLAPSE + PBOUNCER + PTUNNELER + PMIRV + PCLUSTER +
-                          PCLUSTERB;
+                          PCLUSTERB + PSHOTGUN;
         int r = rng_range(&m->rng, 0, TOTAL);
              if ((r -= PBABYNUKE) < 0)   m->crate.type = BABY_NUKE;
         else if ((r -= PNUKE) < 0)       m->crate.type = NUKE;
@@ -725,6 +751,7 @@ void crate_update(struct moag *m)
         else if ((r -= PMIRV) < 0)       m->crate.type = MIRV;
         else if ((r -= PCLUSTER) < 0)    m->crate.type = CLUSTER_BOMB;
         else if ((r -= PCLUSTERB) < 0)   m->crate.type = CLUSTER_BOUNCER;
+        else if ((r -= PSHOTGUN) < 0)    m->crate.type = SHOTGUN;
         else                             m->crate.type = DIRT;
         broadcast_crate_chunk(m, SPAWN);
     }

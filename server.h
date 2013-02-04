@@ -27,6 +27,7 @@ enum
     MIRV_WARHEAD,
     CLUSTER_BOMB,
     CLUSTER_BOUNCER,
+    SHOTGUN,
 };
 
 enum
