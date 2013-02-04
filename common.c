@@ -51,6 +51,11 @@ char *string_duplicate(const char *str)
 /******************************************************************************\
 \******************************************************************************/
 
+// convenience hack for old enet support
+#if ENET_VERSION_MAJOR == 1 && ENET_VERSION_MINOR == 2
+#define OLD_ENET
+#endif
+
 static bool _initialized = false;
 
 static ENetHost *_client = NULL;
@@ -68,7 +73,11 @@ void init_enet_client(const char *ip, unsigned port)
     }
     _initialized = true;
 
+#if OLD_ENET
+    _client = enet_host_create(NULL, MAX_CLIENTS, 0, 0);
+#else
     _client = enet_host_create(NULL, MAX_CLIENTS, NUM_CHANNELS, 0, 0);
+#endif
     if (!_client)
         DIE("An error occurred while trying to create an ENet client host.\n");
 
@@ -76,7 +85,11 @@ void init_enet_client(const char *ip, unsigned port)
     enet_address_set_host(&address, ip);
     address.port = port;
 
+#if OLD_ENET
+    _peer = enet_host_connect(_client, &address, NUM_CHANNELS);
+#else
     _peer = enet_host_connect(_client, &address, NUM_CHANNELS, 0);
+#endif
     if (!_peer)
         DIE("No available peers for initiating an ENet connection.\n");
 
@@ -105,7 +118,11 @@ void init_enet_server(unsigned port)
     address.host = ENET_HOST_ANY;
     address.port = port;
 
+#if OLD_ENET
+    _server = enet_host_create(&address, MAX_CLIENTS, 0, 0);
+#else
     _server = enet_host_create(&address, MAX_CLIENTS, NUM_CHANNELS, 0, 0);
+#endif
     if (!_server)
         DIE("An error occurred while trying to create an ENet server host.\n");
 }
