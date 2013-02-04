@@ -1,4 +1,4 @@
-import os, glob
+import os, glob, sys
 
 AddOption('--platform',
           default='linux',
@@ -33,6 +33,7 @@ if GetOption('platform') == 'linux':
 
     server_libs = ['enet', 'z', 'm']
     client_libs = ['SDL', 'SDL_ttf', 'enet', 'z', 'm']
+    if ( sys.platform == 'darwin' ) : client_libs.append('SDLMain')
 
     env.Program('client', client_objects, LIBS=client_libs)
     env.Program('server', server_objects, LIBS=server_libs)
