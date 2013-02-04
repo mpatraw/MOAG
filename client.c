@@ -505,11 +505,11 @@ int main(int argc, char *argv[])
         SDL_Flip(SDL_GetVideoSurface());
 
 #ifdef WIN32
-        SDL_Delay(10);
+        SDL_Delay(0);
 #else
         struct timespec t;
         t.tv_sec = 0;
-        t.tv_nsec = 10000000;
+        t.tv_nsec = 1000000;
         while (nanosleep(&t, &t) == -1)
             continue;
 #endif
