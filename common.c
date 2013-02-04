@@ -52,7 +52,7 @@ char *string_duplicate(const char *str)
 \******************************************************************************/
 
 // convenience hack for old enet support
-#if ENET_VERSION_MAJOR == 1 && ENET_VERSION_MINOR == 2
+#if !defined(ENET_VERSION_MAJOR) || (ENET_VERSION_MAJOR == 1 && ENET_VERSION_MINOR == 2)
 #define OLD_ENET
 #endif
 
