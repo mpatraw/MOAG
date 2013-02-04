@@ -33,6 +33,7 @@ if GetOption('platform') == 'linux':
 
     server_libs = ['enet', 'z', 'm']
     client_libs = ['SDL', 'SDL_ttf', 'enet', 'z', 'm']
+    # fix for Mac
     if ( sys.platform == 'darwin' ) : client_libs.append('SDLMain')
 
     env.Program('client', client_objects, LIBS=client_libs)
