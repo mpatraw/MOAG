@@ -129,7 +129,10 @@ ENetPeer *get_peer(void);
 
 static inline void send_packet(uint8_t *buf, size_t len, bool broadcast, bool reliable)
 {
-    ENetPacket *packet = enet_packet_create(NULL, len, reliable);
+    uint32_t flags = 0;
+    if (reliable)
+        flags |= ENET_PACKET_FLAG_RELIABLE;
+    ENetPacket *packet = enet_packet_create(NULL, len, flags);
     memcpy(packet->data, buf, len);
     if (broadcast)
         enet_host_broadcast(get_server_host(), 0, packet);
