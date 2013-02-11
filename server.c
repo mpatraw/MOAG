@@ -57,7 +57,7 @@ void explode(struct moag *m, int x, int y, int rad, char type)
                 }
             }
         }
-        broadcast_land_chunk(m, x - rad, y - rad, rad * 2, maxy - (y - rad));
+        broadcast_packed_land_chunk(m, x - rad, y - rad, rad * 2, maxy - (y - rad));
         return;
     }
     char p = type == E_DIRT ? 1 : 0;
@@ -71,7 +71,7 @@ void explode(struct moag *m, int x, int y, int rad, char type)
                 SQ(m->players[i].tank.x - x) + SQ(m->players[i].tank.y - 3 - y) < SQ(rad + 4))
                 kill_tank(m, i);
 
-    broadcast_land_chunk(m, x - rad, y - rad, rad * 2, rad * 2);
+    broadcast_packed_land_chunk(m, x - rad, y - rad, rad * 2, rad * 2);
 }
 
 void spawn_tank(struct moag *m, int id)
@@ -107,7 +107,7 @@ void spawn_client(struct moag *m, int id)
     broadcast_chat(-1, SERVER_NOTICE, notice, strlen(notice) + 1);
 
     spawn_tank(m, id);
-    broadcast_land_chunk(m, 0, 0, LAND_WIDTH, LAND_HEIGHT);
+    broadcast_packed_land_chunk(m, 0, 0, LAND_WIDTH, LAND_HEIGHT);
     broadcast_chat(id, NAME_CHANGE,m->players[id].name, strlen(m->players[id].name) + 1);
     if (m->crate.active)
         broadcast_crate_chunk(m, SPAWN);
@@ -281,7 +281,7 @@ void liquid(struct moag *m, int x, int y, int n)
         for (int ix = minx; ix <= maxx; ix++)
             if (get_land_at(m, ix, iy) == 3)
                 set_land_at(m, ix, iy, 1);
-    broadcast_land_chunk(m, minx, miny, maxx - minx + 1, maxy - miny + 1);
+    broadcast_packed_land_chunk(m, minx, miny, maxx - minx + 1, maxy - miny + 1);
 }
 
 void tank_update(struct moag *m, int id)
@@ -648,7 +648,7 @@ void bullet_detonate(struct moag *m, int id)
                 set_land_at(m, x    , y + 1, 1);
                 set_land_at(m, x + 1, y + 1, 1);
             }
-            broadcast_land_chunk(m, x - 1, miny, 3, maxy - miny + 1);
+            broadcast_packed_land_chunk(m, x - 1, miny, 3, maxy - miny + 1);
             break;
         }
 

@@ -179,6 +179,10 @@ static inline uint32_t read32(unsigned char *buf, size_t *pos)
     return val;
 }
 
+/* RLE */
+uint8_t* rlencode(uint8_t *src, const size_t len, size_t* outlen);
+uint8_t* rldecode(uint8_t *src, const size_t len, size_t* outlen);
+
 /******************************************************************************\
 Physics.
 \******************************************************************************/
@@ -375,6 +379,16 @@ enum
      * X: zipped land (columns first)
      */
     LAND_CHUNK,
+    /* RELIABLE
+     * 1: PACKED_LAND_CHUNK
+     * 2: x-position
+     * 2: y-position
+     * 2: width
+     * 2: height
+     * 4: packed-size
+     * X: RLE-compressed data
+     */
+    PACKED_LAND_CHUNK,
     /* VARIES
      * 1: TANK_CHUNK
      * 1: SPAWN/KILL/MOVE
@@ -469,6 +483,16 @@ PACKED_STRUCT(client_msg_chunk)
 };
 
 PACKED_STRUCT(land_chunk)
+{
+    struct chunk_header _;
+    int16_t x;
+    int16_t y;
+    int16_t width;
+    int16_t height;
+    uint8_t data[];
+};
+
+PACKED_STRUCT(packed_land_chunk)
 {
     struct chunk_header _;
     int16_t x;

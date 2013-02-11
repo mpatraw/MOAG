@@ -73,6 +73,49 @@ static inline void broadcast_land_chunk(struct moag *m, int x, int y, int w, int
     free(chunk);
 }
 
+static inline void broadcast_packed_land_chunk(struct moag *m, int x, int y, int w, int h)
+{
+    if (x < 0) { w += x; x = 0; }
+    if (y < 0) { h += y; y = 0; }
+    if (x + w > LAND_WIDTH) w = LAND_WIDTH - x;
+    if (y + h > LAND_HEIGHT) h = LAND_HEIGHT - y;
+    if (w <= 0 || h <= 0 || x + w > LAND_WIDTH || y + h > LAND_HEIGHT)
+        return;
+
+    uint8_t *land = safe_malloc(w * h);
+    int i = 0;
+    for (int yy = y; yy < h + y; ++yy)
+    {
+        for (int xx = x; xx < w + x; ++xx)
+        {
+            land[i] = get_land_at(m, xx, yy);
+            i++;
+        }
+    }
+
+    size_t packed_data_len = 0;
+    uint8_t *packed_data = rlencode(land, w * h, &packed_data_len);
+    free(land);
+
+    struct packed_land_chunk *chunk = safe_malloc(sizeof *chunk + packed_data_len);
+
+    chunk->_.type = PACKED_LAND_CHUNK;
+    chunk->x = x;
+    chunk->y = y;
+    chunk->width = w;
+    chunk->height = h;
+
+    for (int i = 0; i < packed_data_len; i++)
+    {
+        chunk->data[i] = packed_data[i];
+    }
+    send_chunk((void *)chunk, sizeof *chunk + packed_data_len, true, true);
+
+    LOG("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, sizeof *chunk + packed_data_len);
+    free(packed_data);
+    free(chunk);
+}
+
 static inline void broadcast_tank_chunk(struct moag *m, int action, int id)
 {
     struct tank_chunk chunk;

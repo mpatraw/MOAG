@@ -203,6 +203,29 @@ void on_receive(struct moag *m, ENetEvent *ev)
             break;
         }
 
+        case PACKED_LAND_CHUNK:
+        {
+            struct packed_land_chunk *land = (void *)chunk;
+            const size_t packed_len = ev->packet->dataLength - sizeof(struct packed_land_chunk);
+            size_t datalen = 0;
+            uint8_t *data = rldecode(land->data, packed_len, &datalen);
+
+            int i = 0;
+            for (int y = land->y; y < land->height + land->y; ++y)
+            {
+                if (i >= datalen) break;
+                for (int x = land->x; x < land->width + land->x; ++x)
+                {
+                    set_land_at(m, x, y, data[i]);
+                    i++;
+                    if (i >= datalen) break;
+                }
+            }
+
+            free(data);
+            break;
+        }
+
         case TANK_CHUNK:
         {
             struct tank_chunk *tank = (void *)chunk;

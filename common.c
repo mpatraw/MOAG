@@ -242,6 +242,35 @@ struct chunk_header *receive_chunk(ENetPacket *packet)
             break;
         }
 
+        case PACKED_LAND_CHUNK:
+        {
+            struct packed_land_chunk *land = (void *)chunk;
+
+            land->x = read16(packet->data, &pos);
+            land->y = read16(packet->data, &pos);
+            land->width = read16(packet->data, &pos);
+            land->height = read16(packet->data, &pos);
+
+            if (land->width < 0) land->width = 0;
+            if (land->height < 0) land->height = 0;
+
+            if (land->x < 0 || land->y < 0 ||
+                land->x + land->width > LAND_WIDTH ||
+                land->y + land->height > LAND_HEIGHT)
+            {
+                DIE("Bad PACKED_LAND_CHUNK.");
+            }
+
+            if (pos == packet->dataLength)
+            {
+                DIE("Bad PACKED_LAND_CHUNK (Zero-length).\n");
+            }
+
+            memcpy(land->data, packet->data + pos, packet->dataLength - pos);
+
+            break;
+        }
+
         case TANK_CHUNK:
         {
             struct tank_chunk *tank = (void *)chunk;
@@ -342,6 +371,22 @@ void send_chunk(struct chunk_header *chunk, size_t len, bool broadcast, bool rel
             break;
         }
 
+        case PACKED_LAND_CHUNK:
+        {
+            struct packed_land_chunk *land = (void *)chunk;
+
+            write16(buffer, &pos, land->x);
+            write16(buffer, &pos, land->y);
+            write16(buffer, &pos, land->width);
+            write16(buffer, &pos, land->height);
+
+            int end = len - pos;
+            for (int i = 0; i < end; ++i)
+                write8(buffer, &pos, land->data[i]);
+
+            break;
+        }
+
         case TANK_CHUNK:
         {
             struct tank_chunk *tank = (void *)chunk;
@@ -398,3 +443,62 @@ void send_chunk(struct chunk_header *chunk, size_t len, bool broadcast, bool rel
 
     send_packet(buffer, pos, broadcast, reliable);
 }
+
+
+/* run length encode data */
+/* format: [byte data] [byte repetitions-1] repeat */
+uint8_t* rlencode(uint8_t *src, const size_t len, size_t* outlen) {
+    uint8_t *buf = safe_malloc(len*2+1);
+    size_t pos = 0;
+    uint8_t c = 0; /* current item */
+    int start = 0; /* run start */
+
+    /* i == len finalizes */
+    for (int i = 0; i <= len; i++) {
+        if (i == len || src[i] != c) {
+            if (i > start) {
+                while (i - start > 256) {
+                    write8(buf, &pos, c);
+                    write8(buf, &pos, 255);
+                    start += 256;
+                }
+                write8(buf, &pos, c);
+                write8(buf, &pos, (uint8_t)(i - start - 1));
+            }
+            if (i != len) {
+                c = src[i];
+                start = i;
+            }
+        }
+    }
+
+    buf = safe_realloc(buf, pos);
+    *outlen = pos;
+
+    return buf;
+}
+
+/* run length decode data */
+uint8_t* rldecode(uint8_t *src, const size_t len, size_t* outlen) {
+    size_t bufsize = 512;
+    uint8_t *buf = safe_malloc(bufsize);
+    size_t pos = 0;
+
+    for (int i = 0; i < len; i += 2) {
+        uint8_t c = src[i];
+        uint32_t n = (uint32_t)src[i+1];
+        for (int j = 0; j <= n; j++) {
+            if (pos >= bufsize) {
+                bufsize *= 2;
+                buf = safe_realloc(buf, bufsize);
+            }
+            write8(buf, &pos, c);
+        }
+    }
+
+    buf = safe_realloc(buf, pos);
+    *outlen = pos;
+
+    return buf;
+}
+
