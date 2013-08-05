@@ -1,7 +1,7 @@
 
 here is the desired roadmap for MOAG, welcome to changes and scrutiny by everyone.
 
-architecture (high piority)
+architecture (high priority)
     [ ] separate {server,client}.c into files and modularize
     [ ] generalize algorithms, especially for physics
     [ ] add simple scripting server side for easy changes
@@ -15,3 +15,4 @@ features
     [ ] more interesting crate spawn intervals
     [ ] more than one weapon can be carried
     [ ] different types of tanks with varying attributes
+    [ ] varying terrain
