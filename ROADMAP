@@ -4,7 +4,6 @@ here is the desired roadmap for MOAG, welcome to changes and scrutiny by everyon
 architecture (high priority)
     [ ] separate {server,client}.c into files and modularize
     [ ] generalize algorithms, especially for physics
-    [ ] add simple scripting server side for easy changes
     [ ] generalize sprite drawing on client-side
     [ ] client side keybindings
 
