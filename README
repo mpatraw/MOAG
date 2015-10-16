@@ -1,6 +1,17 @@
-To build:
-scons
+ _____ ______   ________  ________  ________     
+ |\   _ \  _   \|\   __  \|\   __  \|\   ____\    
+ \ \  \\\__\ \  \ \  \|\  \ \  \|\  \ \  \___|    
+  \ \  \\|__| \  \ \  \\\  \ \   __  \ \  \  ___  
+   \ \  \    \ \  \ \  \\\  \ \  \ \  \ \  \|\  \ 
+    \ \__\    \ \__\ \_______\ \__\ \__\ \_______\
+     \|__|     \|__|\|_______|\|__|\|__|\|_______|
 
-To build on Windows:
-scons --platform=mingw32
+
+MOAG (Mother of all Games) is a multiplayer tank game kinda like Worms
+or Scorched Earth.
+
+	BUILDING
+
+You can either build with `scons` or `make`, if you're on windows use
+`scons --platform=mingw32`.
 
