@@ -1,5 +1,6 @@
 
 #include "client.h"
+#include "moag.h"
 
 #define X true
 #define _ false

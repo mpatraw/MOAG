@@ -2,26 +2,26 @@
 LDFLAGS=-lm -lenet -lz
 CFLAGS=-Wall -pedantic -g -std=c99
 
-CLIENT_SRC=client.c common.c sdl_aux.c
-CLIENT_OBJ=$(CLIENT_SRC:.c=.o)
-CLIENT_LD=$(LDFLAGS) -lSDL_ttf `sdl-config --libs`
+SRC=$(wildcard src/*.c)
+OBJ=$(SRC:.c=.o)
 
-SERVER_SRC=server.c common.c
-SERVER_OBJ=$(SERVER_SRC:.c=.o)
-SERVER_LD=$(LDFLAGS)
+CLIENT_OBJ=$(filter-out src/server.o,$(OBJ))
+CLIENT_LD=$(LDFLAGS) -lSDL_ttf `sdl-config --libs`
+SERVER_OBJ=$(filter-out src/client.o src/sdl_aux.o,$(OBJ))
+SERVER_LD=$(LDFLAGS) `sdl-config --libs`
 
 .PHONY: all clean
 
-all: client server
+all: bin/client bin/server
 
 .c.o:
 	$(CC) -c $< $(CFLAGS) -o $@
 
-client: $(CLIENT_OBJ)
+bin/client: $(OBJ)
 	$(CC) $(CLIENT_OBJ) $(CLIENT_LD) -o $@
 
-server: $(SERVER_OBJ)
+bin/server: $(OBJ)
 	$(CC) $(SERVER_OBJ) $(SERVER_LD) -o $@
 
 clean:
-	rm -rf $(CLIENT_OBJ) $(SERVER_OBJ) client server
+	rm -rf $(OBJ) bin/client bin/server

@@ -4,6 +4,7 @@
 
 #include "common.h"
 #include "sdl_aux.h"
+#include "moag.h"
 
 #define BUFLEN          256
 #define CHAT_LINES      7
