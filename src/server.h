@@ -3,6 +3,7 @@
 #define SERVER_H
 
 #include "common.h"
+#include "moag.h"
 
 #define GRAVITY             0.1
 #define BOUNCER_BOUNCES     11

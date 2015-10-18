@@ -15,22 +15,7 @@
 
 #include <enet/enet.h>
 
-/******************************************************************************\
-General macros.
-\******************************************************************************/
-
-#if VERBOSE
-#   define LOG(...) \
-    do { fprintf(stdout, "= "); fprintf(stdout, __VA_ARGS__); } while (0)
-#   define ERR(...) \
-    do { fprintf(stderr, "! "); fprintf(stderr, __VA_ARGS__); } while (0)
-#else
-#   define LOG(...)
-#   define ERR(...) \
-    do { fprintf(stderr, "! "); fprintf(stderr, __VA_ARGS__); } while (0)
-#endif
-#define DIE(...) \
-    do { ERR(__VA_ARGS__); exit(EXIT_FAILURE); } while (0)
+#include "moag.h"
 
 #define SQ(x)           ((x) * (x))
 
@@ -57,56 +42,6 @@ void safe_malloc_set_callback(void (*callback) (int, size_t));
 void *safe_malloc(size_t len);
 void *safe_realloc(void *mem, size_t len);
 char *string_duplicate(const char *str);
-
-/******************************************************************************\
-Random number generator.
-\******************************************************************************/
-
-/* Fast speed. Low memory. Period = 2^128 - 1. */
-enum {XOR128_K = 4};
-struct rng_state
-{
-    uint32_t q[XOR128_K];
-};
-
-static inline void rng_seed(struct rng_state *st, uint32_t seed)
-{
-    int i;
-
-    srand(seed);
-    for (i = 0; i < XOR128_K; ++i)
-        st->q[i] = rand();
-}
-
-static inline uint32_t rng_u32(struct rng_state *st)
-{
-    uint32_t t;
-    t = (st->q[0] ^ (st->q[0] << 11));
-    st->q[0] = st->q[1];
-    st->q[1] = st->q[2];
-    st->q[2] = st->q[3];
-    return st->q[3] = st->q[3] ^ (st->q[3] >> 19) ^ (t ^ (t >> 8));
-}
-
-static inline double rng_unit(struct rng_state *st)
-{
-    return rng_u32(st) * 2.3283064365386963e-10;
-}
-
-static inline double rng_under(struct rng_state *st, int32_t max)
-{
-    return rng_unit(st) * max;
-}
-
-static inline double rng_between(struct rng_state *st, int32_t min, int32_t max)
-{
-    return rng_under(st, max - min) + min;
-}
-
-static inline int32_t rng_range(struct rng_state *st, int32_t min, int32_t max)
-{
-    return floor(rng_between(st, min, max + 1));
-}
 
 /******************************************************************************\
 Networking.
@@ -178,10 +113,6 @@ static inline uint32_t read32(unsigned char *buf, size_t *pos)
     (*pos) += 4;
     return val;
 }
-
-/* RLE */
-uint8_t* rlencode(uint8_t *src, const size_t len, size_t* outlen);
-uint8_t* rldecode(uint8_t *src, const size_t len, size_t* outlen);
 
 /******************************************************************************\
 Physics.
