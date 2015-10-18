@@ -1,0 +1,46 @@
+
+here is the desired roadmap for MOAG, welcome to changes and scrutiny by everyone.
+
+architecture (high priority)
+	[ ] no server authority, client p2p, server there incase NAT
+	[ ] separate {server,client}.c into files and modularize
+	[ ] generalize algorithms, especially for physics
+	[ ] generalize sprite drawing on client-side
+	[ ] client side keybindings
+
+features
+	[ ] leaderboards, restored when connection lost
+	[ ] admin commands, like reseting the game
+	[ ] sprees for killing with added bonuses
+	[ ] more interesting crate spawn intervals
+	[ ] more than one weapon can be carried
+	[ ] different types of tanks with varying attributes
+	[ ] varying terrain
+
+	p2p client
+
+connect to central server
+recieve any information about clients connected
+attempt connection to other clients
+if cannot connect, inform server so server can relay information
+
+recieve information from server about game state
+populate world, adding remote players
+initialize local player(s)
+
+while at least one local player exists, receive remote player updates,
+extrapolate, send local player updates, draw world
+
+* anything created by a client _owns_ it, and is responsible for
+sending updates and destroying it, like bullets.
+
+	p2p server (simulating client)
+
+populate basic world
+while running, listen for new clients, inform all clients when
+connected/disconnected and send current world info, receive remote
+player updates and if two p2p clients can't see each other relay data
+
+* no need to extrapolate for server
+* a server is just a client with no local player, which a couple extra
+responsibilities
