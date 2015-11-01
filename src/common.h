@@ -15,6 +15,7 @@
 
 #include <enet/enet.h>
 
+#include "config.h"
 #include "moag.h"
 
 #define SQ(x)           ((x) * (x))
@@ -46,8 +47,6 @@ char *string_duplicate(const char *str);
 /******************************************************************************\
 Networking.
 \******************************************************************************/
-
-#define PORT            8080
 
 #define MAX_PLAYERS     MAX_CLIENTS
 #define CONNECT_TIMEOUT 10000

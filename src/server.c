@@ -919,7 +919,7 @@ void init_game(struct moag *m)
     }
 }
 
-void on_receive(struct moag *m, ENetEvent *ev)
+static void on_receive(struct moag *m, ENetEvent *ev)
 {
     struct chunk_header *chunk;
 
@@ -967,7 +967,7 @@ void on_receive(struct moag *m, ENetEvent *ev)
     free(chunk);
 }
 
-int main(int argc, char *argv[])
+void server_main(void)
 {
     init_enet_server(PORT);
 

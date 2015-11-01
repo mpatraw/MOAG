@@ -382,14 +382,9 @@ void on_receive(struct moag *m, ENetEvent *ev)
     free(chunk);
 }
 
-int main(int argc, char *argv[])
+void client_main(void)
 {
-    if (argc < 2) {
-        printf("usage:  %s [address]\n", argv[0]);
-        return EXIT_SUCCESS;
-    }
-
-    init_enet_client(argv[1], PORT);
+    init_enet_client(HOST, PORT);
     init_sdl(LAND_WIDTH, LAND_HEIGHT, "MOAG");
 
     if (!set_font("Nouveau_IBM.ttf", 14))
