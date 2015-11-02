@@ -75,7 +75,10 @@ static inline void broadcast_packed_land_chunk(struct moag *m, int x, int y, int
     }
     send_chunk((struct chunk_header *)chunk, sizeof *chunk + packed_data_len, true, true);
 
-    LOG("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, sizeof *chunk + packed_data_len);
+    std::cout << static_cast<unsigned int>(time(nullptr))
+              << ": " << __PRETTY_FUNCTION__
+              << ": " << (sizeof(*chunk) + packed_data_len)
+              << "\n";
     free(packed_data);
     free(chunk);
 }
@@ -98,7 +101,10 @@ static inline void broadcast_tank_chunk(struct moag *m, int action, int id)
     else
         send_chunk((struct chunk_header *)&chunk, sizeof chunk, true, false);
 
-    LOG("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, sizeof chunk);
+    std::cout << static_cast<unsigned int>(time(nullptr))
+              << ": " << __PRETTY_FUNCTION__
+              << ": " << sizeof(chunk)
+              << "\n";
 }
 
 static inline void broadcast_bullet_chunk(struct moag *m, int action, int id)
@@ -115,7 +121,10 @@ static inline void broadcast_bullet_chunk(struct moag *m, int action, int id)
     else
         send_chunk((struct chunk_header *)&chunk, sizeof chunk, true, false);
 
-    LOG("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, sizeof chunk);
+    std::cout << static_cast<unsigned int>(time(nullptr))
+              << ": " << __PRETTY_FUNCTION__
+              << ": " << sizeof(chunk)
+              << "\n";
 }
 
 static inline void broadcast_crate_chunk(struct moag *m, int action)
@@ -131,7 +140,10 @@ static inline void broadcast_crate_chunk(struct moag *m, int action)
     else
         send_chunk((struct chunk_header *)&chunk, sizeof chunk, true, false);
 
-    LOG("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, sizeof chunk);
+    std::cout << static_cast<unsigned int>(time(nullptr))
+              << ": " << __PRETTY_FUNCTION__
+              << ": " << sizeof(chunk)
+              << "\n";
 }
 
 static inline void broadcast_chat(int id, char action, const char *msg, unsigned char len)
@@ -147,7 +159,10 @@ static inline void broadcast_chat(int id, char action, const char *msg, unsigned
 
     send_chunk((struct chunk_header *)chunk, sizeof *chunk + len, true, true);
 
-    LOG("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, sizeof *chunk + len);
+    std::cout << static_cast<unsigned int>(time(nullptr))
+              << ": " << __PRETTY_FUNCTION__
+              << ": " << sizeof(chunk)
+              << "\n";
     free(chunk);
 }
 
@@ -1124,13 +1139,12 @@ void server_main(void)
 {
     init_enet_server(g_port);
 
-    LOG("Started server.\n");
+    std::cout << "Started server.\n";
 
     struct moag moag;
     init_game(&moag);
 
     std::cout << "Initialized game.\n";
-    LOG("Initialized game.\n");
 
     ENetEvent event;
 
@@ -1141,12 +1155,12 @@ void server_main(void)
             switch (event.type)
             {
                 case ENET_EVENT_TYPE_CONNECT:
-                    LOG("Client connected.\n");
+                    std::cout << "Client connected.\n";
                     event.peer->data = (void *)client_connect(&moag);
                     break;
 
                 case ENET_EVENT_TYPE_DISCONNECT:
-                    LOG("Client disconnected.\n");
+                    std::cout << "Client disconnected.\n";
                     disconnect_client(&moag, (intptr_t)event.peer->data);
                     break;
 
@@ -1166,5 +1180,5 @@ void server_main(void)
 
     uninit_enet();
 
-    LOG("Stopped server.\n");
+    std::cout << "Stopped server.\n";
 }

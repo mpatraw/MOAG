@@ -116,7 +116,10 @@ static inline void send_input_chunk(int key, uint16_t t)
 
     send_chunk((struct chunk_header *)&chunk, sizeof chunk, false, true);
 
-    LOG("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, sizeof chunk);
+    std::cout << static_cast<unsigned int>(time(nullptr))
+              << ": " << __PRETTY_FUNCTION__
+              << ": " << sizeof(chunk)
+              << "\n";
 }
 
 std::string typing_str;
@@ -584,7 +587,7 @@ void client_main(void)
                     break;
 
                 case ENET_EVENT_TYPE_DISCONNECT:
-                    LOG("Disconnected from server.\n");
+                    std::cout << "Disconnected from server.\n";
                     goto end_loop;
                     break;
 

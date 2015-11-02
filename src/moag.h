@@ -11,16 +11,8 @@
 
 /* logging macros
  */
-#if VERBOSE
-#   define LOG(...) \
-do { fprintf(stdout, "= "); fprintf(stdout, __VA_ARGS__); } while (0)
-#   define ERR(...) \
+#define ERR(...) \
 do { fprintf(stderr, "! "); fprintf(stderr, __VA_ARGS__); } while (0)
-#else
-#   define LOG(...)
-#   define ERR(...) \
-do { fprintf(stderr, "! "); fprintf(stderr, __VA_ARGS__); } while (0)
-#endif
 #define DIE(...) do { ERR(__VA_ARGS__); exit(EXIT_FAILURE); } while (0)
 
 /* encoding/decoding
