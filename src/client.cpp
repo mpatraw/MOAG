@@ -83,11 +83,12 @@ uint32_t kfire_held_start = 0;
 
 void draw_tank(int x, int y, int turret_angle, bool facingleft)
 {
-    x = x - (tank_width / 2);
-    SDL_Rect tank_src = {x, y, tank_width, tank_height};
+    SDL_Rect tank_src = {x - tank_width / 2, y - tank_height, tank_width, tank_height};
     SDL_RenderCopy(main_renderer, tank_texture, NULL, &tank_src);
     if (facingleft) {
-        turret_angle += 90;
+        turret_angle = 180 + turret_angle;
+    } else {
+        turret_angle = 360 - turret_angle;
     }
     SDL_Rect turret_src = {x, y - tank_height, turret_width, turret_height};
     SDL_Point cen = {0, turret_height / 2};
@@ -165,8 +166,8 @@ void draw(struct moag *m)
     {
         if (m->players[i].connected)
         {
-            draw_tank(m->players[i].tank.x - 9,
-                      m->players[i].tank.y - 13,
+            draw_tank(m->players[i].tank.x,
+                      m->players[i].tank.y,
                       m->players[i].tank.angle,
                       m->players[i].tank.facingleft);
         }
