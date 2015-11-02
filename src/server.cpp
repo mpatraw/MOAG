@@ -225,7 +225,7 @@ void explode(struct moag *m, int x, int y, int rad, char type)
             if (SQ(ix) + SQ(iy) < SQ(rad))
                 set_land_at(m, x + ix, y + iy, p);
     if (type == E_EXPLODE)
-        for (int i = 0; i < MAX_PLAYERS; i++)
+        for (int i = 0; i < g_max_players; i++)
             if (m->players[i].connected &&
                 SQ(m->players[i].tank.x - x) + SQ(m->players[i].tank.y - 3 - y) < SQ(rad + 4))
                 kill_tank(m, i);
@@ -273,7 +273,7 @@ void spawn_client(struct moag *m, int id)
     if (m->crate.active)
         broadcast_crate_chunk(m, SPAWN);
 
-    for (int i = 0; i < MAX_PLAYERS; ++i)
+    for (int i = 0; i < g_max_players; ++i)
     {
         if (m->players[i].connected)
         {
@@ -897,7 +897,7 @@ void bullet_update(struct moag *m, int id)
     if (b->type == TUNNELER && b->active == 1)
         b->active = -TUNNELER_TUNNELINGS;
 
-    for (int i = 0; i < MAX_PLAYERS; i++)
+    for (int i = 0; i < g_max_players; i++)
     {
         if(DIST(m->players[i].tank.x, m->players[i].tank.y - 3,
                 b->x, b->y) < 8.5)
@@ -1006,7 +1006,7 @@ void timer_update(struct moag *m, int id)
 void step_game(struct moag *m)
 {
     crate_update(m);
-    for (int i = 0; i < MAX_PLAYERS; i++)
+    for (int i = 0; i < g_max_players; i++)
         tank_update(m, i);
     for (int i = 0; i < MAX_BULLETS; i++)
         bullet_update(m, i);
@@ -1020,7 +1020,7 @@ intptr_t client_connect(struct moag *m)
     intptr_t i = 0;
     while (m->players[i].connected)
     {
-        if(++i >= MAX_PLAYERS)
+        if(++i >= g_max_players)
         {
             printf("Client failed to connect, too many clients.\n");
             return -1;
@@ -1057,7 +1057,7 @@ void handle_msg(struct moag *m, int id, const char* msg, int len)
 
 void init_game(struct moag *m)
 {
-    for (int i = 0; i < MAX_PLAYERS; i++)
+    for (int i = 0; i < g_max_players; i++)
         m->players[i].connected = 0;
     for (int i = 0; i < MAX_BULLETS; i++)
         m->bullets[i].active = 0;
@@ -1130,7 +1130,7 @@ static void on_receive(struct moag *m, ENetEvent *ev)
 
 void server_main(void)
 {
-    init_enet_server(PORT);
+    init_enet_server(g_port);
 
     LOG("Started server.\n");
 

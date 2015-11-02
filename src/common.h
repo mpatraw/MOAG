@@ -48,11 +48,6 @@ char *string_duplicate(const char *str);
 Networking.
 \******************************************************************************/
 
-#define MAX_PLAYERS     MAX_CLIENTS
-#define CONNECT_TIMEOUT 10000
-#define MAX_CLIENTS     8
-#define NUM_CHANNELS    2
-
 void init_enet_client(const char *ip, unsigned port);
 void init_enet_server(unsigned port);
 void uninit_enet(void);
@@ -535,7 +530,7 @@ struct timer
 
 struct moag
 {
-    struct player players[MAX_PLAYERS];
+    struct player players[g_max_players];
     struct bullet bullets[MAX_BULLETS];
     struct timer timers[MAX_TIMERS];
     struct crate crate;

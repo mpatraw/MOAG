@@ -74,9 +74,9 @@ void init_enet_client(const char *ip, unsigned port)
     _initialized = true;
 
 #ifdef OLD_ENET
-    _client = enet_host_create(NULL, MAX_CLIENTS, 0, 0);
+    _client = enet_host_create(NULL, g_max_players, 0, 0);
 #else
-    _client = enet_host_create(NULL, MAX_CLIENTS, NUM_CHANNELS, 0, 0);
+    _client = enet_host_create(NULL, g_max_players, g_number_of_channels, 0, 0);
 #endif
     if (!_client)
         DIE("An error occurred while trying to create an ENet client host.\n");
@@ -86,16 +86,16 @@ void init_enet_client(const char *ip, unsigned port)
     address.port = port;
 
 #ifdef OLD_ENET
-    _peer = enet_host_connect(_client, &address, NUM_CHANNELS);
+    _peer = enet_host_connect(_client, &address, g_number_of_channels);
 #else
-    _peer = enet_host_connect(_client, &address, NUM_CHANNELS, 0);
+    _peer = enet_host_connect(_client, &address, g_number_of_channels, 0);
 #endif
     if (!_peer)
         DIE("No available peers for initiating an ENet connection.\n");
 
     ENetEvent ev;
 
-    if (enet_host_service(_client, &ev, CONNECT_TIMEOUT) == 0 ||
+    if (enet_host_service(_client, &ev, g_connect_timeout) == 0 ||
         ev.type != ENET_EVENT_TYPE_CONNECT)
     {
         enet_peer_reset(_peer);
@@ -119,9 +119,9 @@ void init_enet_server(unsigned port)
     address.port = port;
 
 #ifdef OLD_ENET
-    _server = enet_host_create(&address, MAX_CLIENTS, 0, 0);
+    _server = enet_host_create(&address, g_max_players, 0, 0);
 #else
-    _server = enet_host_create(&address, MAX_CLIENTS, NUM_CHANNELS, 0, 0);
+    _server = enet_host_create(&address, g_max_players, g_number_of_channels, 0, 0);
 #endif
     if (!_server)
         DIE("An error occurred while trying to create an ENet server host.\n");

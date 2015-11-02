@@ -7,9 +7,9 @@
 void server_main(void);
 void client_main();
 
-bool IS_SERVER = false;
-const char *HOST = "localhost";
-int PORT = 6624;
+bool g_is_server = false;
+const char *g_host = "localhost";
+int g_port = 6624;
 
 static bool has_arg(int argc, char *argv[], const char *search)
 {
@@ -39,12 +39,12 @@ get_arg(int argc, char *argv[], const char *search)
 
 int main(int argc, char *argv[])
 {
-	IS_SERVER = has_arg(argc, argv, "--server");
-	HOST = get_arg(argc, argv, "--host").value_or("localhost");
-	PORT = std::stoi(get_arg(argc, argv, "--port").value_or("6624"));
+	g_is_server = has_arg(argc, argv, "--server");
+	g_host = get_arg(argc, argv, "--host").value_or("localhost");
+	g_port = std::stoi(get_arg(argc, argv, "--port").value_or("6624"));
 
 	std::thread server;
-	if (IS_SERVER) {
+	if (g_is_server) {
 		std::cout << "starting server..." << std::endl;
 		server = std::thread(server_main);
 	}

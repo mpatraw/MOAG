@@ -1,4 +1,5 @@
 
+#include <deque>
 #include <iostream>
 
 #include <SDL2/SDL.h>
@@ -51,26 +52,60 @@ static SDL_Texture *create_string_texture(const char *text, SDL_Color c={255, 25
 
 static void quick_render_string(int x, int y, const char *text, SDL_Color c={255, 255, 255})
 {
-    auto texture = create_string_texture(text);
+    auto texture = create_string_texture(text, c);
     if (!texture) {
         return;
     }
     int w, h;
-    SDL_QueryTexture(texture, NULL, NULL, &w, &h, c);
+    SDL_QueryTexture(texture, NULL, NULL, &w, &h);
     SDL_Rect src = {x, y, w, h};
     SDL_RenderCopy(main_renderer, texture, NULL, &src);
     SDL_DestroyTexture(texture);
 }
 
-#define BUFLEN          256
-#define CHAT_LINES      7
-#define CHAT_EXPIRETIME 18000
-
-struct chatline
+class message_scroller
 {
-    int expire;
-    SDL_Texture *text;
+public:
+    enum { lines = 7, expires_after = 18000 };
+    message_scroller() {}
+    ~message_scroller()
+    {
+        for (auto text : message_texts) {
+            SDL_DestroyTexture(text);
+        }
+    }
+
+    void add_message(const char *str)
+    {
+        message_expirations.push_back(SDL_GetTicks() + expires_after);
+        message_texts.push_back(create_string_texture(str));
+        if (message_texts.size() > lines) {
+            SDL_DestroyTexture(message_texts.front());
+            message_expirations.pop_front();
+            message_texts.pop_front();
+        }
+    }
+
+    void expire_messages()
+    {
+        while (!message_expirations.empty() && message_expirations.front() < SDL_GetTicks()) {
+            SDL_DestroyTexture(message_texts.front());
+            message_expirations.pop_front();
+            message_texts.pop_front();
+        }
+    }
+
+    typedef typename std::deque<SDL_Texture *>::const_iterator const_iterator;
+
+    const_iterator begin() const { return message_texts.begin(); }
+    const_iterator end() const { return message_texts.end(); }
+
+private:
+    std::deque<uint32_t> message_expirations;
+    std::deque<SDL_Texture *> message_texts;
 };
+
+static message_scroller chat_line;
 
 static inline void send_input_chunk(int key, uint16_t t)
 {
@@ -83,8 +118,6 @@ static inline void send_input_chunk(int key, uint16_t t)
 
     LOG("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, sizeof chunk);
 }
-
-struct chatline chatlines[CHAT_LINES] = {{0}};
 
 std::string typing_str;
 bool kleft = false;
@@ -126,37 +159,7 @@ void draw_bullets(struct moag *m)
         }
     }
 }
-
-void del_chat_line(void)
-{
-    if (chatlines[0].expire < SDL_GetTicks())
-    {
-        SDL_DestroyTexture(chatlines[0].text);
-        for (int i = 0; i < CHAT_LINES - 1; i++){
-            chatlines[i].expire = chatlines[i + 1].expire;
-            chatlines[i].text = chatlines[i + 1].text;
-        }
-        chatlines[CHAT_LINES - 1].text = NULL;
-    }
-}
-
-void add_chat_line(char* str)
-{
-    int i = 0;
-    while (chatlines[i].text)
-    {
-        if (++i >= CHAT_LINES)
-        {
-            chatlines[0].expire = 0;
-            del_chat_line();
-            i = CHAT_LINES - 1;
-            break;
-        }
-    }
-    chatlines[i].text = create_string_texture(str);
-    chatlines[i].expire = SDL_GetTicks() + CHAT_EXPIRETIME;
-}
-
+      
 void draw(struct moag *m)
 {
     SDL_SetRenderDrawColor(main_renderer, 128, 128, 128, 255);
@@ -175,7 +178,7 @@ void draw(struct moag *m)
 
     draw_bullets(m);
 
-    for (int i = 0; i < MAX_PLAYERS; i++)
+    for (int i = 0; i < g_max_players; i++)
     {
         if (m->players[i].connected)
         {
@@ -186,24 +189,23 @@ void draw(struct moag *m)
         }
     }
 
-    del_chat_line();
-    for (int i = 0; i < CHAT_LINES; i++)
-    {
-        if (chatlines[i].text)
-        {
-            int w, h;
-            SDL_QueryTexture(chatlines[i].text, NULL, NULL, &w, &h);
-            SDL_Rect src = {4, 4 + 12 * i, w, h};
-            SDL_RenderCopy(main_renderer, chatlines[i].text, NULL, &src);
-        }
+    chat_line.expire_messages();
+    int i = 0;
+    for (auto text : chat_line) {
+        int w, h;
+        SDL_QueryTexture(text, NULL, NULL, &w, &h);
+        SDL_Rect src = {4, 4 + 12 * i, w, h};
+        SDL_RenderCopy(main_renderer, text, NULL, &src);
+        i++;
     }
+
     if (SDL_IsTextInputActive())
     {
         SDL_SetRenderDrawColor(main_renderer, 128, 128, 128, 255);
-        SDL_Rect rect = {6, 8 + 12 * (CHAT_LINES), 4, 4};
+        SDL_Rect rect = {6, 8 + 12 * message_scroller::lines, 4, 4};
         SDL_RenderDrawRect(main_renderer, &rect);
 
-        //draw_string(16, 4 + 12 * (CHAT_LINES), COLOR_MOAG_LIGHT_GRAY, typing_str);
+        quick_render_string(16, 4 + 12 * message_scroller::lines, typing_str.c_str());
     }
 }
 
@@ -258,7 +260,7 @@ void on_receive(struct moag *m, ENetEvent *ev)
             struct tank_chunk *tank = (struct tank_chunk *)chunk;
             int id = tank->id;
 
-            assert(id >= 0 && id <= MAX_PLAYERS);
+            assert(id >= 0 && id <= g_max_players);
 
             if (tank->action == SPAWN)
             {
@@ -349,7 +351,7 @@ void on_receive(struct moag *m, ENetEvent *ev)
                     for (int i = 0; i < len; ++i)
                         line[namelen + 3 + i] = server_msg->data[i];
                     line[linelen - 1] = '\0';
-                    add_chat_line(line);
+                    chat_line.add_message(line);
                     break;
                 }
 
@@ -365,7 +367,7 @@ void on_receive(struct moag *m, ENetEvent *ev)
 
                 case SERVER_NOTICE:
                 {
-                    add_chat_line(string_duplicate((char *)server_msg->data));
+                    chat_line.add_message(reinterpret_cast<const char *>(server_msg->data));
                     break;
                 }
 
@@ -410,12 +412,13 @@ void on_receive(struct moag *m, ENetEvent *ev)
 
 void client_main(void)
 {
-    init_enet_client(HOST, PORT);
+    init_enet_client(g_host, g_port);
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         std::cerr << SDL_GetError() << std::endl;
         goto sdl_init_fail;
     }
+    SDL_StopTextInput();
 
     if (TTF_Init() != 0) {
         std::cerr << SDL_GetError() << std::endl;
@@ -463,6 +466,10 @@ void client_main(void)
         SDL_Event ev;
         while (SDL_PollEvent(&ev)) {
             switch (ev.type) {
+            case SDL_TEXTINPUT:
+                typing_str += ev.text.text;
+                break;
+
             case SDL_QUIT:
                 goto end_loop;
                 break;
