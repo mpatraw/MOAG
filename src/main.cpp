@@ -4,7 +4,7 @@
 #include <string>
 #include <thread>
 
-extern "C" void server_main(void);
+void server_main(void);
 void client_main();
 
 bool IS_SERVER = false;
@@ -22,6 +22,7 @@ static bool has_arg(int argc, char *argv[], const char *search)
 	return false;
 }
 
+// Inefficient but gets the work done.
 static std::experimental::optional<const char *>
 get_arg(int argc, char *argv[], const char *search)
 {
@@ -50,8 +51,10 @@ int main(int argc, char *argv[])
 
 	client_main();
 
-	if (IS_SERVER) {
+	if (server.joinable()) {
+		std::cout << "here" << std::endl;
 		server.join();
+		std::cout << "here2" << std::endl;
 	}
 	return 0;
 }
