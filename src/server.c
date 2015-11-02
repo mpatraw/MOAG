@@ -1013,6 +1013,4 @@ void server_main(void)
     uninit_enet();
 
     LOG("Stopped server.\n");
-
-    return EXIT_SUCCESS;
 }

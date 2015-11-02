@@ -5,7 +5,7 @@
 #include <thread>
 
 extern "C" void server_main(void);
-extern "C" void client_main();
+void client_main();
 
 bool IS_SERVER = false;
 const char *HOST = "localhost";

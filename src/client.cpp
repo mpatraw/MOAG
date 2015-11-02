@@ -1,62 +1,79 @@
 
-#include "client.h"
+#include <iostream>
+
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
+
+extern "C" {
+#include "common.h"
 #include "moag.h"
+}
 
-#define X true
-#define _ false
+static SDL_Window *main_window = nullptr;
+static SDL_Renderer *main_renderer = nullptr;
+static SDL_Texture *tank_texture = nullptr;
+static SDL_Texture *turret_texture = nullptr;
+static SDL_Texture *bullet_texture = nullptr;
+static SDL_Texture *crate_texture = nullptr;
+static TTF_Font *main_font = nullptr;
 
-#define TANK_WIDTH  18
-#define TANK_HEIGHT 14
-const bool tanksprite[TANK_WIDTH * TANK_HEIGHT] =
+static int tank_width;
+static int tank_height;
+static int turret_width;
+static int turret_height;
+static int bullet_width;
+static int bullet_height;
+static int crate_width;
+static int crate_height;
+
+static SDL_Texture *load_texture_from_file(const char *filename)
 {
-    _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-    _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-    _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-    _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-    _,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,_,
-    _,_,_,_,_,_,_,_,X,X,_,_,_,_,_,_,_,_,
-    _,_,_,_,_,_,_,X,X,X,X,_,_,_,_,_,_,_,
-    _,_,_,_,_,_,X,X,X,X,X,X,_,_,_,_,_,_,
-    _,_,_,X,X,X,X,X,X,X,X,X,X,X,X,_,_,_,
-    _,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,_,
-    X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,X,
-    X,X,X,_,X,X,_,X,X,_,X,X,_,X,X,_,X,X,
-    _,X,_,_,X,X,_,X,_,_,X,_,_,X,_,_,X,_,
-    _,_,X,X,X,X,X,X,X,X,X,X,X,X,X,X,_,_,
+    auto surface = IMG_Load(filename);
+    if (!surface) {
+        return nullptr;
+    }
+    auto texture = SDL_CreateTextureFromSurface(main_renderer, surface);
+    SDL_FreeSurface(surface);
+    return texture;
+}
+
+static SDL_Texture *create_string_texture(const char *text)
+{
+    auto surface = TTF_RenderText_Solid(main_font, text, {255, 255, 255});
+    if (!surface) {
+        return nullptr;
+    }
+    auto texture = SDL_CreateTextureFromSurface(main_renderer, surface);
+    SDL_FreeSurface(surface);
+    return texture;
+}
+
+#define BUFLEN          256
+#define CHAT_LINES      7
+#define CHAT_EXPIRETIME 18000
+
+struct chatline
+{
+    int expire;
+    SDL_Texture *text;
 };
 
-#define CRATE_WIDTH  9
-#define CRATE_HEIGHT 9
-bool cratesprite[CRATE_WIDTH * CRATE_HEIGHT] =
+static inline void send_input_chunk(int key, uint16_t t)
 {
-    _,X,X,X,X,X,X,X,_,
-    X,X,_,_,_,_,_,X,X,
-    X,_,X,_,_,_,X,_,X,
-    X,_,_,X,_,X,_,_,X,
-    X,_,_,_,X,_,_,_,X,
-    X,_,_,X,_,X,_,_,X,
-    X,_,X,_,_,_,X,_,X,
-    X,X,_,_,_,_,_,X,X,
-    _,X,X,X,X,X,X,X,_,
-};
+    struct input_chunk chunk;
+    chunk._.type = INPUT_CHUNK;
+    chunk.key = key;
+    chunk.ms = t;
 
-#define BULLET_WIDTH  3
-#define BULLET_HEIGHT 3
-bool bulletsprite[BULLET_WIDTH * BULLET_HEIGHT] =
-{
-    _,X,_,
-    X,X,X,
-    _,X,_,
-};
+    send_chunk((struct chunk_header *)&chunk, sizeof chunk, false, true);
 
-#define COLOR_MOAG_WHITE COLOR(0xf0, 0xf0, 0xf0)
-#define COLOR_MOAG_GRAY COLOR(0x9b, 0x9b, 0x9b)
-#define COLOR_MOAG_LIGHT_GRAY COLOR(0xd2, 0xd2, 0xd2)
-#define COLOR_MOAG_DARK_GRAY COLOR(0x1e, 0x1e, 0x1e)
+    LOG("%u: %s: %zu\n", (unsigned)time(NULL), __PRETTY_FUNCTION__, sizeof chunk);
+}
 
 struct chatline chatlines[CHAT_LINES] = {{0}};
 
-char *typing_str = NULL;
+std::string typing_str;
 bool kleft = false;
 bool kright = false;
 bool kup = false;
@@ -64,21 +81,24 @@ bool kdown = false;
 bool kfire = false;
 uint32_t kfire_held_start = 0;
 
-void draw_tank(int x, int y, int turretangle, bool facingleft)
+void draw_tank(int x, int y, int turret_angle, bool facingleft)
 {
-    draw_sprite(x, y, COLOR_MOAG_WHITE, tanksprite, TANK_WIDTH, TANK_HEIGHT);
-
-    /* 9 is the length of the cannon. */
-    int ex = 9 * cos(DEG2RAD(turretangle)) * (facingleft ? -1 : 1);
-    int ey = 9 * sin(DEG2RAD(turretangle)) * -1;
-    draw_line(x + TANK_WIDTH / 2, y + TANK_HEIGHT / 2,
-              x + TANK_WIDTH / 2 + ex, y + TANK_HEIGHT / 2 + ey,
-              COLOR_MOAG_WHITE);
+    x = x - (tank_width / 2);
+    SDL_Rect tank_src = {x, y, tank_width, tank_height};
+    SDL_RenderCopy(main_renderer, tank_texture, NULL, &tank_src);
+    if (facingleft) {
+        turret_angle += 90;
+    }
+    SDL_Rect turret_src = {x, y - tank_height, turret_width, turret_height};
+    SDL_Point cen = {0, turret_height / 2};
+    SDL_RenderCopyEx(main_renderer, turret_texture, NULL, &turret_src, turret_angle, &cen, SDL_FLIP_NONE);
 }
 
 void draw_crate(int x, int y)
 {
-    draw_sprite(x, y, COLOR_MOAG_WHITE, cratesprite, CRATE_WIDTH, CRATE_HEIGHT);
+    x = x - (crate_width / 2);
+    SDL_Rect src = {x, y, crate_width, crate_height};
+    SDL_RenderCopy(main_renderer, crate_texture, NULL, &src);
 }
 
 void draw_bullets(struct moag *m)
@@ -86,28 +106,30 @@ void draw_bullets(struct moag *m)
     for (int i = 0; i < MAX_BULLETS; i++)
     {
         struct bullet *b = &m->bullets[i];
-        if (b->active)
-            draw_sprite(b->x, b->y, COLOR_MOAG_WHITE, bulletsprite, BULLET_WIDTH, BULLET_HEIGHT);
+        if (b->active) {
+            SDL_Rect src = {b->x, b->y, bullet_width, bullet_height};
+            SDL_RenderCopy(main_renderer, bullet_texture, NULL, &src);
+        }
     }
 }
 
 void del_chat_line(void)
 {
-    if (chatlines[0].str && chatlines[0].expire < SDL_GetTicks())
+    if (chatlines[0].expire < SDL_GetTicks())
     {
-        free(chatlines[0].str);
+        SDL_DestroyTexture(chatlines[0].text);
         for (int i = 0; i < CHAT_LINES - 1; i++){
             chatlines[i].expire = chatlines[i + 1].expire;
-            chatlines[i].str = chatlines[i + 1].str;
+            chatlines[i].text = chatlines[i + 1].text;
         }
-        chatlines[CHAT_LINES - 1].str = NULL;
+        chatlines[CHAT_LINES - 1].text = NULL;
     }
 }
 
 void add_chat_line(char* str)
 {
     int i = 0;
-    while (chatlines[i].str)
+    while (chatlines[i].text)
     {
         if (++i >= CHAT_LINES)
         {
@@ -117,18 +139,20 @@ void add_chat_line(char* str)
             break;
         }
     }
-    chatlines[i].str = str;
+    chatlines[i].text = create_string_texture(str);
     chatlines[i].expire = SDL_GetTicks() + CHAT_EXPIRETIME;
 }
 
 void draw(struct moag *m)
 {
+    SDL_SetRenderDrawColor(main_renderer, 128, 128, 128, 255);
     for (int x = 0; x < LAND_WIDTH; ++x)
     {
         for (int y = 0; y < LAND_HEIGHT; ++y)
         {
-            if (get_land_at(m, x, y))
-                set_pixel(x, y, COLOR_MOAG_GRAY);
+            if (get_land_at(m, x, y)) {
+                SDL_RenderDrawPoint(main_renderer, x, y);
+            }
         }
     }
 
@@ -145,39 +169,27 @@ void draw(struct moag *m)
                       m->players[i].tank.y - 13,
                       m->players[i].tank.angle,
                       m->players[i].tank.facingleft);
-            draw_string_centered(m->players[i].tank.x,
-                                 m->players[i].tank.y - 36,
-                                 COLOR_MOAG_WHITE,
-                                 m->players[i].name);
-        }
-    }
-
-    for (int i = 0; i < 10; ++i)
-    {
-        if (kfire && SDL_GetTicks() - kfire_held_start >= (i * 200))
-        {
-            draw_block(LAND_WIDTH / 2 - 75 + i * 10, LAND_HEIGHT - 17, 10, 7, COLOR_MOAG_LIGHT_GRAY);
-        }
-        else
-        {
-            draw_block(LAND_WIDTH / 2 - 75 + i * 10, LAND_HEIGHT - 16, 10, 5, COLOR_MOAG_DARK_GRAY);
         }
     }
 
     del_chat_line();
     for (int i = 0; i < CHAT_LINES; i++)
     {
-        if (chatlines[i].str)
+        if (chatlines[i].text)
         {
-            draw_string(4, 4 + 12 * i, COLOR_MOAG_WHITE, chatlines[i].str);
             int w, h;
-            get_string_size(chatlines[i].str, &w, &h);
+            SDL_QueryTexture(chatlines[i].text, NULL, NULL, &w, &h);
+            SDL_Rect src = {4, 4 + 12 * i, w, h};
+            SDL_RenderCopy(main_renderer, chatlines[i].text, NULL, &src);
         }
     }
-    if (typing_str)
+    if (SDL_IsTextInputActive())
     {
-        draw_block(6, 8 + 12 * (CHAT_LINES), 4, 4, COLOR_MOAG_LIGHT_GRAY);
-        draw_string(16, 4 + 12 * (CHAT_LINES), COLOR_MOAG_LIGHT_GRAY, typing_str);
+        SDL_SetRenderDrawColor(main_renderer, 128, 128, 128, 255);
+        SDL_Rect rect = {6, 8 + 12 * (CHAT_LINES), 4, 4};
+        SDL_RenderDrawRect(main_renderer, &rect);
+
+        //draw_string(16, 4 + 12 * (CHAT_LINES), COLOR_MOAG_LIGHT_GRAY, typing_str);
     }
 }
 
@@ -191,7 +203,7 @@ void on_receive(struct moag *m, ENetEvent *ev)
     {
         case LAND_CHUNK:
         {
-            struct land_chunk *land = (void *)chunk;
+            struct land_chunk *land = (struct land_chunk *)chunk;
             int i = 0;
             for (int y = land->y; y < land->height + land->y; ++y)
             {
@@ -206,7 +218,7 @@ void on_receive(struct moag *m, ENetEvent *ev)
 
         case PACKED_LAND_CHUNK:
         {
-            struct packed_land_chunk *land = (void *)chunk;
+            struct packed_land_chunk *land = (struct packed_land_chunk *)chunk;
             const size_t packed_len = ev->packet->dataLength - sizeof(struct packed_land_chunk);
             size_t datalen = 0;
             uint8_t *data = rldecode(land->data, packed_len, &datalen);
@@ -229,7 +241,7 @@ void on_receive(struct moag *m, ENetEvent *ev)
 
         case TANK_CHUNK:
         {
-            struct tank_chunk *tank = (void *)chunk;
+            struct tank_chunk *tank = (struct tank_chunk *)chunk;
             int id = tank->id;
 
             assert(id >= 0 && id <= MAX_PLAYERS);
@@ -277,7 +289,7 @@ void on_receive(struct moag *m, ENetEvent *ev)
 
         case BULLET_CHUNK:
         {
-            struct bullet_chunk *bullet = (void *)chunk;
+            struct bullet_chunk *bullet = (struct bullet_chunk *)chunk;
             int id = bullet->id;
 
             if (bullet->action == SPAWN)
@@ -304,7 +316,7 @@ void on_receive(struct moag *m, ENetEvent *ev)
 
         case SERVER_MSG_CHUNK:
         {
-            struct server_msg_chunk *server_msg = (void *)chunk;
+            struct server_msg_chunk *server_msg = (struct server_msg_chunk *)chunk;
             int id = server_msg->id;
             unsigned char len = ev->packet->dataLength - sizeof(struct server_msg_chunk);
 
@@ -314,7 +326,7 @@ void on_receive(struct moag *m, ENetEvent *ev)
                 {
                     int namelen = strlen(m->players[id].name);
                     int linelen = namelen + len + 4;
-                    char *line = safe_malloc(linelen);
+                    char *line = (char *)safe_malloc(linelen);
                     line[0] = '<';
                     for(int i = 0; i < namelen; i++)
                         line[i + 1] = m->players[id].name[i];
@@ -351,7 +363,7 @@ void on_receive(struct moag *m, ENetEvent *ev)
 
         case CRATE_CHUNK:
         {
-            struct crate_chunk *crate = (void *)chunk;
+            struct crate_chunk *crate = (struct crate_chunk *)chunk;
 
             if (crate->action == SPAWN)
             {
@@ -385,10 +397,47 @@ void on_receive(struct moag *m, ENetEvent *ev)
 void client_main(void)
 {
     init_enet_client(HOST, PORT);
-    init_sdl(LAND_WIDTH, LAND_HEIGHT, "MOAG");
 
-    if (!set_font("Nouveau_IBM.ttf", 14))
-        DIE("Failed to open 'Nouveau_IBM.ttf'\n");
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+        std::cerr << SDL_GetError() << std::endl;
+        goto sdl_init_fail;
+    }
+
+    if (TTF_Init() != 0) {
+        std::cerr << SDL_GetError() << std::endl;
+        goto ttf_init_fail;
+    }
+
+    main_window = SDL_CreateWindow("MOAG", -1, -1, LAND_WIDTH, LAND_HEIGHT, 0);
+    if (!main_window) {
+        std::cerr << SDL_GetError() << std::endl;
+        goto main_window_fail;
+    }
+
+    main_renderer = SDL_CreateRenderer(main_window, -1, SDL_RENDERER_ACCELERATED);
+    if (!main_renderer) {
+        std::cerr << SDL_GetError() << std::endl;
+        goto main_renderer_fail;
+    }
+
+    tank_texture = load_texture_from_file("tank.png");
+    turret_texture = load_texture_from_file("turret.png");
+    bullet_texture = load_texture_from_file("bullet.png");
+    crate_texture = load_texture_from_file("crate.png");
+    if (!tank_texture || !turret_texture || !bullet_texture || !crate_texture) {
+        std::cerr << SDL_GetError() << std::endl;
+        goto texture_load_fail;
+    }
+    SDL_QueryTexture(tank_texture, NULL, NULL, &tank_width, &tank_height);
+    SDL_QueryTexture(turret_texture, NULL, NULL, &turret_width, &turret_height);
+    SDL_QueryTexture(bullet_texture, NULL, NULL, &bullet_width, &bullet_height);
+    SDL_QueryTexture(crate_texture, NULL, NULL, &crate_width, &crate_height);
+
+    main_font = TTF_OpenFont("Nouveau_IBM.ttf", 14);
+    if (!main_font) {
+        std::cerr << SDL_GetError() << std::endl;
+        goto font_load_fail;
+    }
 
     struct moag moag;
 
@@ -396,28 +445,35 @@ void client_main(void)
 
     ENetEvent enet_ev;
 
-    while (!is_closed()) {
+    while (true) {
+        SDL_Event ev;
+        while (SDL_PollEvent(&ev)) {
+            switch (ev.type) {
+            case SDL_QUIT:
+                goto end_loop;
+                break;
+            } 
+        }
 
-        grab_events();
+        auto kb = SDL_GetKeyboardState(NULL);
 
-        if (typing_str && is_text_input())
+        if (SDL_IsTextInputActive())
         {
-            if (is_key_down(SDLK_ESCAPE)
-                || is_key_down(SDLK_LEFT)
-                || is_key_down(SDLK_RIGHT)
-                || is_key_down(SDLK_UP)
-                || is_key_down(SDLK_DOWN))
+            if (kb[SDL_SCANCODE_ESCAPE]
+                || kb[SDL_SCANCODE_LEFT]
+                || kb[SDL_SCANCODE_RIGHT]
+                || kb[SDL_SCANCODE_UP]
+                || kb[SDL_SCANCODE_DOWN])
             {
-                typing_str = NULL;
-                stop_text_input();
+                SDL_StopTextInput();
             }
-            else if (is_key_down(SDLK_RETURN))
+            else if (kb[SDL_SCANCODE_RETURN])
             {
                 // length of typing_str including null + sizeof(client_msg_chunk)
                 unsigned char buffer[257];
                 size_t pos = 0;
 
-                unsigned char len = strlen(typing_str)+1;
+                unsigned char len = typing_str.length() + 1;
                 write8(buffer, &pos, CLIENT_MSG_CHUNK);
                 //write8(buffer, &pos, len);
                 for (int i = 0; i < len; ++i)
@@ -425,77 +481,77 @@ void client_main(void)
 
                 send_packet(buffer, pos, false, true);
 
-                stop_text_input();
-                typing_str = NULL;
-                stop_text_input();
+                SDL_StopTextInput();
             }
         }
         else
         {
-            if (is_key_down(SDLK_LEFT) && !kleft)
+            if (kb[SDL_SCANCODE_LEFT] && !kleft)
             {
                 send_input_chunk(KLEFT_PRESSED, 0);
                 kleft = true;
             }
-            else if (!is_key_down(SDLK_LEFT) && kleft)
+            else if (!kb[SDL_SCANCODE_LEFT] && kleft)
             {
                 send_input_chunk(KLEFT_RELEASED, 0);
                 kleft = false;
             }
 
-            if (is_key_down(SDLK_RIGHT) && !kright)
+            if (kb[SDL_SCANCODE_RIGHT] && !kright)
             {
                 send_input_chunk(KRIGHT_PRESSED, 0);
                 kright = true;
             }
-            else if (!is_key_down(SDLK_RIGHT) && kright)
+            else if (!kb[SDL_SCANCODE_RIGHT] && kright)
             {
                 send_input_chunk(KRIGHT_RELEASED, 0);
                 kright = false;
             }
 
-            if (is_key_down(SDLK_UP) && !kup)
+            if (kb[SDL_SCANCODE_UP] && !kup)
             {
                 send_input_chunk(KUP_PRESSED, 0);
                 kup = true;
             }
-            else if (!is_key_down(SDLK_UP) && kup)
+            else if (!kb[SDL_SCANCODE_UP] && kup)
             {
                 send_input_chunk(KUP_RELEASED, 0);
                 kup = false;
             }
 
-            if (is_key_down(SDLK_DOWN) && !kdown)
+            if (kb[SDL_SCANCODE_DOWN] && !kdown)
             {
                 send_input_chunk(KDOWN_PRESSED, 0);
                 kdown = true;
             }
-            else if (!is_key_down(SDLK_DOWN) && kdown)
+            else if (!kb[SDL_SCANCODE_DOWN] && kdown)
             {
                 send_input_chunk(KDOWN_RELEASED, 0);
                 kdown = false;
             }
 
-            if (is_key_down(' ') && !kfire)
+            if (kb[SDL_SCANCODE_SPACE] && !kfire)
             {
                 send_input_chunk(KFIRE_PRESSED, 0);
                 kfire = true;
                 kfire_held_start = SDL_GetTicks();
             }
-            else if (!is_key_down(' ') && kfire)
+            else if (!kb[SDL_SCANCODE_SPACE] && kfire)
             {
                 send_input_chunk(KFIRE_RELEASED, SDL_GetTicks() - kfire_held_start);
                 kfire = false;
                 kfire_held_start = 0;
             }
 
-            if (is_key_down('t'))
+            if (kb[SDL_SCANCODE_T])
             {
-                typing_str = start_text_input();
+                SDL_StartTextInput();
+                typing_str = "";
             }
-            if (is_key_down('/'))
+            if (kb[SDL_SCANCODE_SLASH])
             {
-                typing_str = start_text_cmd_input();
+                SDL_StartTextInput();
+                typing_str = "/";
             }
         }
 
@@ -508,7 +564,7 @@ void client_main(void)
 
                 case ENET_EVENT_TYPE_DISCONNECT:
                     LOG("Disconnected from server.\n");
-                    close_window();
+                    goto end_loop;
                     break;
 
                 case ENET_EVENT_TYPE_RECEIVE:
@@ -521,16 +577,30 @@ void client_main(void)
             }
         }
 
-        SDL_FillRect(SDL_GetVideoSurface(), NULL, COLOR_BLACK);
+        SDL_SetRenderDrawColor(main_renderer, 0, 0, 0, 255);
+        SDL_RenderClear(main_renderer);
         draw(&moag);
         char buf[256];
         sprintf(buf, "%u", get_peer()->roundTripTime);
-        draw_string_right(LAND_WIDTH, 0, COLOR_GREEN, buf);
-        SDL_Flip(SDL_GetVideoSurface());
+        //draw_string_right(LAND_WIDTH, 0, COLOR_GREEN, buf);
+        SDL_RenderPresent(main_renderer);
     }
+end_loop:
 
-    uninit_sdl();
+    TTF_CloseFont(main_font);
+font_load_fail:
+texture_load_fail:
+    SDL_DestroyTexture(tank_texture);
+    SDL_DestroyTexture(turret_texture);
+    SDL_DestroyTexture(bullet_texture);
+    SDL_DestroyTexture(crate_texture);
+    SDL_DestroyRenderer(main_renderer);
+main_renderer_fail:
+    SDL_DestroyWindow(main_window);
+main_window_fail:
+    TTF_Quit();
+ttf_init_fail:
+    SDL_Quit();
+sdl_init_fail:
     uninit_enet();
-
-    exit(EXIT_SUCCESS);
 }
