@@ -38,15 +38,28 @@ static SDL_Texture *load_texture_from_file(const char *filename)
     return texture;
 }
 
-static SDL_Texture *create_string_texture(const char *text)
+static SDL_Texture *create_string_texture(const char *text, SDL_Color c={255, 255, 255})
 {
-    auto surface = TTF_RenderText_Solid(main_font, text, {255, 255, 255});
+    auto surface = TTF_RenderText_Solid(main_font, text, c);
     if (!surface) {
         return nullptr;
     }
     auto texture = SDL_CreateTextureFromSurface(main_renderer, surface);
     SDL_FreeSurface(surface);
     return texture;
+}
+
+static void quick_render_string(int x, int y, const char *text, SDL_Color c={255, 255, 255})
+{
+    auto texture = create_string_texture(text);
+    if (!texture) {
+        return;
+    }
+    int w, h;
+    SDL_QueryTexture(texture, NULL, NULL, &w, &h, c);
+    SDL_Rect src = {x, y, w, h};
+    SDL_RenderCopy(main_renderer, texture, NULL, &src);
+    SDL_DestroyTexture(texture);
 }
 
 #define BUFLEN          256
@@ -583,7 +596,7 @@ void client_main(void)
         draw(&moag);
         char buf[256];
         sprintf(buf, "%u", get_peer()->roundTripTime);
-        //draw_string_right(LAND_WIDTH, 0, COLOR_GREEN, buf);
+        quick_render_string(LAND_WIDTH - 30, 0, buf);
         SDL_RenderPresent(main_renderer);
     }
 end_loop:

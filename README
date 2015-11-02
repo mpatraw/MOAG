@@ -12,6 +12,7 @@ or Scorched Earth.
 
 	BUILDING
 
-You can either build with `scons` or `make`, if you're on windows use
+You can either build with `cmake`, `scons`, or `make`. CMake will
+eventually be the only means. If you're on windows use
 `scons --platform=mingw32`.
 

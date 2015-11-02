@@ -2,5 +2,5 @@
 moag
 CMakeCache.txt
 CMakeFiles/
-Makefile
+build/Makefile
 cmake_install.cmake
