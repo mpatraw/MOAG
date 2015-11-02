@@ -8,14 +8,6 @@ extern "C" {
 #include "moag.h"
 }
 
-#define GRAVITY             0.1
-#define BOUNCER_BOUNCES     11
-#define TUNNELER_TUNNELINGS 20
-#define SHOTGUN_PELLETS     6
-#define RESPAWN_TIME        40
-#define LADDER_TIME         60
-#define LADDER_LENGTH       64
-
 enum
 {
     MISSILE,
@@ -178,7 +170,7 @@ void kill_tank(struct moag *m, int id)
 {
     m->players[id].tank.x = -30;
     m->players[id].tank.y = -30;
-    m->players[id].spawn_timer = RESPAWN_TIME;
+    m->players[id].spawn_timer = g_respawn_time;
     broadcast_tank_chunk(m, KILL, id);
 }
 
@@ -237,7 +229,7 @@ void spawn_tank(struct moag *m, int id)
 {
     m->players[id].connected = true;
     m->players[id].spawn_timer = 0;
-    m->players[id].ladder_timer = LADDER_TIME;
+    m->players[id].ladder_timer = g_ladder_time;
     m->players[id].ladder_count = 3;
     m->players[id].kleft = false;
     m->players[id].kright = false;
@@ -295,7 +287,7 @@ void launch_ladder(struct moag *m, int x, int y)
     while (m->bullets[i].active)
         if (++i >= MAX_BULLETS)
             return;
-    m->bullets[i].active = LADDER_LENGTH;
+    m->bullets[i].active = g_ladder_length;
     m->bullets[i].type = LADDER;
     m->bullets[i].x = x;
     m->bullets[i].y = y;
@@ -462,7 +454,7 @@ void tank_update(struct moag *m, int id)
     bool moved = false;
     bool grav = true;
     if (m->players[id].ladder_timer >= 0 && (!m->players[id].kleft || !m->players[id].kright))
-        m->players[id].ladder_timer = LADDER_TIME;
+        m->players[id].ladder_timer = g_ladder_time;
 
     if (m->players[id].kleft && m->players[id].kright)
     {
@@ -471,7 +463,7 @@ void tank_update(struct moag *m, int id)
             if (get_land_at(m, t->x, t->y + 1))
                 m->players[id].ladder_timer--;
             else
-                m->players[id].ladder_timer = LADDER_TIME;
+                m->players[id].ladder_timer = g_ladder_time;
         }
         else if (m->players[id].ladder_timer == 0)
         {
@@ -480,7 +472,7 @@ void tank_update(struct moag *m, int id)
                 launch_ladder(m, t->x, t->y);
                 m->players[id].ladder_count--;
             }
-            m->players[id].ladder_timer = LADDER_TIME;
+            m->players[id].ladder_timer = g_ladder_time;
         }
     }
     else if (m->players[id].kleft)
@@ -558,7 +550,7 @@ void tank_update(struct moag *m, int id)
 
     if (abs(t->x - m->crate.x) < 14 && abs(t->y - m->crate.y) < 14)
     {
-        m->players[id].ladder_timer = LADDER_TIME;
+        m->players[id].ladder_timer = g_ladder_time;
         if (m->crate.type == TRIPLER)
             t->num_burst *= 3;
         else
@@ -607,7 +599,7 @@ void tank_update(struct moag *m, int id)
         float burst_spread = 4.0;
         if (t->bullet == SHOTGUN)
         {
-            t->num_burst *= SHOTGUN_PELLETS;
+            t->num_burst *= g_shotgun_pellets;
             burst_spread = 2.0;
         }
         int num_burst = t->bullet == MISSILE ? 1 : t->num_burst;
@@ -770,7 +762,7 @@ void bullet_detonate(struct moag *m, int id)
 
         case BOUNCER:
             if (b->active > 0)
-                b->active = -BOUNCER_BOUNCES;
+                b->active = -g_bouncer_bounces;
             b->active++;
             bounce_bullet(m, id, hitx, hity);
             b->obj.vel = VEC2_MUL_CONST(b->obj.vel, 0.9);
@@ -779,7 +771,7 @@ void bullet_detonate(struct moag *m, int id)
 
         case TUNNELER:
             if (b->active > 0)
-                b->active = -TUNNELER_TUNNELINGS;
+                b->active = -g_tunnel_tunnelings;
             b->active++;
             explode(m, hitx, hity, 9, E_EXPLODE);
             explode(m, hitx + 8 * dx, hity + 8 * dy, 9, E_EXPLODE);
@@ -870,14 +862,14 @@ void bullet_update(struct moag *m, int id)
 
         if (get_land_at(m, b->x, b->y) == 1)
         {
-            explode(m, b->x, b->y + LADDER_LENGTH - b->active, 1, E_SAFE_EXPLODE);
+            explode(m, b->x, b->y + g_ladder_length - b->active, 1, E_SAFE_EXPLODE);
             bullet_detonate(m, id);
         }
         return;
     }
 
     b->obj.pos = VEC2_ADD(b->obj.pos, b->obj.vel);
-    b->obj.vel = VEC2_ADD(b->obj.vel, VEC2(0, GRAVITY));
+    b->obj.vel = VEC2_ADD(b->obj.vel, VEC2(0, g_gravity));
     b->x = (int)b->obj.pos.x;
     b->y = (int)b->obj.pos.y;
     if (get_land_at(m, b->x, b->y))
@@ -893,9 +885,9 @@ void bullet_update(struct moag *m, int id)
     }
 
     if (b->type == BOUNCER && b->active == 1)
-        b->active = -BOUNCER_BOUNCES;
+        b->active = -g_bouncer_bounces;
     if (b->type == TUNNELER && b->active == 1)
-        b->active = -TUNNELER_TUNNELINGS;
+        b->active = -g_tunnel_tunnelings;
 
     for (int i = 0; i < g_max_players; i++)
     {
@@ -918,7 +910,7 @@ void bullet_update(struct moag *m, int id)
             bullet_detonate(m, id);
             float angle = -RAD2DEG(atan2(b->obj.vel.y, b->obj.vel.x));
             float speed = VEC2_MAG(b->obj.vel);
-            int shots = SHOTGUN_PELLETS;
+            int shots = g_shotgun_pellets;
             for (int i = 0; i < shots; i++)
                 fire_bullet_ang(m, m->crate.type, m->crate.x, m->crate.y - 4,
                         angle - (shots-1)*2 + i*4, speed*0.5);

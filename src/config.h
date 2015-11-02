@@ -11,5 +11,14 @@ const int g_max_players = 8;
 const int g_connect_timeout = 10000;
 const int g_number_of_channels = 2;
 
+// Server constants.
+const int g_gravity = 1;
+const int g_bouncer_bounces = 11;
+const int g_tunnel_tunnelings = 20;
+const int g_shotgun_pellets = 6;
+const int g_respawn_time = 40;
+const int g_ladder_time = 60;
+const int g_ladder_length = 64;
+
 #endif
 
