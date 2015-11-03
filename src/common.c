@@ -4,50 +4,6 @@
 
 #include "common.h"
 
-static void (*safe_malloc_callback) (int error_number, size_t requested);
-
-void safe_malloc_set_callback(void (*callback) (int, size_t))
-{
-    safe_malloc_callback = callback;
-}
-
-void *safe_malloc(size_t len)
-{
-    void *p;
-    if (len == 0)
-        len = 1;
-    p = malloc(len);
-    if (!p)
-    {
-        if (safe_malloc_callback)
-            safe_malloc_callback(errno, len);
-        exit(EXIT_FAILURE);
-    }
-    return p;
-}
-
-void *safe_realloc(void *mem, size_t len)
-{
-    void *p;
-    if (len == 0)
-        len = 1;
-    p = realloc(mem, len);
-    if (!p)
-    {
-        if (safe_malloc_callback)
-            safe_malloc_callback(errno, len);
-        exit(EXIT_FAILURE);
-    }
-    return p;
-}
-
-char *string_duplicate(const char *str)
-{
-    char *s = safe_malloc(strlen(str) + 1);
-    strcpy(s, str);
-    return s;
-}
-
 /******************************************************************************\
 \******************************************************************************/
 
@@ -186,7 +142,7 @@ struct chunk_header *receive_chunk(ENetPacket *packet)
 {
     size_t pos = 0;
 
-    struct chunk_header *chunk = safe_malloc(packet->dataLength);
+    struct chunk_header *chunk = malloc(packet->dataLength);
     if (!chunk)
         return NULL;
 
