@@ -290,7 +290,8 @@ void on_receive(struct moag *m, ENetEvent *ev)
             }
             else
             {
-                DIE("Invalid TANK_CHUNK type.\n");
+                fprintf(stderr, "Invalid TANK_CHUNK type.\n");
+				exit(-1);
             }
             break;
         }
@@ -317,7 +318,8 @@ void on_receive(struct moag *m, ENetEvent *ev)
             }
             else
             {
-                DIE("Invalid BULLET_CHUNK type.\n");
+                fprintf(stderr, "Invalid BULLET_CHUNK type.\n");
+				exit(-1);
             }
             break;
         }
@@ -364,7 +366,8 @@ void on_receive(struct moag *m, ENetEvent *ev)
                 }
 
                 default:
-                    DIE("Invalid SERVER_MSG_CHUNK action (%d).\n", server_msg->action);
+                    fprintf(stderr, "Invalid SERVER_MSG_CHUNK action (%d).\n", server_msg->action);
+					exit(-1);
             }
             break;
         }
@@ -390,13 +393,15 @@ void on_receive(struct moag *m, ENetEvent *ev)
             }
             else
             {
-                DIE("Invalid CRATE_CHUNK type.\n");
+                fprintf(stderr, "Invalid CRATE_CHUNK type.\n");
+				exit(-1);
             }
             break;
         }
 
         default:
-            DIE("Invalid CHUNK type (%d).\n", chunk->type);
+            fprintf(stderr, "Invalid CHUNK type (%d).\n", chunk->type);
+			exit(-1);
     }
 
     free(chunk);

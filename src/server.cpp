@@ -551,7 +551,7 @@ void tank_update(struct moag *m, int id)
             case 13: strcat(notice, "Cluster Bouncer"); break;
             case 14: strcat(notice, "Shotgun"); break;
             case 16: strcat(notice, "*Triple*"); break;
-            default: strcat(notice, "???"); ERR("BTYPE: %d\n", m->crate.type); break;
+            default: strcat(notice, "???"); break;
         }
         broadcast_chat(-1, SERVER_NOTICE, notice, strlen(notice) + 1);
     }

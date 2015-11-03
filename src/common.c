@@ -22,10 +22,12 @@ void init_enet_client(const char *ip, unsigned port)
 {
     if (!_initialized)
     {
-        if (enet_initialize() != 0)
-            DIE("An error occurred while initializing ENet.\n");
-        else
+        if (enet_initialize() != 0) {
+            fprintf(stderr, "could not initialize enet\n");
+            exit(-1);
+	} else {
             atexit(enet_deinitialize);
+	}
     }
     _initialized = true;
 
@@ -34,8 +36,10 @@ void init_enet_client(const char *ip, unsigned port)
 #else
     _client = enet_host_create(NULL, g_max_players, g_number_of_channels, 0, 0);
 #endif
-    if (!_client)
-        DIE("An error occurred while trying to create an ENet client host.\n");
+    if (!_client) {
+        fprintf(stderr, "could not initialize enet\n");
+        exit(-1);
+    }
 
     ENetAddress address;
     enet_address_set_host(&address, ip);
@@ -46,8 +50,10 @@ void init_enet_client(const char *ip, unsigned port)
 #else
     _peer = enet_host_connect(_client, &address, g_number_of_channels, 0);
 #endif
-    if (!_peer)
-        DIE("No available peers for initiating an ENet connection.\n");
+    if (!_peer) {
+        fprintf(stderr, "no available peers\n");
+        exit(-1);
+    }
 
     ENetEvent ev;
 
@@ -55,7 +61,8 @@ void init_enet_client(const char *ip, unsigned port)
         ev.type != ENET_EVENT_TYPE_CONNECT)
     {
         enet_peer_reset(_peer);
-        DIE("Connection to %s timed out.\n", ip);
+        fprintf(stderr, "connection to %s timed out\n", ip);
+        exit(-1);
     }
 }
 
@@ -63,10 +70,12 @@ void init_enet_server(unsigned port)
 {
     if (!_initialized)
     {
-        if (enet_initialize() != 0)
-            DIE("An error occurred while initializing ENet.\n");
-        else
+        if (enet_initialize() != 0) {
+            fprintf(stderr, "error occured initializing enet\n");
+            exit(-1);
+	} else {
             atexit(enet_deinitialize);
+	}
     }
     _initialized = true;
 
@@ -79,8 +88,10 @@ void init_enet_server(unsigned port)
 #else
     _server = enet_host_create(&address, g_max_players, g_number_of_channels, 0, 0);
 #endif
-    if (!_server)
-        DIE("An error occurred while trying to create an ENet server host.\n");
+    if (!_server) {
+        fprintf(stderr, "an error occurred while trying to create an ENet server host.\n");
+	exit(-1);
+    }
 }
 
 void uninit_enet(void)
@@ -185,12 +196,14 @@ struct chunk_header *receive_chunk(ENetPacket *packet)
                 land->x + land->width > LAND_WIDTH ||
                 land->y + land->height > LAND_HEIGHT)
             {
-                DIE("Bad LAND_CHUNK.");
+                fprintf(stderr, "bad chunk\n");
+		exit(-1);
             }
 
             if (pos == packet->dataLength)
             {
-                DIE("Bad LAND_CHUNK (Zero-length).\n");
+                fprintf(stderr, "Bad LAND_CHUNK (Zero-length).\n");
+                exit(-1);
             }
 
             memcpy(land->data, packet->data + pos, packet->dataLength - pos);
@@ -214,12 +227,14 @@ struct chunk_header *receive_chunk(ENetPacket *packet)
                 land->x + land->width > LAND_WIDTH ||
                 land->y + land->height > LAND_HEIGHT)
             {
-                DIE("Bad PACKED_LAND_CHUNK.");
+                fprintf(stderr, "Bad LAND_CHUNK.\n");
+                exit(-1);
             }
 
             if (pos == packet->dataLength)
             {
-                DIE("Bad PACKED_LAND_CHUNK (Zero-length).\n");
+                fprintf(stderr, "Bad LAND_CHUNK (Zero-length).\n");
+                exit(-1);
             }
 
             memcpy(land->data, packet->data + pos, packet->dataLength - pos);
