@@ -46,7 +46,7 @@ static inline void broadcast_packed_land_chunk(struct moag *m, int x, int y, int
     if (w <= 0 || h <= 0 || x + w > LAND_WIDTH || y + h > LAND_HEIGHT)
         return;
 
-    uint8_t *land = (uint8_t *)safe_malloc(w * h);
+    uint8_t *land = (uint8_t *)malloc(w * h);
     int i = 0;
     for (int yy = y; yy < h + y; ++yy)
     {
@@ -61,7 +61,7 @@ static inline void broadcast_packed_land_chunk(struct moag *m, int x, int y, int
     uint8_t *packed_data = rlencode(land, w * h, &packed_data_len);
     free(land);
 
-    struct packed_land_chunk *chunk = (struct packed_land_chunk *)safe_malloc(sizeof *chunk + packed_data_len);
+    struct packed_land_chunk *chunk = (struct packed_land_chunk *)malloc(sizeof *chunk + packed_data_len);
 
     chunk->_.type = PACKED_LAND_CHUNK;
     chunk->x = x;
@@ -129,7 +129,7 @@ static inline void broadcast_crate_chunk(struct moag *m, int action)
 
 static inline void broadcast_chat(int id, char action, const char *msg, unsigned char len)
 {
-    struct server_msg_chunk *chunk = (struct server_msg_chunk *)safe_malloc(sizeof *chunk + len);
+    struct server_msg_chunk *chunk = (struct server_msg_chunk *)malloc(sizeof *chunk + len);
 
     chunk->_.type = SERVER_MSG_CHUNK;
     chunk->id = id;
@@ -977,7 +977,12 @@ static void on_receive(struct moag *m, ENetEvent *ev)
                     uint16_t power = input->ms;
                     m->players[id].kfire = false;
                     m->players[id].tank.power = power / 2;
-                    m->players[id].tank.power = CLAMP(0, 1000, m->players[id].tank.power);
+					auto p = &m->players[id].tank.power;
+					if (*p < 0) {
+						*p = 0;
+					} else if (*p > 1000) {
+						*p = 1000;
+					}
                     break;
                 }
             }

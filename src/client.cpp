@@ -334,7 +334,7 @@ void on_receive(struct moag *m, ENetEvent *ev)
                 {
                     int namelen = strlen(m->players[id].name);
                     int linelen = namelen + len + 4;
-                    char *line = (char *)safe_malloc(linelen);
+                    char *line = (char *)malloc(linelen);
                     line[0] = '<';
                     for(int i = 0; i < namelen; i++)
                         line[i + 1] = m->players[id].name[i];
@@ -482,6 +482,18 @@ void client_main(void)
 					kfire_held_start = SDL_GetTicks();
 				}
 
+				if (ev.key.keysym.sym == SDLK_t)
+				{
+					SDL_StartTextInput();
+					typing_str = "";
+				}
+
+				if (ev.key.keysym.sym == SDLK_SLASH)
+				{
+					SDL_StartTextInput();
+					typing_str = "/";
+				}
+
 				if (ev.key.keysym.sym == SDLK_ESCAPE) {
 					goto end_loop;
 				}
@@ -522,18 +534,14 @@ void client_main(void)
 
         auto kb = SDL_GetKeyboardState(NULL);
 
-        if (SDL_IsTextInputActive())
-        {
+        if (SDL_IsTextInputActive()) {
             if (kb[SDL_SCANCODE_ESCAPE]
                 || kb[SDL_SCANCODE_LEFT]
                 || kb[SDL_SCANCODE_RIGHT]
                 || kb[SDL_SCANCODE_UP]
-                || kb[SDL_SCANCODE_DOWN])
-            {
+                || kb[SDL_SCANCODE_DOWN]) {
                 SDL_StopTextInput();
-            }
-            else if (kb[SDL_SCANCODE_RETURN])
-            {
+            } else if (kb[SDL_SCANCODE_RETURN]) {
                 // length of typing_str including null + sizeof(client_msg_chunk)
                 unsigned char buffer[257];
                 size_t pos = 0;
@@ -541,25 +549,13 @@ void client_main(void)
                 unsigned char len = typing_str.length() + 1;
                 write8(buffer, &pos, CLIENT_MSG_CHUNK);
                 //write8(buffer, &pos, len);
-                for (int i = 0; i < len; ++i)
+                for (int i = 0; i < len; ++i) {
                     write8(buffer, &pos, typing_str[i]);
+				}
 
                 send_packet(buffer, pos, false, true);
 
                 SDL_StopTextInput();
-            }
-        }
-        else
-        {
-            if (kb[SDL_SCANCODE_T])
-            {
-                SDL_StartTextInput();
-                typing_str = "";
-            }
-            if (kb[SDL_SCANCODE_SLASH])
-            {
-                SDL_StartTextInput();
-                typing_str = "/";
             }
         }
 

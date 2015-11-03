@@ -27,23 +27,6 @@
 #define DEG2RAD(deg)    ((deg) * (M_PI / 180))
 #define RAD2DEG(rad)    ((rad) * (180 / M_PI))
 
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define CLAMP(min, max, val) MAX(min, MIN(max, val))
-#define WITHIN(min, max, val) ((val) >= (min) && (val) <= (max))
-#define LERP(a, b, t) ((a) + (t) * ((b) - (a))
-
-#define DIST(x1, y1, x2, y2) sqrt(SQ(x1 - x2) + SQ(y1 - y2))
-
-/******************************************************************************\
-Core utility functions.
-\******************************************************************************/
-
-void safe_malloc_set_callback(void (*callback) (int, size_t));
-void *safe_malloc(size_t len);
-void *safe_realloc(void *mem, size_t len);
-char *string_duplicate(const char *str);
-
 /******************************************************************************\
 Networking.
 \******************************************************************************/
