@@ -26,6 +26,45 @@ static int bullet_height;
 static int crate_width;
 static int crate_height;
 
+class land_texture final : public m::land_delegate {
+public:
+    land_texture(SDL_Renderer *renderer) : renderer{renderer} {
+        texture = SDL_CreateTexture(
+                renderer,
+                SDL_PIXELFORMAT_RGBA8888,
+                SDL_TEXTUREACCESS_TARGET,
+                g_land_width, g_land_height);
+    }
+    land_texture(const land_texture &) = delete;
+    ~land_texture() {
+        if (texture) {
+            SDL_DestroyTexture(texture);
+        }
+    }
+
+    void set_dirt(int x, int y) {
+        SDL_SetRenderTarget(renderer, texture);
+        SDL_SetRenderDrawColor(renderer, 128, 128, 128, 255);
+        SDL_RenderDrawPoint(renderer, x, y);
+        SDL_SetRenderTarget(renderer, nullptr);
+    }
+
+    void set_air(int x, int y) {
+        SDL_SetRenderTarget(renderer, texture);
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderDrawPoint(renderer, x, y);
+        SDL_SetRenderTarget(renderer, nullptr);
+    }
+
+    const SDL_Texture *sdl_texture() const { return texture; }
+
+private:
+    SDL_Renderer *renderer;
+    SDL_Texture *texture;
+};
+
+static m::land main_land;
+
 static SDL_Texture *load_texture_from_file(const char *filename)
 {
     auto surface = IMG_Load(filename);
@@ -152,15 +191,8 @@ void draw_bullets(struct moag *m)
 void draw(struct moag *m)
 {
     SDL_SetRenderDrawColor(main_renderer, 128, 128, 128, 255);
-    for (int x = 0; x < LAND_WIDTH; ++x)
-    {
-        for (int y = 0; y < LAND_HEIGHT; ++y)
-        {
-            if (get_land_at(m, x, y)) {
-                SDL_RenderDrawPoint(main_renderer, x, y);
-            }
-        }
-    }
+    auto del = dynamic_cast<land_texture const *>(main_land.get_delegate());
+    SDL_RenderCopy(main_renderer, const_cast<SDL_Texture *>(del->sdl_texture()), nullptr, nullptr);
 
     if (m->crate.active) {
         draw_crate((m->crate.x - 4) / 10, (m->crate.y - 8) / 10);
@@ -205,17 +237,17 @@ void on_receive(struct moag *m, ENetEvent *ev)
 
     chunk = receive_chunk(ev->packet);
 
-    switch (chunk->type)
-    {
-        case LAND_CHUNK:
-        {
+    switch (chunk->type) {
+        case LAND_CHUNK: {
             struct land_chunk *land = (struct land_chunk *)chunk;
             int i = 0;
-            for (int y = land->y; y < land->height + land->y; ++y)
-            {
-                for (int x = land->x; x < land->width + land->x; ++x)
-                {
-                    set_land_at(m, x, y, land->data[i]);
+            for (int y = land->y; y < land->height + land->y; ++y) {
+                for (int x = land->x; x < land->width + land->x; ++x) {
+                    if (land->data[i]) {
+                        main_land.set_dirt(x, y);
+                    } else {
+                        main_land.set_air(x, y);
+                    }
                     i++;
                 }
             }
@@ -235,7 +267,11 @@ void on_receive(struct moag *m, ENetEvent *ev)
                 if (i >= datalen) break;
                 for (int x = land->x; x < land->width + land->x; ++x)
                 {
-                    set_land_at(m, x, y, data[i]);
+                    if (data[i]) {
+                        main_land.set_dirt(x, y);
+                    } else {
+                        main_land.set_air(x, y);
+                    }
                     i++;
                     if (i >= datalen) break;
                 }
@@ -426,7 +462,8 @@ void client_main(void)
         goto main_window_fail;
     }
 
-    main_renderer = SDL_CreateRenderer(main_window, -1, SDL_RENDERER_ACCELERATED);
+    main_renderer = SDL_CreateRenderer(main_window, -1,
+            SDL_RENDERER_SOFTWARE | SDL_RENDERER_TARGETTEXTURE);
     if (!main_renderer) {
         std::cerr << SDL_GetError() << std::endl;
         goto main_renderer_fail;
@@ -452,8 +489,9 @@ void client_main(void)
     }
 
     struct moag moag;
-
     memset(&moag, 0, sizeof(moag));
+
+    main_land.set_delegate(new land_texture(main_renderer));
 
     ENetEvent enet_ev;
 

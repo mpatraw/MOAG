@@ -13,6 +13,7 @@ namespace m {
 
 class land_delegate {
 public:
+    virtual ~land_delegate() {}
     virtual void set_dirt(int x, int y) = 0;
     virtual void set_air(int x, int y) = 0;
 };
@@ -37,6 +38,8 @@ public:
             delegate->set_air(x, y);
         }
     }
+
+    land_delegate const *get_delegate() const { return delegate.get(); }
 
     bool is_dirt(int x, int y) const {
         return dirt[y * g_land_width + x];
