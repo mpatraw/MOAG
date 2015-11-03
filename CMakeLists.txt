@@ -2,11 +2,10 @@
 cmake_minimum_required(VERSION 2.6)
 project(moag)
 
-set(CMAKE_C_COMPILER clang)
 set(CMAKE_CXX_COMPILER clang++)
 
 set(SOURCES
-    src/common.c
+    src/common.cpp
     src/encoding.cpp
     src/server.cpp
     src/client.cpp

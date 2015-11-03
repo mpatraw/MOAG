@@ -7,10 +7,7 @@
 #include <SDL2/SDL_ttf.h>
 
 #include "moag.hpp"
-
-extern "C" {
-#include "common.h"
-}
+#include "common.hpp"
 
 static SDL_Window *main_window = nullptr;
 static SDL_Renderer *main_renderer = nullptr;

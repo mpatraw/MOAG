@@ -4,10 +4,7 @@
 #include <thread>
 
 #include "moag.hpp"
-
-extern "C" {
-#include "common.h"
-}
+#include "common.hpp"
 
 enum
 {
