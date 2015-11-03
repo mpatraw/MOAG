@@ -118,8 +118,6 @@ static inline void send_input_chunk(int key, uint16_t t)
     send_chunk((struct chunk_header *)&chunk, sizeof chunk, false, true);
 }
 
-uint32_t kfire_held_start = 0;
-
 void draw_tank(int x, int y, int turret_angle, bool facingleft)
 {
     SDL_Rect tank_src = {x - tank_width / 2, y - tank_height, tank_width, tank_height};
@@ -454,6 +452,7 @@ void client_main(void)
 
     memset(&moag, 0, sizeof(moag));
 
+	uint32_t kfire_held_start = 0;
     ENetEvent enet_ev;
 
     while (true) {
