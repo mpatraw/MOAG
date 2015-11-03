@@ -109,158 +109,6 @@ static inline uint32_t read32(unsigned char *buf, size_t *pos)
 }
 
 /******************************************************************************\
-Physics.
-\******************************************************************************/
-
-#define EPSILON         0.000001
-
-struct vec2
-{
-    double x;
-    double y;
-};
-
-#define VEC2(x, y) ((struct vec2){x, y})
-#define VEC2_MAG(a) sqrt((a).x * (a).x + (a).y * (a).y)
-#define VEC2_UNIT(a) VEC2((a).x / VEC2_MAG(a), (a).y / VEC2_MAG(a))
-#define VEC2_ADD(a, b) VEC2((a).x + (b).x, (a).y + (b).y)
-#define VEC2_ADD_CONST(a, f) VEC2((a).x + f, (a).y + f)
-#define VEC2_SUB(a, b) VEC2((a).x - (b).x, (a).y - (b).y)
-#define VEC2_SUB_CONST(a, f) VEC2((a).x - f, (a).y - f)
-#define VEC2_MUL(a, b) VEC2((a).x * (b).x, (a).y * (b).y)
-#define VEC2_MUL_CONST(a, f) VEC2((a).x * f, (a).y * f)
-#define VEC2_DIV(a, b) VEC2((a).x / (b).x, (a).y / (b).y)
-#define VEC2_DIV_CONST(a, f) VEC2((a).x / f, (a).y / f)
-#define VEC2_DOT(a, b) ((a).x * (b).x + (a).y * (b).y)
-
-#define VEC2_DIST(a, b) sqrt(SQ((a).x - (b.x)) + SQ((a).y - (b).y))
-
-struct line
-{
-    struct vec2 beg;
-    struct vec2 end;
-};
-
-#define LINE LINE_XYXY
-#define LINE_VV(v1, v2) ((struct line){v1, v2})
-#define LINE_XYXY(x1, y1, x2, y2) LINE_VV(VEC2(x1, y1), VEC2(x2, y2))
-
-static inline bool vec_inbetween_line(struct line l, struct vec2 v)
-{
-    return fabs(VEC2_DIST(l.beg, v) +
-                VEC2_DIST(l.end, v) -
-                VEC2_DIST(l.beg, l.end)) < EPSILON;
-}
-
-/* Inclusive line intersection. Includes points. (0,0,0,0) intersects with
- * (0,0,0,0) at (0,0).
- */
-static inline bool lines_intersection
-    (struct line first
-    ,struct line second
-    ,struct vec2 *out)
-{
-    struct vec2 e = VEC2_SUB(first.end, first.beg);
-    struct vec2 f = VEC2_SUB(second.end, second.beg);
-    struct vec2 p = VEC2(-e.y, e.x);
-    struct vec2 q = VEC2(-f.y, f.x);
-
-    double fp = VEC2_DOT(f, p);
-    if (fabs(fp) < EPSILON)
-    {
-        if (vec_inbetween_line(first, second.beg))
-        {
-            if (out)
-                *out = second.beg;
-            return true;
-        }
-        else if (vec_inbetween_line(first, second.end))
-        {
-            if (out)
-                *out = second.end;
-            return true;
-        }
-        else
-        {
-            return false;
-        }
-    }
-
-    double h = VEC2_DOT(VEC2_SUB(first.beg, second.beg), p) / fp;
-    double g = VEC2_DOT(VEC2_SUB(first.beg, second.beg), q) / fp;
-    if (h >= 0.0 && h <= 1.0 && g >= 0.0 && g <= 1.0)
-    {
-        if (out)
-            *out = VEC2_ADD(second.beg, VEC2_MUL_CONST(f, h));
-        return true;
-    }
-
-    return false;
-}
-
-struct rect
-{
-    struct vec2 tl;
-    struct vec2 br;
-};
-
-#define RECT RECT_XYWH
-#define RECT_VV(v1, v2) ((struct rect){v1, v2})
-#define RECT_XYXY(x1, y1, x2, y2) RECT_VV(VEC2(x1, y1), VEC2(x2, y2))
-#define RECT_XYWH(x, y, w, h) RECT_XYXY(x, y, x + w, y + w)
-#define RECT_X(r) ((r).tl.x)
-#define RECT_Y(r) ((r).tl.y)
-#define RECT_WIDTH(r) ((r).br.x - (r).tl.x)
-#define RECT_HEIGHT(r) ((r).br.y - (r).tl.y)
-
-#define RECT_ADD(r, v) RECT_VV(VEC2_ADD((r).tl, (v)), VEC2_ADD((r).br, (v))
-#define RECT_SUB(r, v) RECT_VV(VEC2_SUB((r).tl, (v)), VEC2_SUB((r).br, (v))
-#define RECT_MUL(r, v) RECT_VV(VEC2_MUL((r).tl, (v)), VEC2_MUL((r).br, (v))
-#define RECT_DIV(r, v) RECT_VV(VEC2_DIV((r).tl, (v)), VEC2_DIV((r).br, (v))
-
-#define RECT_LEFT_LINE(r) LINE((r).tl.x, (r).tl.y, (r).tl.x, (r).br.y)
-#define RECT_RIGHT_LINE(r) LINE((r).br.x, (r).tl.y, (r).br.x, (r).br.y)
-#define RECT_TOP_LINE(r) LINE((r).tl.x, (r).tl.y, (r).br.x, (r).tl.y)
-#define RECT_BOTTOM_LINE(r) LINE((r).tl.x, (r).br.y, (r).br.x, (r).br.y)
-
-static inline bool rects_intersecting(struct rect r1, struct rect r2)
-{
-    bool xoverlap = WITHIN(r1.tl.x, r1.br.x, RECT_X(r2)) ||
-                    WITHIN(r2.tl.x, r2.br.x, RECT_X(r1));
-
-    bool yoverlap = WITHIN(r1.tl.y, r1.br.y, RECT_Y(r2)) ||
-                    WITHIN(r2.tl.y, r2.br.y, RECT_Y(r1));
-
-    return xoverlap && yoverlap;
-}
-
-static inline bool rect_intersecting_line(struct rect r, struct line l)
-{
-    return lines_intersection(l, RECT_LEFT_LINE(r), NULL) ||
-           lines_intersection(l, RECT_RIGHT_LINE(r), NULL) ||
-           lines_intersection(l, RECT_TOP_LINE(r), NULL) ||
-           lines_intersection(l, RECT_BOTTOM_LINE(r), NULL);
-}
-
-static inline bool vec_within_rect(struct rect r, struct vec2 v)
-{
-    return WITHIN(r.tl.x, r.br.x, v.x) &&
-           WITHIN(r.tl.y, r.br.y, v.y);
-}
-
-static inline bool line_within_rect(struct rect r, struct line l)
-{
-    return vec_within_rect(r, l.beg) &&
-           vec_within_rect(r, l.end);
-}
-
-static inline bool line_overlaps_rect(struct rect r, struct line l)
-{
-    return vec_within_rect(r, l.beg) ||
-           vec_within_rect(r, l.end);
-}
-
-/******************************************************************************\
 Shared structures.
 \******************************************************************************/
 
@@ -475,18 +323,10 @@ void send_chunk(struct chunk_header *chunk, size_t len, bool broadcast, bool rel
 #define LAND_WIDTH      800
 #define LAND_HEIGHT     600
 
-/* WIP. Object is effected by physics. */
-struct object
-{
-    struct vec2 pos;
-    struct vec2 vel;
-};
-#define OBJECT(derived) ((struct object)derived)
-
 struct tank
 {
-    struct object obj;
     int x, y;
+    int velx, vely;
     int angle, power;
     char bullet;
     int num_burst;
@@ -495,15 +335,14 @@ struct tank
 
 struct bullet
 {
-    struct object obj;
     int x, y;
+    int velx, vely;
     char active;
     char type;
 };
 
 struct crate
 {
-    struct object obj;
     int x, y;
     bool active;
     char type;

@@ -106,6 +106,7 @@ private:
 };
 
 static message_scroller chat_line;
+static std::string typing_str;
 
 static inline void send_input_chunk(int key, uint16_t t)
 {
@@ -115,14 +116,8 @@ static inline void send_input_chunk(int key, uint16_t t)
     chunk.ms = t;
 
     send_chunk((struct chunk_header *)&chunk, sizeof chunk, false, true);
-
-    std::cout << static_cast<unsigned int>(time(nullptr))
-              << ": " << __PRETTY_FUNCTION__
-              << ": " << sizeof(chunk)
-              << "\n";
 }
 
-std::string typing_str;
 bool kleft = false;
 bool kright = false;
 bool kup = false;
@@ -157,7 +152,7 @@ void draw_bullets(struct moag *m)
     {
         struct bullet *b = &m->bullets[i];
         if (b->active) {
-            SDL_Rect src = {b->x, b->y, bullet_width, bullet_height};
+            SDL_Rect src = {b->x / 10, b->y / 10, bullet_width, bullet_height};
             SDL_RenderCopy(main_renderer, bullet_texture, NULL, &src);
         }
     }
@@ -176,8 +171,9 @@ void draw(struct moag *m)
         }
     }
 
-    if (m->crate.active)
-        draw_crate(m->crate.x-4,m->crate.y-8);
+    if (m->crate.active) {
+        draw_crate((m->crate.x - 4) / 10, (m->crate.y - 8) / 10);
+	}
 
     draw_bullets(m);
 
@@ -185,8 +181,8 @@ void draw(struct moag *m)
     {
         if (m->players[i].connected)
         {
-            draw_tank(m->players[i].tank.x,
-                      m->players[i].tank.y,
+            draw_tank(m->players[i].tank.x / 10,
+                      m->players[i].tank.y / 10,
                       m->players[i].tank.angle,
                       m->players[i].tank.facingleft);
         }
@@ -587,7 +583,6 @@ void client_main(void)
                     break;
 
                 case ENET_EVENT_TYPE_DISCONNECT:
-                    std::cout << "Disconnected from server.\n";
                     goto end_loop;
                     break;
 
