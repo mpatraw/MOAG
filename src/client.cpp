@@ -118,11 +118,6 @@ static inline void send_input_chunk(int key, uint16_t t)
     send_chunk((struct chunk_header *)&chunk, sizeof chunk, false, true);
 }
 
-bool kleft = false;
-bool kright = false;
-bool kup = false;
-bool kdown = false;
-bool kfire = false;
 uint32_t kfire_held_start = 0;
 
 void draw_tank(int x, int y, int turret_angle, bool facingleft)
