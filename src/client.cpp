@@ -465,6 +465,52 @@ void client_main(void)
         SDL_Event ev;
         while (SDL_PollEvent(&ev)) {
             switch (ev.type) {
+			case SDL_KEYDOWN:
+				if (ev.key.keysym.sym == SDLK_LEFT) {
+					send_input_chunk(KLEFT_PRESSED, 0);
+				}
+
+				if (ev.key.keysym.sym == SDLK_RIGHT) {
+					send_input_chunk(KRIGHT_PRESSED, 0);
+				}
+
+				if (ev.key.keysym.sym == SDLK_UP) {
+					send_input_chunk(KUP_PRESSED, 0);
+				}
+
+				if (ev.key.keysym.sym == SDLK_DOWN) {
+					send_input_chunk(KDOWN_PRESSED, 0);
+				}
+
+				if (ev.key.keysym.sym == SDLK_SPACE) {
+					send_input_chunk(KFIRE_PRESSED, 0);
+					kfire_held_start = SDL_GetTicks();
+				}
+				break;
+
+			case SDL_KEYUP:
+				if (ev.key.keysym.sym == SDLK_LEFT) {
+					send_input_chunk(KLEFT_RELEASED, 0);
+				}
+
+				if (ev.key.keysym.sym == SDLK_RIGHT) {
+					send_input_chunk(KRIGHT_RELEASED, 0);
+				}
+
+				if (ev.key.keysym.sym == SDLK_UP) {
+					send_input_chunk(KUP_RELEASED, 0);
+				}
+
+				if (ev.key.keysym.sym == SDLK_DOWN) {
+					send_input_chunk(KDOWN_RELEASED, 0);
+				}
+
+				if (ev.key.keysym.sym == SDLK_SPACE) {
+					send_input_chunk(KFIRE_RELEASED, SDL_GetTicks() - kfire_held_start);
+					kfire_held_start = 0;
+				}
+				break;
+
             case SDL_TEXTINPUT:
                 typing_str += ev.text.text;
                 break;
@@ -506,63 +552,6 @@ void client_main(void)
         }
         else
         {
-            if (kb[SDL_SCANCODE_LEFT] && !kleft)
-            {
-                send_input_chunk(KLEFT_PRESSED, 0);
-                kleft = true;
-            }
-            else if (!kb[SDL_SCANCODE_LEFT] && kleft)
-            {
-                send_input_chunk(KLEFT_RELEASED, 0);
-                kleft = false;
-            }
-
-            if (kb[SDL_SCANCODE_RIGHT] && !kright)
-            {
-                send_input_chunk(KRIGHT_PRESSED, 0);
-                kright = true;
-            }
-            else if (!kb[SDL_SCANCODE_RIGHT] && kright)
-            {
-                send_input_chunk(KRIGHT_RELEASED, 0);
-                kright = false;
-            }
-
-            if (kb[SDL_SCANCODE_UP] && !kup)
-            {
-                send_input_chunk(KUP_PRESSED, 0);
-                kup = true;
-            }
-            else if (!kb[SDL_SCANCODE_UP] && kup)
-            {
-                send_input_chunk(KUP_RELEASED, 0);
-                kup = false;
-            }
-
-            if (kb[SDL_SCANCODE_DOWN] && !kdown)
-            {
-                send_input_chunk(KDOWN_PRESSED, 0);
-                kdown = true;
-            }
-            else if (!kb[SDL_SCANCODE_DOWN] && kdown)
-            {
-                send_input_chunk(KDOWN_RELEASED, 0);
-                kdown = false;
-            }
-
-            if (kb[SDL_SCANCODE_SPACE] && !kfire)
-            {
-                send_input_chunk(KFIRE_PRESSED, 0);
-                kfire = true;
-                kfire_held_start = SDL_GetTicks();
-            }
-            else if (!kb[SDL_SCANCODE_SPACE] && kfire)
-            {
-                send_input_chunk(KFIRE_RELEASED, SDL_GetTicks() - kfire_held_start);
-                kfire = false;
-                kfire_held_start = 0;
-            }
-
             if (kb[SDL_SCANCODE_T])
             {
                 SDL_StartTextInput();
