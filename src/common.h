@@ -343,18 +343,10 @@ struct player
     bool kleft, kright, kup, kdown, kfire;
 };
 
-struct timer
-{
-    int frame; // 0 for inactive
-    char type;
-    float x, y, vx, vy;
-};
-
 struct moag
 {
     struct player players[g_max_players];
     struct bullet bullets[MAX_BULLETS];
-    struct timer timers[MAX_TIMERS];
     struct crate crate;
     char land[LAND_WIDTH * LAND_HEIGHT];
     struct rng_state rng;

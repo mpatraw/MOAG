@@ -143,20 +143,6 @@ static inline void broadcast_chat(int id, char action, const char *msg, unsigned
 }
 
 
-void set_timer(struct moag *m, int frame, char type, float x, float y, float vx, float vy)
-{
-    int i = 0;
-    while (m->timers[i].frame)
-        if (++i >= MAX_TIMERS)
-            return;
-    m->timers[i].frame = frame;
-    m->timers[i].type = type;
-    m->timers[i].x = x;
-    m->timers[i].y = y;
-    m->timers[i].vx = vx;
-    m->timers[i].vy = vy;
-}
-
 void kill_tank(struct moag *m, int id)
 {
     m->players[id].tank.x = -30;
@@ -862,16 +848,6 @@ void crate_update(struct moag *m)
     }
 }
 
-void timer_update(struct moag *m, int id)
-{
-    struct timer *t = &m->timers[id];
-    if (t->frame && t->frame <= m->frame)
-    {
-        fire_bullet(m, t->type, t->x, t->y, t->vx, t->vy);
-        t->frame = 0;
-    }
-}
-
 void step_game(struct moag *m)
 {
     crate_update(m);
@@ -879,8 +855,6 @@ void step_game(struct moag *m)
         tank_update(m, i);
     for (int i = 0; i < MAX_BULLETS; i++)
         bullet_update(m, i);
-    for (int i = 0; i < MAX_TIMERS; i++)
-        timer_update(m, i);
     m->frame += 1;
 }
 
@@ -930,8 +904,6 @@ void init_game(struct moag *m)
         m->players[i].connected = 0;
     for (int i = 0; i < MAX_BULLETS; i++)
         m->bullets[i].active = 0;
-    for (int i = 0; i < MAX_TIMERS; i++)
-        m->timers[i].frame = 0;
     m->crate.active = false;
     m->frame = 1;
 
