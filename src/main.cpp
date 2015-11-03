@@ -7,6 +7,7 @@
 void server_main(void);
 void client_main();
 
+bool g_is_client = true;
 bool g_is_server = false;
 const char *g_host = "localhost";
 int g_port = 6624;
@@ -40,6 +41,7 @@ get_arg(int argc, char *argv[], const char *search)
 int main(int argc, char *argv[])
 {
 	g_is_server = has_arg(argc, argv, "--server");
+	g_is_client = !has_arg(argc, argv, "--no-client");
 	g_host = get_arg(argc, argv, "--host").value_or("localhost");
 	g_port = std::stoi(get_arg(argc, argv, "--port").value_or("6624"));
 
@@ -49,7 +51,9 @@ int main(int argc, char *argv[])
 		server = std::thread(server_main);
 	}
 
-	client_main();
+	if (g_is_client) {
+		client_main();
+	}
 
 	if (server.joinable()) {
 		std::cout << "here" << std::endl;

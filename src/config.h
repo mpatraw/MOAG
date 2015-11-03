@@ -3,6 +3,7 @@
 #define CONFIG_H
 
 // Defined in main.cpp.
+extern bool g_is_client;
 extern bool g_is_server;
 extern const char *g_host;
 extern int g_port;

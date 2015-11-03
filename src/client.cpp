@@ -118,8 +118,6 @@ static inline void send_input_chunk(int key, uint16_t t)
     send_chunk((struct chunk_header *)&chunk, sizeof chunk, false, true);
 }
 
-uint32_t kfire_held_start = 0;
-
 void draw_tank(int x, int y, int turret_angle, bool facingleft)
 {
     SDL_Rect tank_src = {x - tank_width / 2, y - tank_height, tank_width, tank_height};
@@ -456,6 +454,8 @@ void client_main(void)
 
     ENetEvent enet_ev;
 
+	uint32_t kfire_held_start;
+	kfire_held_start = 0;
     while (true) {
         SDL_Event ev;
         while (SDL_PollEvent(&ev)) {
@@ -480,6 +480,10 @@ void client_main(void)
 				if (ev.key.keysym.sym == SDLK_SPACE) {
 					send_input_chunk(KFIRE_PRESSED, 0);
 					kfire_held_start = SDL_GetTicks();
+				}
+
+				if (ev.key.keysym.sym == SDLK_ESCAPE) {
+					goto end_loop;
 				}
 				break;
 
