@@ -164,7 +164,7 @@ void draw(struct moag *m)
 
     if (m->crate.active) {
         draw_crate((m->crate.x - 4) / 10, (m->crate.y - 8) / 10);
-	}
+    }
 
     draw_bullets(m);
 
@@ -289,7 +289,7 @@ void on_receive(struct moag *m, ENetEvent *ev)
             else
             {
                 fprintf(stderr, "Invalid TANK_CHUNK type.\n");
-				exit(-1);
+                exit(-1);
             }
             break;
         }
@@ -317,7 +317,7 @@ void on_receive(struct moag *m, ENetEvent *ev)
             else
             {
                 fprintf(stderr, "Invalid BULLET_CHUNK type.\n");
-				exit(-1);
+                exit(-1);
             }
             break;
         }
@@ -365,7 +365,7 @@ void on_receive(struct moag *m, ENetEvent *ev)
 
                 default:
                     fprintf(stderr, "Invalid SERVER_MSG_CHUNK action (%d).\n", server_msg->action);
-					exit(-1);
+                    exit(-1);
             }
             break;
         }
@@ -392,14 +392,14 @@ void on_receive(struct moag *m, ENetEvent *ev)
             else
             {
                 fprintf(stderr, "Invalid CRATE_CHUNK type.\n");
-				exit(-1);
+                exit(-1);
             }
             break;
         }
 
         default:
             fprintf(stderr, "Invalid CHUNK type (%d).\n", chunk->type);
-			exit(-1);
+            exit(-1);
     }
 
     free(chunk);
@@ -457,73 +457,73 @@ void client_main(void)
 
     ENetEvent enet_ev;
 
-	uint32_t kfire_held_start;
-	kfire_held_start = 0;
+    uint32_t kfire_held_start;
+    kfire_held_start = 0;
     while (true) {
         SDL_Event ev;
         while (SDL_PollEvent(&ev)) {
             switch (ev.type) {
-			case SDL_KEYDOWN:
-				if (ev.key.keysym.sym == SDLK_LEFT) {
-					send_input_chunk(KLEFT_PRESSED, 0);
-				}
+            case SDL_KEYDOWN:
+                if (ev.key.keysym.sym == SDLK_LEFT) {
+                    send_input_chunk(KLEFT_PRESSED, 0);
+                }
 
-				if (ev.key.keysym.sym == SDLK_RIGHT) {
-					send_input_chunk(KRIGHT_PRESSED, 0);
-				}
+                if (ev.key.keysym.sym == SDLK_RIGHT) {
+                    send_input_chunk(KRIGHT_PRESSED, 0);
+                }
 
-				if (ev.key.keysym.sym == SDLK_UP) {
-					send_input_chunk(KUP_PRESSED, 0);
-				}
+                if (ev.key.keysym.sym == SDLK_UP) {
+                    send_input_chunk(KUP_PRESSED, 0);
+                }
 
-				if (ev.key.keysym.sym == SDLK_DOWN) {
-					send_input_chunk(KDOWN_PRESSED, 0);
-				}
+                if (ev.key.keysym.sym == SDLK_DOWN) {
+                    send_input_chunk(KDOWN_PRESSED, 0);
+                }
 
-				if (ev.key.keysym.sym == SDLK_SPACE) {
-					send_input_chunk(KFIRE_PRESSED, 0);
-					kfire_held_start = SDL_GetTicks();
-				}
+                if (ev.key.keysym.sym == SDLK_SPACE) {
+                    send_input_chunk(KFIRE_PRESSED, 0);
+                    kfire_held_start = SDL_GetTicks();
+                }
 
-				if (ev.key.keysym.sym == SDLK_t)
-				{
-					SDL_StartTextInput();
-					typing_str = "";
-				}
+                if (ev.key.keysym.sym == SDLK_t)
+                {
+                    SDL_StartTextInput();
+                    typing_str = "";
+                }
 
-				if (ev.key.keysym.sym == SDLK_SLASH)
-				{
-					SDL_StartTextInput();
-					typing_str = "/";
-				}
+                if (ev.key.keysym.sym == SDLK_SLASH)
+                {
+                    SDL_StartTextInput();
+                    typing_str = "/";
+                }
 
-				if (ev.key.keysym.sym == SDLK_ESCAPE) {
-					goto end_loop;
-				}
-				break;
+                if (ev.key.keysym.sym == SDLK_ESCAPE) {
+                    goto end_loop;
+                }
+                break;
 
-			case SDL_KEYUP:
-				if (ev.key.keysym.sym == SDLK_LEFT) {
-					send_input_chunk(KLEFT_RELEASED, 0);
-				}
+            case SDL_KEYUP:
+                if (ev.key.keysym.sym == SDLK_LEFT) {
+                    send_input_chunk(KLEFT_RELEASED, 0);
+                }
 
-				if (ev.key.keysym.sym == SDLK_RIGHT) {
-					send_input_chunk(KRIGHT_RELEASED, 0);
-				}
+                if (ev.key.keysym.sym == SDLK_RIGHT) {
+                    send_input_chunk(KRIGHT_RELEASED, 0);
+                }
 
-				if (ev.key.keysym.sym == SDLK_UP) {
-					send_input_chunk(KUP_RELEASED, 0);
-				}
+                if (ev.key.keysym.sym == SDLK_UP) {
+                    send_input_chunk(KUP_RELEASED, 0);
+                }
 
-				if (ev.key.keysym.sym == SDLK_DOWN) {
-					send_input_chunk(KDOWN_RELEASED, 0);
-				}
+                if (ev.key.keysym.sym == SDLK_DOWN) {
+                    send_input_chunk(KDOWN_RELEASED, 0);
+                }
 
-				if (ev.key.keysym.sym == SDLK_SPACE) {
-					send_input_chunk(KFIRE_RELEASED, SDL_GetTicks() - kfire_held_start);
-					kfire_held_start = 0;
-				}
-				break;
+                if (ev.key.keysym.sym == SDLK_SPACE) {
+                    send_input_chunk(KFIRE_RELEASED, SDL_GetTicks() - kfire_held_start);
+                    kfire_held_start = 0;
+                }
+                break;
 
             case SDL_TEXTINPUT:
                 typing_str += ev.text.text;
@@ -554,7 +554,7 @@ void client_main(void)
                 //write8(buffer, &pos, len);
                 for (int i = 0; i < len; ++i) {
                     write8(buffer, &pos, typing_str[i]);
-				}
+                }
 
                 send_packet(buffer, pos, false, true);
 

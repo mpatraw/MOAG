@@ -25,9 +25,9 @@ void init_enet_client(const char *ip, unsigned port)
         if (enet_initialize() != 0) {
             fprintf(stderr, "could not initialize enet\n");
             exit(-1);
-	} else {
+    } else {
             atexit(enet_deinitialize);
-	}
+    }
     }
     _initialized = true;
 
@@ -73,9 +73,9 @@ void init_enet_server(unsigned port)
         if (enet_initialize() != 0) {
             fprintf(stderr, "error occured initializing enet\n");
             exit(-1);
-	} else {
+    } else {
             atexit(enet_deinitialize);
-	}
+    }
     }
     _initialized = true;
 
@@ -90,7 +90,7 @@ void init_enet_server(unsigned port)
 #endif
     if (!_server) {
         fprintf(stderr, "an error occurred while trying to create an ENet server host.\n");
-	exit(-1);
+    exit(-1);
     }
 }
 
@@ -197,7 +197,7 @@ struct chunk_header *receive_chunk(ENetPacket *packet)
                 land->y + land->height > LAND_HEIGHT)
             {
                 fprintf(stderr, "bad chunk\n");
-		exit(-1);
+        exit(-1);
             }
 
             if (pos == packet->dataLength)

@@ -945,12 +945,12 @@ static void on_receive(struct moag *m, ENetEvent *ev)
                     uint16_t power = input->ms;
                     m->players[id].kfire = false;
                     m->players[id].tank.power = power / 2;
-					auto p = &m->players[id].tank.power;
-					if (*p < 0) {
-						*p = 0;
-					} else if (*p > 1000) {
-						*p = 1000;
-					}
+                    auto p = &m->players[id].tank.power;
+                    if (*p < 0) {
+                        *p = 0;
+                    } else if (*p > 1000) {
+                        *p = 1000;
+                    }
                     break;
                 }
             }
