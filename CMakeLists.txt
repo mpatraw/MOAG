@@ -7,8 +7,7 @@ set(CMAKE_CXX_COMPILER clang++)
 
 set(SOURCES
     src/common.c
-    src/encoding.c
-    src/xor128.c
+    src/encoding.cpp
     src/server.cpp
     src/client.cpp
     src/main.cpp

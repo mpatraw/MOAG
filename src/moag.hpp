@@ -7,7 +7,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "xor128.h"
+#include "config.hpp"
 
 /* encoding/decoding
  */

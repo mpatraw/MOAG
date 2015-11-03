@@ -13,8 +13,7 @@
 
 #include <enet/enet.h>
 
-#include "config.h"
-#include "moag.h"
+#include "moag.hpp"
 
 #define SQ(x)           ((x) * (x))
 
@@ -347,7 +346,6 @@ struct moag
     struct bullet bullets[MAX_BULLETS];
     struct crate crate;
     char land[LAND_WIDTH * LAND_HEIGHT];
-    struct rng_state rng;
     int frame;
 };
 

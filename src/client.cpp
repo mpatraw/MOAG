@@ -6,9 +6,10 @@
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
 
+#include "moag.hpp"
+
 extern "C" {
 #include "common.h"
-#include "moag.h"
 }
 
 static SDL_Window *main_window = nullptr;

@@ -13,7 +13,7 @@ uint8_t *rlencode(const uint8_t *src, size_t len, size_t *outlen) {
 	size_t pos = 0;
 	size_t start = 0;
 	uint8_t c = 0;
-	uint8_t *buf = malloc(len*2+1);
+	uint8_t *buf = (uint8_t *)malloc(len*2+1);
 	if (!buf) {
 		return NULL;
 	}
@@ -36,7 +36,7 @@ uint8_t *rlencode(const uint8_t *src, size_t len, size_t *outlen) {
 		}
 	}
 
-	buf = realloc(buf, pos);
+	buf = (uint8_t *)realloc(buf, pos);
 	*outlen = pos;
 	return buf;
 }
@@ -46,7 +46,7 @@ uint8_t *rlencode(const uint8_t *src, size_t len, size_t *outlen) {
 uint8_t *rldecode(const uint8_t *src, size_t len, size_t *outlen) {
 	size_t bufsize = 512;
 	size_t pos = 0;
-	uint8_t *buf = malloc(bufsize);
+	uint8_t *buf = (uint8_t *)malloc(bufsize);
 
 	if (!buf) {
 		return NULL;
@@ -58,7 +58,7 @@ uint8_t *rldecode(const uint8_t *src, size_t len, size_t *outlen) {
 		for (size_t j = 0; j <= n; ++j) {
 			if (pos >= bufsize) {
 				bufsize = (int)(bufsize * 1.3);
-				buf = realloc(buf, bufsize);
+				buf = (uint8_t *)realloc(buf, bufsize);
 				if (!buf) {
 					return NULL;
 				}
@@ -67,7 +67,7 @@ uint8_t *rldecode(const uint8_t *src, size_t len, size_t *outlen) {
 		}
 	}
 
-	buf = realloc(buf, pos);
+	buf = (uint8_t *)realloc(buf, pos);
 	*outlen = pos;
 
 	return buf;

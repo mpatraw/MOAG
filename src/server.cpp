@@ -3,9 +3,10 @@
 #include <iostream>
 #include <thread>
 
+#include "moag.hpp"
+
 extern "C" {
 #include "common.h"
-#include "moag.h"
 }
 
 enum
@@ -213,7 +214,7 @@ void spawn_tank(struct moag *m, int id)
     m->players[id].kup = false;
     m->players[id].kdown = false;
     m->players[id].kfire = false;
-    m->players[id].tank.x = rng_range(&m->rng, 20, LAND_WIDTH - 20);
+    m->players[id].tank.x = rand() % LAND_WIDTH * 10;
     m->players[id].tank.y = 60;
     m->players[id].tank.velx = 0;
     m->players[id].tank.vely = 0;
@@ -803,7 +804,7 @@ void crate_update(struct moag *m)
     if (!m->crate.active)
     {
         m->crate.active = true;
-        m->crate.x = rng_range(&m->rng, 200, LAND_WIDTH * 10 - 20);
+        m->crate.x = rand() % LAND_WIDTH * 10;
         m->crate.y = 300;
         explode(m, m->crate.x, m->crate.y - 120, 12, E_SAFE_EXPLODE);
 
@@ -824,7 +825,7 @@ void crate_update(struct moag *m)
         const int TOTAL = PBABYNUKE + PNUKE + PDIRT + PSUPERDIRT + PLIQUIDDIRT +
                           PCOLLAPSE + PBOUNCER + PTUNNELER + PMIRV + PCLUSTER +
                           PCLUSTERB + PSHOTGUN + PTRIPLER;
-        int r = rng_range(&m->rng, 0, TOTAL);
+        int r = rand() % TOTAL;
              if ((r -= PBABYNUKE) < 0)   m->crate.type = BABY_NUKE;
         else if ((r -= PNUKE) < 0)       m->crate.type = NUKE;
         else if ((r -= PSUPERDIRT) < 0)  m->crate.type = SUPER_DIRT;
@@ -906,8 +907,6 @@ void init_game(struct moag *m)
         m->bullets[i].active = 0;
     m->crate.active = false;
     m->frame = 1;
-
-    rng_seed(&m->rng, time(NULL));
 
     for (int y = 0; y < LAND_HEIGHT; ++y)
     {
