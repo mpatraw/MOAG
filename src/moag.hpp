@@ -4,6 +4,7 @@
 #ifndef MOAG_H
 #define MOAG_H
 
+#include <cassert>
 #include <algorithm>
 #include <array>
 #include <memory>
@@ -85,6 +86,13 @@ class packet final {
 public:
     packet() : pos{0} {}
 
+    bool empty() const { return chunk.empty(); }
+    size_t size() const { return chunk.size(); }
+    const uint8_t *data() const { return chunk.data(); }
+    const uint8_t *remaining_data() const { return data() + pos; }
+    size_t remaining_size() const { return size() - pos; }
+    bool can_read(int amount=1) const { return remaining_size() >= amount; }
+
     void reread() { pos = 0; }
     void rewrite() { chunk.clear(); }
 
@@ -99,16 +107,16 @@ public:
     }
     packet &operator <<(uint16_t i) {
         auto v = htons(i);
-        chunk.push_back((v >> 8) & 0xff);
         chunk.push_back((v >> 0) & 0xff);
+        chunk.push_back((v >> 8) & 0xff);
         return *this;
     }
     packet &operator <<(uint32_t i) {
         auto v = htonl(i);
-        chunk.push_back((v >> 24) & 0xff);
-        chunk.push_back((v >> 16) & 0xff);
-        chunk.push_back((v >> 8) & 0xff);
         chunk.push_back((v >> 0) & 0xff);
+        chunk.push_back((v >> 8) & 0xff);
+        chunk.push_back((v >> 16) & 0xff);
+        chunk.push_back((v >> 24) & 0xff);
         return *this;
     }
     packet &operator <<(const char *str) {
@@ -121,22 +129,25 @@ public:
 
 
     packet &operator >>(uint8_t &i) {
+        assert(can_read(1));
         i = chunk[pos++];
         return *this;
     }
     packet &operator >>(uint16_t &i) {
+        assert(can_read(2));
         uint16_t v{0};
-        v |= chunk[pos++] << 8;
         v |= chunk[pos++] << 0;
+        v |= chunk[pos++] << 8;
         i = ntohs(v);
         return *this;
     }
     packet &operator >>(uint32_t &i) {
+        assert(can_read(4));
         uint32_t v{0};
-        v |= chunk[pos++] << 24;
-        v |= chunk[pos++] << 16;
-        v |= chunk[pos++] << 8;
         v |= chunk[pos++] << 0;
+        v |= chunk[pos++] << 8;
+        v |= chunk[pos++] << 16;
+        v |= chunk[pos++] << 24;
         i = ntohl(v);
         return *this;
     }
@@ -155,10 +166,13 @@ private:
 class client final {
 public:
     client();
-    ~client() = default;
+    ~client();
     client(const client &) = delete;
     client(client &&) = delete;
     client &operator =(client) = delete;
+
+    packet &recv();
+    void send(const packet &p);
 private:
     std::unique_ptr<client_impl> impl;
 };

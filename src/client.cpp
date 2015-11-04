@@ -9,6 +9,15 @@
 #include "moag.hpp"
 #include "common.hpp"
 
+struct input {
+    uint8_t key;
+    uint16_t ms;
+    friend m::packet &operator <<(m::packet &p, const input &i) {
+        p << static_cast<uint8_t>(INPUT_CHUNK) << i.key << i.ms;
+        return p;
+    }
+};
+
 static SDL_Window *main_window = nullptr;
 static SDL_Renderer *main_renderer = nullptr;
 static SDL_Texture *tank_texture = nullptr;
@@ -63,6 +72,7 @@ private:
     SDL_Texture *texture;
 };
 
+static std::unique_ptr<m::client> client;
 static m::land main_land;
 
 static SDL_Texture *load_texture_from_file(const char *filename)
@@ -145,14 +155,11 @@ private:
 static message_scroller chat_line;
 static std::string typing_str;
 
-static inline void send_input_chunk(int key, uint16_t t)
+static inline void send_input_chunk(uint8_t key, uint16_t t)
 {
-    struct input_chunk chunk;
-    chunk._.type = INPUT_CHUNK;
-    chunk.key = key;
-    chunk.ms = t;
-
-    send_chunk((struct chunk_header *)&chunk, sizeof chunk, false, true);
+    m::packet p;
+    p << input{key, t};
+    client->send(p);
 }
 
 static void draw_tank(int x, int y, int turret_angle, bool facingleft)
@@ -231,70 +238,68 @@ static void draw(struct moag *m)
     }
 }
 
-static void on_receive(struct moag *m, ENetEvent *ev)
+static void process_packet(struct moag *m, m::packet &p)
 {
-    struct chunk_header *chunk;
-
-    chunk = receive_chunk(ev->packet);
-
-    switch (chunk->type) {
+    uint8_t type;
+    p >> type;
+    switch (type) {
         case LAND_CHUNK: {
-            struct land_chunk *land = (struct land_chunk *)chunk;
-            int i = 0;
-            for (int y = land->y; y < land->height + land->y; ++y) {
-                for (int x = land->x; x < land->width + land->x; ++x) {
-                    if (land->data[i]) {
+            uint16_t lx, ly, lw, lh;
+            p >> lx >> ly >> lw >> lh;
+            for (int y = ly; y < lh + ly; ++y) {
+                for (int x = lx; x < lw + lx; ++x) {
+                    uint8_t d;
+                    p >> d;
+                    if (d) {
                         main_land.set_dirt(x, y);
                     } else {
                         main_land.set_air(x, y);
                     }
-                    i++;
                 }
             }
             break;
         }
 
-        case PACKED_LAND_CHUNK:
-        {
-            struct packed_land_chunk *land = (struct packed_land_chunk *)chunk;
-            const size_t packed_len = ev->packet->dataLength - sizeof(struct packed_land_chunk);
+        case PACKED_LAND_CHUNK: {
+            uint16_t lx, ly, lw, lh;
+            p >> lx >> ly >> lw >> lh;
             size_t datalen = 0;
-            uint8_t *data = rldecode(land->data, packed_len, &datalen);
+            uint8_t *data = rldecode(p.remaining_data(), p.remaining_size(), &datalen);
 
-            int i = 0;
-            for (int y = land->y; y < land->height + land->y; ++y)
-            {
-                if (i >= datalen) break;
-                for (int x = land->x; x < land->width + land->x; ++x)
-                {
+            size_t i = 0;
+            for (int y = ly; y < lh + ly; ++y) {
+                if (i >= datalen) {
+                    break;
+                }
+                for (int x = lx; x < lw + lx; ++x) {
                     if (data[i]) {
                         main_land.set_dirt(x, y);
                     } else {
                         main_land.set_air(x, y);
                     }
                     i++;
-                    if (i >= datalen) break;
+                    if (i >= datalen) {
+                        break;
+                    }
                 }
             }
-
             free(data);
             break;
         }
 
-        case TANK_CHUNK:
-        {
-            struct tank_chunk *tank = (struct tank_chunk *)chunk;
-            int id = tank->id;
-
+        case TANK_CHUNK: {
+            uint8_t action, id, cangle;
+            uint16_t tx, ty;
+            p >> action >> id >> tx >> ty >> cangle;
+            auto angle = static_cast<char>(cangle); 
+            
             assert(id >= 0 && id <= g_max_players);
 
-            if (tank->action == SPAWN)
-            {
+            if (action == SPAWN) {
                 m->players[id].connected = true;
 
-                m->players[id].tank.x = tank->x;
-                m->players[id].tank.y = tank->y;
-                char angle = tank->angle;
+                m->players[id].tank.x = tx;
+                m->players[id].tank.y = ty;
 
                 m->players[id].tank.facingleft = false;
                 if (angle < 0){
@@ -302,12 +307,9 @@ static void on_receive(struct moag *m, ENetEvent *ev)
                     m->players[id].tank.facingleft = true;
                 }
                 m->players[id].tank.angle = angle;
-            }
-            else if (tank->action == MOVE)
-            {
-                m->players[id].tank.x = tank->x;
-                m->players[id].tank.y = tank->y;
-                char angle = tank->angle;
+            } else if (action == MOVE) {
+                m->players[id].tank.x = tx;
+                m->players[id].tank.y = ty;
 
                 m->players[id].tank.facingleft = false;
                 if (angle < 0){
@@ -315,59 +317,68 @@ static void on_receive(struct moag *m, ENetEvent *ev)
                     m->players[id].tank.facingleft = true;
                 }
                 m->players[id].tank.angle = angle;
-            }
-            else if (tank->action == KILL)
-            {
+            } else if (action == KILL) {
                 m->players[id].tank.x = -1;
                 m->players[id].tank.y = -1;
                 m->players[id].connected = false;
-            }
-            else
-            {
+            } else {
                 fprintf(stderr, "Invalid TANK_CHUNK type.\n");
                 exit(-1);
             }
             break;
         }
 
-        case BULLET_CHUNK:
-        {
-            struct bullet_chunk *bullet = (struct bullet_chunk *)chunk;
-            int id = bullet->id;
+        case BULLET_CHUNK: {
+            uint8_t action, id;
+            uint16_t bx, by;
+            p >> action >> id >> bx >> by;
 
-            if (bullet->action == SPAWN)
-            {
+            if (action == SPAWN) {
                 m->bullets[id].active = true;
-                m->bullets[id].x = bullet->x;
-                m->bullets[id].y = bullet->y;
-            }
-            else if (bullet->action == MOVE)
-            {
-                m->bullets[id].x = bullet->x;
-                m->bullets[id].y = bullet->y;
-            }
-            else if (bullet->action == KILL)
-            {
+                m->bullets[id].x = bx;
+                m->bullets[id].y = by;
+            } else if (action == MOVE) {
+                m->bullets[id].x = bx;
+                m->bullets[id].y = by;
+            } else if (action == KILL) {
                 m->bullets[id].active = false;
-            }
-            else
-            {
+            } else {
                 fprintf(stderr, "Invalid BULLET_CHUNK type.\n");
                 exit(-1);
             }
             break;
         }
 
-        case SERVER_MSG_CHUNK:
-        {
-            struct server_msg_chunk *server_msg = (struct server_msg_chunk *)chunk;
-            int id = server_msg->id;
-            unsigned char len = ev->packet->dataLength - sizeof(struct server_msg_chunk);
+        case CRATE_CHUNK: {
+            uint8_t action;
+            uint16_t cx, cy;
+            p >> action >> cx >> cy;
 
-            switch (server_msg->action)
-            {
-                case CHAT:
-                {
+            if (action == SPAWN) {
+                m->crate.active = true;
+                m->crate.x = cx;
+                m->crate.y = cy;
+            } else if (action == MOVE) {
+                m->crate.x = cx;
+                m->crate.y = cy;
+            } else if (action == KILL) {
+                m->crate.active = false;
+            } else {
+                fprintf(stderr, "Invalid CRATE_CHUNK type.\n");
+                exit(-1);
+            }
+            break;
+        }
+
+        case SERVER_MSG_CHUNK: {
+            uint8_t id, action;
+            p >> id >> action;
+
+            auto data = p.remaining_data();
+            auto len = p.remaining_size();
+
+            switch (action) {
+                case CHAT: {
                     int namelen = strlen(m->players[id].name);
                     int linelen = namelen + len + 4;
                     char *line = (char *)malloc(linelen);
@@ -377,73 +388,42 @@ static void on_receive(struct moag *m, ENetEvent *ev)
                     line[namelen+1] = '>';
                     line[namelen+2] = ' ';
                     for (int i = 0; i < len; ++i)
-                        line[namelen + 3 + i] = server_msg->data[i];
+                        line[namelen + 3 + i] = data[i];
                     line[linelen - 1] = '\0';
                     chat_line.add_message(line);
                     break;
                 }
 
-                case NAME_CHANGE:
-                {
+                case NAME_CHANGE: {
                     if (len < 1 || len > 15)
                         break;
                     for (int i = 0; i < len; ++i)
-                        m->players[id].name[i] = server_msg->data[i];
+                        m->players[id].name[i] =data[i];
                     m->players[id].name[len]='\0';
                     break;
                 }
 
-                case SERVER_NOTICE:
-                {
-                    chat_line.add_message(reinterpret_cast<const char *>(server_msg->data));
+                case SERVER_NOTICE: {
+                    chat_line.add_message(reinterpret_cast<const char *>(data));
                     break;
                 }
 
                 default:
-                    fprintf(stderr, "Invalid SERVER_MSG_CHUNK action (%d).\n", server_msg->action);
+                    fprintf(stderr, "Invalid SERVER_MSG_CHUNK action (%d).\n", action);
                     exit(-1);
             }
             break;
         }
 
-        case CRATE_CHUNK:
-        {
-            struct crate_chunk *crate = (struct crate_chunk *)chunk;
-
-            if (crate->action == SPAWN)
-            {
-                m->crate.active = true;
-                m->crate.x = crate->x;
-                m->crate.y = crate->y;
-            }
-            else if (crate->action == MOVE)
-            {
-                m->crate.x = crate->x;
-                m->crate.y = crate->y;
-            }
-            else if (crate->action == KILL)
-            {
-                m->crate.active = false;
-            }
-            else
-            {
-                fprintf(stderr, "Invalid CRATE_CHUNK type.\n");
-                exit(-1);
-            }
-            break;
-        }
-
         default:
-            fprintf(stderr, "Invalid CHUNK type (%d).\n", chunk->type);
+            fprintf(stderr, "Invalid CHUNK type (%d).\n", type);
             exit(-1);
     }
-
-    free(chunk);
 }
 
 void client_main(void)
 {
-    init_enet_client(g_host, g_port);
+    client.reset(new m::client);
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         std::cerr << SDL_GetError() << std::endl;
@@ -493,8 +473,6 @@ void client_main(void)
 
     main_land.set_delegate(new land_texture(main_renderer));
 
-    ENetEvent enet_ev;
-
     uint32_t kfire_held_start;
     kfire_held_start = 0;
     while (true) {
@@ -523,14 +501,12 @@ void client_main(void)
                     kfire_held_start = SDL_GetTicks();
                 }
 
-                if (ev.key.keysym.sym == SDLK_t)
-                {
+                if (ev.key.keysym.sym == SDLK_t) {
                     SDL_StartTextInput();
                     typing_str = "";
                 }
 
-                if (ev.key.keysym.sym == SDLK_SLASH)
-                {
+                if (ev.key.keysym.sym == SDLK_SLASH) {
                     SDL_StartTextInput();
                     typing_str = "/";
                 }
@@ -583,49 +559,28 @@ void client_main(void)
                 || kb[SDL_SCANCODE_DOWN]) {
                 SDL_StopTextInput();
             } else if (kb[SDL_SCANCODE_RETURN]) {
-                // length of typing_str including null + sizeof(client_msg_chunk)
-                unsigned char buffer[257];
-                size_t pos = 0;
-
-                unsigned char len = typing_str.length() + 1;
-                write8(buffer, &pos, CLIENT_MSG_CHUNK);
-                //write8(buffer, &pos, len);
-                for (int i = 0; i < len; ++i) {
-                    write8(buffer, &pos, typing_str[i]);
-                }
-
-                send_packet(buffer, pos, false, true);
+                m::packet p;
+                p << static_cast<uint8_t>(CLIENT_MSG_CHUNK);
+                p << typing_str.c_str();
+                client->send(p);
 
                 SDL_StopTextInput();
             }
         }
 
-        while (enet_host_service(get_client_host(), &enet_ev, 0))
-        {
-            switch (enet_ev.type)
-            {
-                case ENET_EVENT_TYPE_CONNECT:
-                    break;
-
-                case ENET_EVENT_TYPE_DISCONNECT:
-                    goto end_loop;
-                    break;
-
-                case ENET_EVENT_TYPE_RECEIVE:
-                    on_receive(&moag, &enet_ev);
-                    enet_packet_destroy(enet_ev.packet);
-                    break;
-
-                default:
-                    break;
+        while (true) {
+            auto packet = client->recv();
+            if (packet.empty()) {
+                break;
             }
+            process_packet(&moag, packet);
         }
 
         SDL_SetRenderDrawColor(main_renderer, 0, 0, 0, 255);
         SDL_RenderClear(main_renderer);
         draw(&moag);
         char buf[256];
-        sprintf(buf, "%u", get_peer()->roundTripTime);
+        //sprintf(buf, "%u", get_peer()->roundTripTime);
         quick_render_string(g_land_width - 30, 0, buf);
         SDL_RenderPresent(main_renderer);
     }
@@ -646,5 +601,4 @@ main_window_fail:
 ttf_init_fail:
     SDL_Quit();
 sdl_init_fail:
-    uninit_enet();
 }

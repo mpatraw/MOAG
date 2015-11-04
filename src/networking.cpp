@@ -44,12 +44,55 @@ public:
         }
     }
     ~client_impl() {
+        enet_peer_disconnect(peer, 0);
+        enet_peer_reset(peer);
+        enet_host_destroy(host);
         enet_deinitialize();
+    }
+
+    packet &recv() {
+        current_packet.reread();
+        current_packet.rewrite();
+        ENetEvent event;
+        if (enet_host_service(host, &event, 10))
+        {
+            switch (event.type)
+            {
+                case ENET_EVENT_TYPE_CONNECT:
+                    break;
+
+                case ENET_EVENT_TYPE_DISCONNECT:
+                    break;
+
+                case ENET_EVENT_TYPE_RECEIVE:
+                    current_packet.load(event.packet->data, event.packet->dataLength);
+                    enet_packet_destroy(event.packet);
+                    break;
+
+                default:
+                    break;
+            }
+        }
+        return current_packet;
+    }
+
+    void send(const packet &p, bool reliable=true) {
+        uint32_t flags = 0;
+        if (reliable) {
+            flags |= ENET_PACKET_FLAG_RELIABLE;
+        }
+        ENetPacket *packet = enet_packet_create(NULL, p.size(), flags);
+        if (!packet) {
+            throw std::bad_alloc();
+        }
+        std::copy_n(p.data(), p.size(), packet->data);
+        enet_peer_send(peer, 1, packet);
     }
 
 private:
     ENetHost *host;
     ENetPeer *peer;
+    packet current_packet;
 };
 
 class server_impl {
@@ -73,6 +116,7 @@ public:
         }
     }
     ~server_impl() {
+        enet_host_destroy(host);
         enet_deinitialize();
     }
 private:
@@ -81,6 +125,16 @@ private:
 
 client::client() :
     impl{std::make_unique<client_impl>(g_host, g_port, g_max_players, g_number_of_channels)} {
+}
+
+client::~client() { }
+
+packet &client::recv() {
+    return impl->recv();
+}
+
+void client::send(const packet &p) {
+    impl->send(p);
 }
 
 server::server() :
