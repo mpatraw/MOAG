@@ -41,17 +41,18 @@ static inline void broadcast_packed_land_chunk(struct moag *m, int x, int y, int
 {
     if (x < 0) { w += x; x = 0; }
     if (y < 0) { h += y; y = 0; }
-    if (x + w > g_land_width) w = g_land_width - x;
-    if (y + h > g_land_height) h = g_land_height - y;
-    if (w <= 0 || h <= 0 || x + w > g_land_width || y + h > g_land_height)
+    if (x + w > g_land_width) { w = g_land_width - x; }
+    if (y + h > g_land_height) {
+        h = g_land_height - y;
+    }
+    if (w <= 0 || h <= 0 || x + w > g_land_width || y + h > g_land_height) {
         return;
+    }
 
     uint8_t *land = (uint8_t *)malloc(w * h);
     int i = 0;
-    for (int yy = y; yy < h + y; ++yy)
-    {
-        for (int xx = x; xx < w + x; ++xx)
-        {
+    for (int yy = y; yy < h + y; ++yy) {
+        for (int xx = x; xx < w + x; ++xx) {
             land[i] = main_land.is_dirt(xx, yy);
             i++;
         }
@@ -69,8 +70,7 @@ static inline void broadcast_packed_land_chunk(struct moag *m, int x, int y, int
     chunk->width = w;
     chunk->height = h;
 
-    for (int i = 0; i < packed_data_len; i++)
-    {
+    for (int i = 0; i < packed_data_len; i++) {
         chunk->data[i] = packed_data[i];
     }
     send_chunk((struct chunk_header *)chunk, sizeof *chunk + packed_data_len, true, true);
@@ -143,7 +143,7 @@ static inline void broadcast_chat(int id, char action, const char *msg, unsigned
 }
 
 
-void kill_tank(struct moag *m, int id)
+static void kill_tank(struct moag *m, int id)
 {
     m->players[id].tank.x = -30;
     m->players[id].tank.y = -30;
@@ -151,7 +151,7 @@ void kill_tank(struct moag *m, int id)
     broadcast_tank_chunk(m, KILL, id);
 }
 
-void explode(struct moag *m, int x, int y, int rad, char type)
+static void explode(struct moag *m, int x, int y, int rad, char type)
 {
     for (int iy = -rad; iy <= rad; iy++) {
         for (int ix = -rad; ix <= rad; ix++) {
@@ -176,7 +176,7 @@ void explode(struct moag *m, int x, int y, int rad, char type)
     broadcast_packed_land_chunk(m, x/10 - rad, y/10 - rad, rad * 2, rad * 2);
 }
 
-void spawn_tank(struct moag *m, int id)
+static void spawn_tank(struct moag *m, int id)
 {
     m->players[id].connected = true;
     m->players[id].spawn_timer = 0;
@@ -200,7 +200,7 @@ void spawn_tank(struct moag *m, int id)
     broadcast_tank_chunk(m, SPAWN, id);
 }
 
-void spawn_client(struct moag *m, int id)
+static void spawn_client(struct moag *m, int id)
 {
     sprintf(m->players[id].name,"p%d",id);
     char notice[64] = "  ";
@@ -223,13 +223,13 @@ void spawn_client(struct moag *m, int id)
     }
 }
 
-void disconnect_client(struct moag *m, int id)
+static void disconnect_client(struct moag *m, int id)
 {
     m->players[id].connected = 0;
     broadcast_tank_chunk(m, KILL, id);
 }
 
-void launch_ladder(struct moag *m, int x, int y)
+static void launch_ladder(struct moag *m, int x, int y)
 {
     int i = 0;
     while (m->bullets[i].active) {
@@ -246,7 +246,7 @@ void launch_ladder(struct moag *m, int x, int y)
     broadcast_bullet_chunk(m, SPAWN, i);
 }
 
-void fire_bullet(struct moag *m, char type, int x, int y, int vx, int vy)
+static void fire_bullet(struct moag *m, char type, int x, int y, int vx, int vy)
 {
     int i = 0;
     while (m->bullets[i].active) {
@@ -263,7 +263,7 @@ void fire_bullet(struct moag *m, char type, int x, int y, int vx, int vy)
     broadcast_bullet_chunk(m, SPAWN, i);
 }
 
-void fire_bullet_ang(struct moag *m, char type, int x, int y, int angle, int vel)
+static void fire_bullet_ang(struct moag *m, char type, int x, int y, int angle, int vel)
 {
     fire_bullet(m, type, x + 5 * cosf(DEG2RAD(angle)),
                          y - 5 * sinf(DEG2RAD(angle)),
@@ -271,7 +271,7 @@ void fire_bullet_ang(struct moag *m, char type, int x, int y, int angle, int vel
                         -vel * sinf(DEG2RAD(angle)) / 10);
 }
 
-void tank_update(struct moag *m, int id)
+static void tank_update(struct moag *m, int id)
 {
     struct tank *t = &m->players[id].tank;
 
@@ -430,7 +430,7 @@ void tank_update(struct moag *m, int id)
         broadcast_tank_chunk(m, MOVE, id);
 }
 
-void bullet_detonate(struct moag *m, int id)
+static void bullet_detonate(struct moag *m, int id)
 {
     struct bullet *b = &m->bullets[id];
 
@@ -498,7 +498,7 @@ void bullet_detonate(struct moag *m, int id)
     }
 }
 
-void bullet_update(struct moag *m, int id)
+static void bullet_update(struct moag *m, int id)
 {
     struct bullet *b = &m->bullets[id];
 
@@ -543,7 +543,7 @@ void bullet_update(struct moag *m, int id)
     }
 }
 
-void crate_update(struct moag *m)
+static void crate_update(struct moag *m)
 {
     if (!m->crate.active)
     {
@@ -592,7 +592,7 @@ void crate_update(struct moag *m)
     }
 }
 
-void step_game(struct moag *m)
+static void step_game(struct moag *m)
 {
     crate_update(m);
     for (int i = 0; i < g_max_players; i++)
@@ -602,7 +602,7 @@ void step_game(struct moag *m)
     m->frame += 1;
 }
 
-intptr_t client_connect(struct moag *m)
+static intptr_t client_connect(struct moag *m)
 {
     intptr_t i = 0;
     while (m->players[i].connected)
@@ -619,7 +619,7 @@ intptr_t client_connect(struct moag *m)
     return i;
 }
 
-void handle_msg(struct moag *m, int id, const char* msg, int len)
+static void handle_msg(struct moag *m, int id, const char* msg, int len)
 {
     if (msg[0] == '/' && msg[1] == 'n' && msg[2] == ' ')
     {
@@ -642,7 +642,7 @@ void handle_msg(struct moag *m, int id, const char* msg, int len)
     }
 }
 
-void init_game(struct moag *m)
+static void init_game(struct moag *m)
 {
     for (int i = 0; i < g_max_players; i++)
         m->players[i].connected = 0;

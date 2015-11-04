@@ -155,7 +155,7 @@ static inline void send_input_chunk(int key, uint16_t t)
     send_chunk((struct chunk_header *)&chunk, sizeof chunk, false, true);
 }
 
-void draw_tank(int x, int y, int turret_angle, bool facingleft)
+static void draw_tank(int x, int y, int turret_angle, bool facingleft)
 {
     SDL_Rect tank_src = {x - tank_width / 2, y - tank_height, tank_width, tank_height};
     SDL_RenderCopy(main_renderer, tank_texture, NULL, &tank_src);
@@ -169,14 +169,14 @@ void draw_tank(int x, int y, int turret_angle, bool facingleft)
     SDL_RenderCopyEx(main_renderer, turret_texture, NULL, &turret_src, turret_angle, &cen, SDL_FLIP_NONE);
 }
 
-void draw_crate(int x, int y)
+static void draw_crate(int x, int y)
 {
     x = x - (crate_width / 2);
     SDL_Rect src = {x, y, crate_width, crate_height};
     SDL_RenderCopy(main_renderer, crate_texture, NULL, &src);
 }
 
-void draw_bullets(struct moag *m)
+static void draw_bullets(struct moag *m)
 {
     for (int i = 0; i < MAX_BULLETS; i++)
     {
@@ -188,7 +188,7 @@ void draw_bullets(struct moag *m)
     }
 }
       
-void draw(struct moag *m)
+static void draw(struct moag *m)
 {
     SDL_SetRenderDrawColor(main_renderer, 128, 128, 128, 255);
     auto del = dynamic_cast<land_texture const *>(main_land.get_delegate());
@@ -231,7 +231,7 @@ void draw(struct moag *m)
     }
 }
 
-void on_receive(struct moag *m, ENetEvent *ev)
+static void on_receive(struct moag *m, ENetEvent *ev)
 {
     struct chunk_header *chunk;
 
