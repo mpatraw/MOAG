@@ -93,38 +93,58 @@ public:
         std::copy_n(data, len, std::back_inserter(chunk));
     }
 
-    void write8(uint8_t i) {
+    packet &operator <<(uint8_t i) {
         chunk.push_back(i);
+        return *this;
     }
-    void write16(uint16_t i) {
+    packet &operator <<(uint16_t i) {
         auto v = htons(i);
         chunk.push_back((v >> 8) & 0xff);
         chunk.push_back((v >> 0) & 0xff);
+        return *this;
     }
-    void write32(uint32_t i) {
+    packet &operator <<(uint32_t i) {
         auto v = htonl(i);
         chunk.push_back((v >> 24) & 0xff);
         chunk.push_back((v >> 16) & 0xff);
         chunk.push_back((v >> 8) & 0xff);
         chunk.push_back((v >> 0) & 0xff);
+        return *this;
+    }
+    packet &operator <<(const char *str) {
+        while (*str) {
+            chunk.push_back(*str++);
+        }
+        chunk.push_back(0);
+        return *this;
     }
 
-    uint8_t read8() {
-        return chunk[pos++];
+
+    packet &operator >>(uint8_t &i) {
+        i = chunk[pos++];
+        return *this;
     }
-    uint16_t read16() {
+    packet &operator >>(uint16_t &i) {
         uint16_t v{0};
         v |= chunk[pos++] << 8;
         v |= chunk[pos++] << 0;
-        return ntohs(v);
+        i = ntohs(v);
+        return *this;
     }
-    uint32_t read32() {
+    packet &operator >>(uint32_t &i) {
         uint32_t v{0};
         v |= chunk[pos++] << 24;
         v |= chunk[pos++] << 16;
         v |= chunk[pos++] << 8;
         v |= chunk[pos++] << 0;
-        return ntohl(v);
+        i = ntohl(v);
+        return *this;
+    }
+    packet &operator >>(std::string &str) {
+        while (auto c = chunk[pos++]) {
+            str.push_back(c);
+        }
+        return *this;
     }
 
 private:

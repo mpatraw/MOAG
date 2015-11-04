@@ -12,7 +12,11 @@ or Scorched Earth.
 
 	BUILDING
 
-You can either build with `cmake`, `scons`, or `make`. CMake will
-eventually be the only means. If you're on windows use
-`scons --platform=mingw32`.
+MOAG uses CMake for it's build system. Go to the "build" directory and
+run `cmake .. && make`.
+
+You'll need the following libraries on your system:
+* SDL2, SDL2_ttf, SDL2_image
+* enet
+* pthread
 
