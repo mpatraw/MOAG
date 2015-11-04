@@ -306,8 +306,7 @@ static void tank_update(struct moag *m, int id)
             }
             m->players[id].ladder_timer = g_ladder_time;
         }
-    }
-    else if (m->players[id].kleft) {
+    } else if (m->players[id].kleft) {
         t->facingleft = 1;
         if (main_land.is_air(t->x/10 - 1, t->y/10) && t->x >= 10) {
             t->x -= 10;
@@ -403,20 +402,17 @@ static void tank_update(struct moag *m, int id)
     }
 
     // Fire
-    if (t->power)
-    {
+    if (t->power) {
         float burst_spread = 4.0;
-        if (t->bullet == SHOTGUN)
-        {
+        if (t->bullet == SHOTGUN) {
             t->num_burst *= g_shotgun_pellets;
             burst_spread = 2.0;
         }
         int num_burst = t->bullet == MISSILE ? 1 : t->num_burst;
         float start_angle = t->facingleft ? 180 - t->angle : t->angle;
         start_angle -= (num_burst-1)*burst_spread/2.0;
-        for (int i = 0; i < num_burst; i++)
-        {
-            fire_bullet_ang(m, t->bullet, t->x, t->y - 7,
+        for (int i = 0; i < num_burst; i++) {
+            fire_bullet_ang(m, t->bullet, t->x, t->y - 70,
                             start_angle + i*burst_spread,
                             t->power);
         }
@@ -516,17 +512,6 @@ static void bullet_update(struct moag *m, int id)
         return;
     }
 
-    if (b->active > 1)
-    {
-        b->active--;
-        return;
-    }
-
-    if (b->type == BOUNCER && b->active == 1)
-        b->active = -g_bouncer_bounces;
-    if (b->type == TUNNELER && b->active == 1)
-        b->active = -g_tunnel_tunnelings;
-
     for (int i = 0; i < g_max_players; i++)
     {
         const auto &t = m->players[i].tank;
@@ -605,10 +590,8 @@ static void step_game(struct moag *m)
 static intptr_t client_connect(struct moag *m)
 {
     intptr_t i = 0;
-    while (m->players[i].connected)
-    {
-        if(++i >= g_max_players)
-        {
+    while (m->players[i].connected) {
+        if(++i >= g_max_players) {
             printf("Client failed to connect, too many clients.\n");
             return -1;
         }
@@ -689,9 +672,8 @@ static void on_receive(struct moag *m, ENetEvent *ev)
                 case KFIRE_PRESSED:   m->players[id].kfire = true; break;
                 case KFIRE_RELEASED:
                 {
-                    uint16_t power = input->ms;
+                    m->players[id].tank.power = input->ms;
                     m->players[id].kfire = false;
-                    m->players[id].tank.power = power / 2;
                     auto p = &m->players[id].tank.power;
                     if (*p < 0) {
                         *p = 0;

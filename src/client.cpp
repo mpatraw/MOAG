@@ -518,7 +518,7 @@ void client_main(void)
                     send_input_chunk(KDOWN_PRESSED, 0);
                 }
 
-                if (ev.key.keysym.sym == SDLK_SPACE) {
+                if (ev.key.keysym.sym == SDLK_SPACE && kfire_held_start == 0) {
                     send_input_chunk(KFIRE_PRESSED, 0);
                     kfire_held_start = SDL_GetTicks();
                 }
