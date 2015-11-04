@@ -18,6 +18,15 @@ namespace m {
 class client_impl;
 class server_impl;
 
+class initialization_error {
+public:
+    initialization_error(const char *msg) : whatstr{msg} { }
+
+    virtual const char *what() const { return whatstr.c_str(); }
+protected:
+    std::string whatstr;
+};
+
 class land_delegate {
 public:
     virtual ~land_delegate() {}

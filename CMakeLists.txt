@@ -7,6 +7,7 @@ set(CMAKE_CXX_COMPILER clang++)
 set(COMMON
     src/common.cpp
     src/encoding.cpp
+    src/networking.cpp
 )
 
 set(MOAG
@@ -18,7 +19,7 @@ set(TEST
     src/test.cpp
 )
 
-set(CMAKE_CXX_FLAGS "-g -std=c++14 -Wall")
+set(CMAKE_CXX_FLAGS "-g -std=c++14 -Wall -pedantic")
 
 install_files(/bin FILES bin/moag)
 
