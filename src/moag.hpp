@@ -26,6 +26,9 @@ public:
     }
 
     void set_dirt(int x, int y) {
+        if (x < 0 || y < 0 || x >= g_land_width || y >= g_land_height) {
+            return;
+        }
         dirt[y * g_land_width + x] = 1;
         if (delegate) {
             delegate->set_dirt(x, y);
@@ -33,6 +36,9 @@ public:
     }
 
     void set_air(int x, int y) {
+        if (x < 0 || y < 0 || x >= g_land_width || y >= g_land_height) {
+            return;
+        }
         dirt[y * g_land_width + x] = 0;
         if (delegate) {
             delegate->set_air(x, y);
@@ -42,6 +48,9 @@ public:
     land_delegate const *get_delegate() const { return delegate.get(); }
 
     bool is_dirt(int x, int y) const {
+        if (x < 0 || y < 0 || x >= g_land_width || y >= g_land_height) {
+            return true;
+        }
         return dirt[y * g_land_width + x];
     }
 

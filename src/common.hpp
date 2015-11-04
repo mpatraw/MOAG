@@ -300,9 +300,6 @@ void send_chunk(struct chunk_header *chunk, size_t len, bool broadcast, bool rel
 #define MAX_TIMERS      64
 #define MAX_NAME_LEN    16
 
-#define LAND_WIDTH      800
-#define LAND_HEIGHT     600
-
 struct tank
 {
     int x, y;
@@ -345,22 +342,7 @@ struct moag
     struct player players[g_max_players];
     struct bullet bullets[MAX_BULLETS];
     struct crate crate;
-    char land[LAND_WIDTH * LAND_HEIGHT];
     int frame;
 };
-
-static inline char get_land_at(struct moag *m, int x, int y)
-{
-    if (x < 0 || x >= LAND_WIDTH || y < 0 || y >= LAND_HEIGHT)
-        return -1;
-    return m->land[y * LAND_WIDTH + x];
-}
-
-static inline void set_land_at(struct moag *m, int x, int y, char to)
-{
-    if (x < 0 || x >= LAND_WIDTH || y < 0 || y >= LAND_HEIGHT)
-        return;
-    m->land[y * LAND_WIDTH + x] = to;
-}
 
 #endif

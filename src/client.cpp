@@ -456,7 +456,7 @@ void client_main(void)
         goto ttf_init_fail;
     }
 
-    main_window = SDL_CreateWindow("MOAG", -1, -1, LAND_WIDTH, LAND_HEIGHT, 0);
+    main_window = SDL_CreateWindow("MOAG", -1, -1, g_land_width, g_land_height, 0);
     if (!main_window) {
         std::cerr << SDL_GetError() << std::endl;
         goto main_window_fail;
@@ -626,7 +626,7 @@ void client_main(void)
         draw(&moag);
         char buf[256];
         sprintf(buf, "%u", get_peer()->roundTripTime);
-        quick_render_string(LAND_WIDTH - 30, 0, buf);
+        quick_render_string(g_land_width - 30, 0, buf);
         SDL_RenderPresent(main_renderer);
     }
 end_loop:

@@ -193,8 +193,8 @@ struct chunk_header *receive_chunk(ENetPacket *packet)
             if (land->height < 0) land->height = 0;
 
             if (land->x < 0 || land->y < 0 ||
-                land->x + land->width > LAND_WIDTH ||
-                land->y + land->height > LAND_HEIGHT)
+                land->x + land->width > g_land_width ||
+                land->y + land->height > g_land_height)
             {
                 fprintf(stderr, "bad chunk\n");
         exit(-1);
@@ -224,8 +224,8 @@ struct chunk_header *receive_chunk(ENetPacket *packet)
             if (land->height < 0) land->height = 0;
 
             if (land->x < 0 || land->y < 0 ||
-                land->x + land->width > LAND_WIDTH ||
-                land->y + land->height > LAND_HEIGHT)
+                land->x + land->width > g_land_width ||
+                land->y + land->height > g_land_height)
             {
                 fprintf(stderr, "Bad LAND_CHUNK.\n");
                 exit(-1);
