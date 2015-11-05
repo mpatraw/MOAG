@@ -13,6 +13,7 @@
 #include <enet/enet.h>
 
 #include "config.hpp"
+#include "precision_integer.hpp"
 
 namespace m {
 
