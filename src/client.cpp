@@ -579,9 +579,7 @@ void client_main(void)
         SDL_SetRenderDrawColor(main_renderer, 0, 0, 0, 255);
         SDL_RenderClear(main_renderer);
         draw(&moag);
-        char buf[256];
-        //sprintf(buf, "%u", get_peer()->roundTripTime);
-        quick_render_string(g_land_width - 30, 0, buf);
+        quick_render_string(g_land_width - 30, 0, std::to_string(client->rtt()).c_str());
         SDL_RenderPresent(main_renderer);
     }
 end_loop:
@@ -601,4 +599,5 @@ main_window_fail:
 ttf_init_fail:
     SDL_Quit();
 sdl_init_fail:
+    return;
 }

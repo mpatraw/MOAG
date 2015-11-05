@@ -97,7 +97,6 @@ public:
     void rewrite() { chunk.clear(); }
 
     void load(uint8_t *data, size_t len) {
-        chunk.clear();
         std::copy_n(data, len, std::back_inserter(chunk));
     }
 
@@ -172,7 +171,9 @@ public:
     client &operator =(client) = delete;
 
     packet &recv();
-    void send(const packet &p);
+    void send(const packet &p, bool reliable=true);
+
+    uint32_t rtt() const;
 private:
     std::unique_ptr<client_impl> impl;
 };
@@ -184,6 +185,14 @@ public:
     server(const server &) = delete;
     server(server &&) = delete;
     server &operator =(server) = delete;
+
+    bool is_connected(int id) const;
+
+    packet &recv(int &id);
+    void send(const packet &p, int id, bool reliable=true);
+    void broadcast(const packet &p, bool reliable=true);
+
+    uint32_t rtt(int id) const;
 private:
     std::unique_ptr<server_impl> impl;
 };

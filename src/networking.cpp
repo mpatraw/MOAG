@@ -89,6 +89,10 @@ public:
         enet_peer_send(peer, 1, packet);
     }
 
+    uint32_t rtt() const {
+        return peer->roundTripTime;
+    }
+
 private:
     ENetHost *host;
     ENetPeer *peer;
@@ -114,13 +118,90 @@ public:
         if (!host) {
             throw initialization_error("could not create server host");
         }
+
+        peers.reserve(max_connections);
     }
     ~server_impl() {
         enet_host_destroy(host);
         enet_deinitialize();
     }
+
+    bool is_connected(int id) const {
+        return peers[id] != nullptr;
+    }
+
+    packet &recv(int &id) {
+        current_packet.reread();
+        current_packet.rewrite();
+        ENetEvent event;
+        if (enet_host_service(host, &event, 10)) {
+            switch (event.type) {
+                case ENET_EVENT_TYPE_CONNECT: {
+                    size_t i;
+                    for (i = 0; i < peers.size(); ++i) {
+                        if (!peers[i]) {
+                            break;
+                        }
+                    }
+                    event.peer->data = static_cast<void *>(&i);
+                    peers[i] = event.peer;
+                    break;
+                }
+
+                case ENET_EVENT_TYPE_DISCONNECT: {
+                    size_t i = *static_cast<size_t *>(event.peer->data);
+                    peers[i] = nullptr;
+                    break;
+                }
+
+                case ENET_EVENT_TYPE_RECEIVE: {
+                    size_t i = *static_cast<size_t *>(event.peer->data);
+                    id = static_cast<int>(i);
+                    current_packet.load(event.packet->data, event.packet->dataLength);
+                    enet_packet_destroy(event.packet);
+                    break;
+                }
+
+                default:
+                    break;
+            }
+        }
+        return current_packet;
+    }
+
+    void send(const packet &p, int id, bool reliable=true) {
+        uint32_t flags = 0;
+        if (reliable) {
+            flags |= ENET_PACKET_FLAG_RELIABLE;
+        }
+        ENetPacket *packet = enet_packet_create(NULL, p.size(), flags);
+        if (!packet) {
+            throw std::bad_alloc();
+        }
+        std::copy_n(p.data(), p.size(), packet->data);
+        enet_peer_send(peers[id], 1, packet);
+    }
+
+    void broadcast(const packet &p, bool reliable=true) {
+        uint32_t flags = 0;
+        if (reliable) {
+            flags |= ENET_PACKET_FLAG_RELIABLE;
+        }
+        ENetPacket *packet = enet_packet_create(NULL, p.size(), flags);
+        if (!packet) {
+            throw std::bad_alloc();
+        }
+        std::copy_n(p.data(), p.size(), packet->data);
+        enet_host_broadcast(host, 1, packet);
+    }
+
+    uint32_t rtt(int id) const {
+        return peers[id]->roundTripTime;
+    }
 private:
     ENetHost *host;
+    std::vector<ENetPeer *> peers;
+    packet current_packet;
 };
 
 client::client() :
@@ -133,12 +214,36 @@ packet &client::recv() {
     return impl->recv();
 }
 
-void client::send(const packet &p) {
-    impl->send(p);
+void client::send(const packet &p, bool reliable) {
+    impl->send(p, reliable);
+}
+
+uint32_t client::rtt() const {
+    return impl->rtt();
 }
 
 server::server() :
     impl{std::make_unique<server_impl>(g_port, g_max_players, g_number_of_channels)} {
+}
+
+bool server::is_connected(int id) const {
+    return impl->is_connected(id);
+}
+
+packet &server::recv(int &id) {
+    return impl->recv(id);
+}
+
+void server::send(const packet &p, int id, bool reliable) {
+    impl->send(p, id, reliable);
+}
+
+void server::broadcast(const packet &p, bool reliable) {
+    impl->broadcast(p, reliable);
+}
+
+uint32_t server::rtt(int id) const {
+    return impl->rtt(id);
 }
 
 }
