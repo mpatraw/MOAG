@@ -97,7 +97,7 @@ public:
                                 break;
                             }
                         }
-                        event.peer->data = static_cast<void *>(&i);
+                        event.peer->data = reinterpret_cast<void *>(i);
                         peers[i] = event.peer;
                         id = i;
                     }
@@ -107,7 +107,7 @@ public:
 
                 case ENET_EVENT_TYPE_DISCONNECT: {
                     if (is_server) {
-                        size_t i = *static_cast<size_t *>(event.peer->data);
+                        size_t i = reinterpret_cast<size_t>(event.peer->data);
                         peers[i] = nullptr;
                         id = i;
                     }
@@ -117,7 +117,7 @@ public:
 
                 case ENET_EVENT_TYPE_RECEIVE: {
                     if (is_server) {
-                        size_t i = *static_cast<size_t *>(event.peer->data);
+                        size_t i = reinterpret_cast<size_t>(event.peer->data);
                         id = static_cast<int>(i);
                     }
                     current_packet.load(event.packet->data, event.packet->dataLength);
