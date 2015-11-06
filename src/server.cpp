@@ -141,16 +141,14 @@ static inline void broadcast_chat(int id, char action, const char *msg, unsigned
 }
 
 
-static void kill_tank(struct moag *m, int id)
-{
+static void kill_tank(struct moag *m, int id) {
     m->players[id].tank.x = -30;
     m->players[id].tank.y = -30;
     m->players[id].spawn_timer = g_respawn_time;
     broadcast_tank_chunk(m, KILL, id);
 }
 
-static void explode(struct moag *m, int x, int y, int rad, char type)
-{
+static void explode(struct moag *m, int x, int y, int rad, char type) {
     for (int iy = -rad; iy <= rad; iy++) {
         for (int ix = -rad; ix <= rad; ix++) {
             if (SQ(ix) + SQ(iy) < SQ(rad)) {
@@ -174,8 +172,7 @@ static void explode(struct moag *m, int x, int y, int rad, char type)
     broadcast_packed_land_chunk(m, x/10 - rad, y/10 - rad, rad * 2, rad * 2);
 }
 
-static void spawn_tank(struct moag *m, int id)
-{
+static void spawn_tank(struct moag *m, int id) {
     m->players[id].connected = true;
     m->players[id].spawn_timer = 0;
     m->players[id].ladder_timer = g_ladder_time;
@@ -198,8 +195,7 @@ static void spawn_tank(struct moag *m, int id)
     broadcast_tank_chunk(m, SPAWN, id);
 }
 
-static void spawn_client(struct moag *m, int id)
-{
+static void spawn_client(struct moag *m, int id) {
     sprintf(m->players[id].name,"p%d",id);
     char notice[64] = "  ";
     strcat(notice, m->players[id].name);
@@ -221,14 +217,12 @@ static void spawn_client(struct moag *m, int id)
     }
 }
 
-static void disconnect_client(struct moag *m, int id)
-{
+static void disconnect_client(struct moag *m, int id) {
     m->players[id].connected = 0;
     broadcast_tank_chunk(m, KILL, id);
 }
 
-static void launch_ladder(struct moag *m, int x, int y)
-{
+static void launch_ladder(struct moag *m, int x, int y) {
     int i = 0;
     while (m->bullets[i].active) {
         if (++i >= MAX_BULLETS) {
@@ -244,8 +238,7 @@ static void launch_ladder(struct moag *m, int x, int y)
     broadcast_bullet_chunk(m, SPAWN, i);
 }
 
-static void fire_bullet(struct moag *m, char type, int x, int y, int vx, int vy)
-{
+static void fire_bullet(struct moag *m, char type, int x, int y, int vx, int vy) {
     int i = 0;
     while (m->bullets[i].active) {
         if (++i >= MAX_BULLETS) {
@@ -261,16 +254,14 @@ static void fire_bullet(struct moag *m, char type, int x, int y, int vx, int vy)
     broadcast_bullet_chunk(m, SPAWN, i);
 }
 
-static void fire_bullet_ang(struct moag *m, char type, int x, int y, int angle, int vel)
-{
+static void fire_bullet_ang(struct moag *m, char type, int x, int y, int angle, int vel) {
     fire_bullet(m, type, x + 5 * cosf(DEG2RAD(angle)),
                          y - 5 * sinf(DEG2RAD(angle)),
                          vel * cosf(DEG2RAD(angle)) / 10,
                         -vel * sinf(DEG2RAD(angle)) / 10);
 }
 
-static void tank_update(struct moag *m, int id)
-{
+static void tank_update(struct moag *m, int id) {
     struct tank *t = &m->players[id].tank;
 
     if (!m->players[id].connected) {
@@ -339,35 +330,31 @@ static void tank_update(struct moag *m, int id)
     }
 
     // Physics
-    if (t->y / 10 < 20)
-    {
+    if (t->y / 10 < 20) {
         t->y = 200;
         moved = true;
     }
 
-    if (grav)
-    {
-        if (main_land.is_air(t->x/10, t->y/10 + 1))
-        {
+    if (grav) {
+        if (main_land.is_air(t->x/10, t->y/10 + 1)) {
             t->y += 10;
             moved = true;
         }
     }
 
-    if (abs(t->x - m->crate.x) < 14 && abs(t->y - m->crate.y) < 14)
-    {
+    if (abs(t->x - m->crate.x) < 14 && abs(t->y - m->crate.y) < 14) {
         m->players[id].ladder_timer = g_ladder_time;
-        if (m->crate.type == TRIPLER)
+        if (m->crate.type == TRIPLER) {
             t->num_burst *= 3;
-        else
+        } else {
             t->bullet = m->crate.type;
+        }
         m->crate.active = false;
         broadcast_crate_chunk(m, KILL);
         char notice[64] = "* ";
         strcat(notice, m->players[id].name);
         strcat(notice, " got ");
-        switch (m->crate.type)
-        {
+        switch (m->crate.type) {
             case  0: strcat(notice, "Missile"); break;
             case  1: strcat(notice, "Baby Nuke"); break;
             case  2: strcat(notice, "Nuke"); break;
@@ -388,13 +375,10 @@ static void tank_update(struct moag *m, int id)
     }
 
     // Aim
-    if (m->players[id].kup && t->angle < 90)
-    {
+    if (m->players[id].kup && t->angle < 90) {
         t->angle++;
         moved = true;
-    }
-    else if (m->players[id].kdown && t->angle > 1)
-    {
+    } else if (m->players[id].kdown && t->angle > 1) {
         t->angle--;
         moved = true;
     }
@@ -420,16 +404,15 @@ static void tank_update(struct moag *m, int id)
         t->power = 0;
     }
 
-    if (moved)
+    if (moved) {
         broadcast_tank_chunk(m, MOVE, id);
+    }
 }
 
-static void bullet_detonate(struct moag *m, int id)
-{
+static void bullet_detonate(struct moag *m, int id) {
     struct bullet *b = &m->bullets[id];
 
-    switch (b->type)
-    {
+    switch (b->type) {
         case MISSILE:
             explode(m, b->x, b->y, 12, E_EXPLODE);
             break;
@@ -485,15 +468,13 @@ static void bullet_detonate(struct moag *m, int id)
         default: break;
     }
 
-    if (b->active >= 0)
-    {
+    if (b->active >= 0) {
         b->active = 0;
         broadcast_bullet_chunk(m, KILL, id);
     }
 }
 
-static void bullet_update(struct moag *m, int id)
-{
+static void bullet_update(struct moag *m, int id) {
     struct bullet *b = &m->bullets[id];
 
     if (!b->active) {
@@ -504,14 +485,12 @@ static void bullet_update(struct moag *m, int id)
     b->y += b->vely;
     b->vely += g_gravity;
 
-    if (main_land.is_dirt(b->x / 10, b->y / 10))
-    {
+    if (main_land.is_dirt(b->x / 10, b->y / 10)) {
         bullet_detonate(m, id);
         return;
     }
 
-    for (int i = 0; i < g_max_players; i++)
-    {
+    for (int i = 0; i < g_max_players; i++) {
         const auto &t = m->players[i].tank;
         auto dx = t.x - b->x;
         auto dy = t.y - b->y;
@@ -526,10 +505,8 @@ static void bullet_update(struct moag *m, int id)
     }
 }
 
-static void crate_update(struct moag *m)
-{
-    if (!m->crate.active)
-    {
+static void crate_update(struct moag *m) {
+    if (!m->crate.active) {
         m->crate.active = true;
         m->crate.x = rand() % g_land_width * 10;
         m->crate.y = 300;
@@ -575,13 +552,14 @@ static void crate_update(struct moag *m)
     }
 }
 
-static void step_game(struct moag *m)
-{
+static void step_game(struct moag *m) {
     crate_update(m);
-    for (int i = 0; i < g_max_players; i++)
+    for (int i = 0; i < g_max_players; i++) {
         tank_update(m, i);
-    for (int i = 0; i < MAX_BULLETS; i++)
+    }
+    for (int i = 0; i < MAX_BULLETS; i++) {
         bullet_update(m, i);
+    }
     m->frame += 1;
 }
 
@@ -590,10 +568,12 @@ static void handle_msg(struct moag *m, int id, const char* msg, int len) {
         char notice[64] = "  ";
         strcat(notice, m->players[id].name);
         len -= 3;
-        if (len > 15)
+        if (len > 15) {
             len = 15;
-        for (int i = 0; i < len; i++)
+        }
+        for (int i = 0; i < len; i++) {
             m->players[id].name[i] = msg[i + 3];
+        }
         m->players[id].name[len] = '\0';
         strcat(notice, " is now known as ");
         strcat(notice, m->players[id].name);
