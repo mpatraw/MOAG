@@ -1,3 +1,4 @@
+#include <iostream>
 #include <exception>
 
 #include "moag.hpp"
@@ -28,7 +29,7 @@ public:
         enet_address_set_host(&address, ip);
         address.port = port;
 
-        peers.reserve(1);
+        peers.resize(1, nullptr);
 #ifdef OLD_ENET
         peers[0] = enet_host_connect(host, &address, num_channels);
 #else
@@ -65,7 +66,7 @@ public:
             throw initialization_error("could not create server host");
         }
 
-        peers.reserve(max_connections);
+        peers.resize(max_connections, nullptr);
         is_server = true;
     }
     ~network_impl() {
@@ -97,6 +98,7 @@ public:
                         }
                         event.peer->data = reinterpret_cast<void *>(i);
                         peers[i] = event.peer;
+                        std::cout << "new peer " << i << std::endl;
                         id = i;
                     }
                     current_packet << packet_type_connection;

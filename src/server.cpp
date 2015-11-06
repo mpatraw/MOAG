@@ -38,8 +38,7 @@ enum
 static std::unique_ptr<m::server> server;
 static m::land main_land;
 
-static inline void broadcast_packed_land_chunk(struct moag *m, int x, int y, int w, int h)
-{
+static inline void broadcast_packed_land_chunk(struct moag *m, int x, int y, int w, int h) {
     if (x < 0) { w += x; x = 0; }
     if (y < 0) { h += y; y = 0; }
     if (x + w > g_land_width) { w = g_land_width - x; }
