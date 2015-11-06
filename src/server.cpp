@@ -1,13 +1,13 @@
 
+#include <cstring>
+
 #include <chrono>
 #include <iostream>
 #include <thread>
 
 #include "moag.hpp"
-#include "common.hpp"
 
-enum
-{
+enum {
     MISSILE,
     BABY_NUKE,
     NUKE,
@@ -27,8 +27,7 @@ enum
     TRIPLER,
 };
 
-enum
-{
+enum {
     E_EXPLODE,
     E_DIRT,
     E_SAFE_EXPLODE,

@@ -7,7 +7,6 @@
 #include <SDL2/SDL_ttf.h>
 
 #include "moag.hpp"
-#include "common.hpp"
 
 struct input {
     uint8_t key;
