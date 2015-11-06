@@ -1,6 +1,6 @@
 
-#ifndef CONFIG_H
-#define CONFIG_H
+#ifndef CONFIG_HPP
+#define CONFIG_HPP
 
 // Defined in main.cpp.
 extern bool g_is_client;
@@ -23,6 +23,9 @@ const int g_shotgun_pellets = 6;
 const int g_respawn_time = 40;
 const int g_ladder_time = 60;
 const int g_ladder_length = 64;
+
+const int g_max_bullets = 64;
+const int g_max_name_len = 16;
 
 #endif
 

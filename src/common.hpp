@@ -133,48 +133,5 @@ enum {
     NAME_CHANGE,
 };
 
-#define MAX_BULLETS     64
-#define MAX_TIMERS      64
-#define MAX_NAME_LEN    16
-
-struct tank {
-    int x, y;
-    int velx, vely;
-    int angle, power;
-    char bullet;
-    int num_burst;
-    bool facingleft;
-};
-
-struct bullet {
-    int x, y;
-    int velx, vely;
-    char active;
-    char type;
-};
-
-struct crate {
-    int x, y;
-    bool active;
-    char type;
-};
-
-struct player {
-    struct tank tank;
-
-    char name[MAX_NAME_LEN];
-    bool connected;
-    unsigned spawn_timer;
-    unsigned ladder_count;
-    int ladder_timer;
-    bool kleft, kright, kup, kdown, kfire;
-};
-
-struct moag {
-    struct player players[g_max_players];
-    struct bullet bullets[MAX_BULLETS];
-    struct crate crate;
-    int frame;
-};
 
 #endif

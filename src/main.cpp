@@ -4,7 +4,7 @@
 #include <string>
 #include <thread>
 
-void server_main(void);
+void server_main();
 void client_main();
 
 bool g_is_client = true;
@@ -56,9 +56,7 @@ int main(int argc, char *argv[])
     }
 
     if (server.joinable()) {
-        std::cout << "here" << std::endl;
         server.join();
-        std::cout << "here2" << std::endl;
     }
     return 0;
 }

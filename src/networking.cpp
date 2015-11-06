@@ -98,7 +98,6 @@ public:
                         }
                         event.peer->data = reinterpret_cast<void *>(i);
                         peers[i] = event.peer;
-                        std::cout << "new peer " << i << std::endl;
                         id = i;
                     }
                     current_packet << packet_type_connection;

@@ -183,11 +183,9 @@ static void draw_crate(int x, int y)
     SDL_RenderCopy(main_renderer, crate_texture, NULL, &src);
 }
 
-static void draw_bullets(struct moag *m)
-{
-    for (int i = 0; i < MAX_BULLETS; i++)
-    {
-        struct bullet *b = &m->bullets[i];
+static void draw_bullets(m::moag *m) {
+    for (int i = 0; i < g_max_bullets; i++) {
+        m::bullet *b = &m->bullets[i];
         if (b->active) {
             SDL_Rect src = {b->x / 10, b->y / 10, bullet_width, bullet_height};
             SDL_RenderCopy(main_renderer, bullet_texture, NULL, &src);
@@ -195,7 +193,7 @@ static void draw_bullets(struct moag *m)
     }
 }
       
-static void draw(struct moag *m)
+static void draw(m::moag *m)
 {
     SDL_SetRenderDrawColor(main_renderer, 128, 128, 128, 255);
     auto del = dynamic_cast<land_texture const *>(main_land.get_delegate());
@@ -238,7 +236,7 @@ static void draw(struct moag *m)
     }
 }
 
-static void process_packet(struct moag *m, m::packet &p)
+static void process_packet(m::moag *m, m::packet &p)
 {
     uint8_t type;
     p >> type;
@@ -468,7 +466,7 @@ void client_main(void)
         goto font_load_fail;
     }
 
-    struct moag moag;
+    m::moag moag;
     memset(&moag, 0, sizeof(moag));
 
     main_land.set_delegate(new land_texture(main_renderer));

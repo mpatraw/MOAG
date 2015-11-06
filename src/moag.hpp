@@ -82,6 +82,51 @@ private:
     std::array<uint8_t, g_land_width * g_land_height> dirt;
 };
 
+class tank {
+public:
+    int x, y;
+    int velx, vely;
+    int angle, power;
+    char bullet;
+    int num_burst;
+    bool facingleft;
+};
+
+class bullet {
+public:
+    int x, y;
+    int velx, vely;
+    char active;
+    char type;
+};
+
+class crate {
+public:
+    int x, y;
+    bool active;
+    char type;
+};
+
+class player {
+public:
+    tank tank;
+
+    char name[g_max_name_len];
+    bool connected;
+    unsigned spawn_timer;
+    unsigned ladder_count;
+    int ladder_timer;
+    bool kleft, kright, kup, kdown, kfire;
+};
+
+class moag {
+public:
+    player players[g_max_players];
+    bullet bullets[g_max_bullets];
+    crate crate;
+    int frame;
+};
+
 const uint8_t packet_type_connection = 0;
 const uint8_t packet_type_disconnection = 1;
 const uint8_t packet_type_user_defined = 2;
