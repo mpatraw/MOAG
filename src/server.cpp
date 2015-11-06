@@ -65,82 +65,81 @@ static inline void broadcast_packed_land_chunk(struct moag *m, int x, int y, int
 
     struct packed_land_chunk *chunk = (struct packed_land_chunk *)malloc(sizeof *chunk + packed_data_len);
 
-    chunk->_.type = PACKED_LAND_CHUNK;
-    chunk->x = x;
-    chunk->y = y;
-    chunk->width = w;
-    chunk->height = h;
+    m::packet p;
 
-    for (int i = 0; i < packed_data_len; i++) {
-        chunk->data[i] = packed_data[i];
-    }
-    send_chunk((struct chunk_header *)chunk, sizeof *chunk + packed_data_len, true, true);
+    p << static_cast<uint8_t>(PACKED_LAND_CHUNK);
+    p << static_cast<uint16_t>(x);
+    p << static_cast<uint16_t>(y);
+    p << static_cast<uint16_t>(w);
+    p << static_cast<uint16_t>(h);
+    p.load(packed_data, packed_data_len);
+
+    server->broadcast(p);
 
     free(packed_data);
-    free(chunk);
 }
 
-static inline void broadcast_tank_chunk(struct moag *m, int action, int id)
-{
-    struct tank_chunk chunk;
-    chunk._.type = TANK_CHUNK;
-    chunk.action = action;
-    chunk.id = id;
-    chunk.x = m->players[id].tank.x;
-    chunk.y = m->players[id].tank.y;
-    if (m->players[id].tank.facingleft)
-        chunk.angle = -m->players[id].tank.angle;
-    else
-        chunk.angle = m->players[id].tank.angle;
+static inline void broadcast_tank_chunk(struct moag *m, int action, int id) {
+    m::packet p;
+    
+    p << static_cast<uint8_t>(TANK_CHUNK);
+    p << static_cast<uint8_t>(action);
+    p << static_cast<uint8_t>(id);
+    p << static_cast<uint16_t>(m->players[id].tank.x);
+    p << static_cast<uint16_t>(m->players[id].tank.y);
+    if (m->players[id].tank.facingleft) {
+        p << static_cast<uint8_t>(-m->players[id].tank.angle);
+    } else {
+        p << static_cast<uint8_t>(m->players[id].tank.angle);
+    }
 
-    if (action == SPAWN || action == KILL)
-        send_chunk((struct chunk_header *)&chunk, sizeof chunk, true, true);
-    else
-        send_chunk((struct chunk_header *)&chunk, sizeof chunk, true, false);
+    if (action == SPAWN || action == KILL) {
+        server->broadcast(p);
+    } else {
+        server->broadcast(p, false);
+    }
 }
 
-static inline void broadcast_bullet_chunk(struct moag *m, int action, int id)
-{
-    struct bullet_chunk chunk;
-    chunk._.type = BULLET_CHUNK;
-    chunk.action = action;
-    chunk.id = id;
-    chunk.x = m->bullets[id].x;
-    chunk.y = m->bullets[id].y;
+static inline void broadcast_bullet_chunk(struct moag *m, int action, int id) {
+    m::packet p;
+    
+    p << static_cast<uint8_t>(BULLET_CHUNK);
+    p << static_cast<uint8_t>(action);
+    p << static_cast<uint8_t>(id);
+    p << static_cast<uint16_t>(m->bullets[id].x);
+    p << static_cast<uint16_t>(m->bullets[id].y);
 
-    if (action == SPAWN || action == KILL)
-        send_chunk((struct chunk_header *)&chunk, sizeof chunk, true, true);
-    else
-        send_chunk((struct chunk_header *)&chunk, sizeof chunk, true, false);
+    if (action == SPAWN || action == KILL) {
+        server->broadcast(p);
+    } else {
+        server->broadcast(p, false);
+    }
 }
 
-static inline void broadcast_crate_chunk(struct moag *m, int action)
-{
-    struct crate_chunk chunk;
-    chunk._.type = CRATE_CHUNK;
-    chunk.action = action;
-    chunk.x = m->crate.x;
-    chunk.y = m->crate.y;
+static inline void broadcast_crate_chunk(struct moag *m, int action) {
+    m::packet p;
+    
+    p << static_cast<uint8_t>(CRATE_CHUNK);
+    p << static_cast<uint8_t>(action);
+    p << static_cast<uint16_t>(m->crate.x);
+    p << static_cast<uint16_t>(m->crate.y);
 
-    if (action == SPAWN || action == KILL)
-        send_chunk((struct chunk_header *)&chunk, sizeof chunk, true, true);
-    else
-        send_chunk((struct chunk_header *)&chunk, sizeof chunk, true, false);
+    if (action == SPAWN || action == KILL) {
+        server->broadcast(p);
+    } else {
+        server->broadcast(p, false);
+    }
 }
 
-static inline void broadcast_chat(int id, char action, const char *msg, unsigned char len)
-{
-    struct server_msg_chunk *chunk = (struct server_msg_chunk *)malloc(sizeof *chunk + len);
+static inline void broadcast_chat(int id, char action, const char *msg, unsigned char len) {
+    m::packet p;
+    
+    p << static_cast<uint8_t>(SERVER_MSG_CHUNK);
+    p << static_cast<uint8_t>(id);
+    p << static_cast<uint8_t>(action);
+    p << msg;
 
-    chunk->_.type = SERVER_MSG_CHUNK;
-    chunk->id = id;
-    chunk->action = action;
-
-    for (int i = 0; i < len; ++i)
-        chunk->data[i] = msg[i];
-
-    send_chunk((struct chunk_header *)chunk, sizeof *chunk + len, true, true);
-    free(chunk);
+    server->broadcast(p);
 }
 
 
@@ -588,10 +587,8 @@ static void step_game(struct moag *m)
     m->frame += 1;
 }
 
-static void handle_msg(struct moag *m, int id, const char* msg, int len)
-{
-    if (msg[0] == '/' && msg[1] == 'n' && msg[2] == ' ')
-    {
+static void handle_msg(struct moag *m, int id, const char* msg, int len) {
+    if (msg[0] == '/' && msg[1] == 'n' && msg[2] == ' ') {
         char notice[64] = "  ";
         strcat(notice, m->players[id].name);
         len -= 3;
@@ -604,26 +601,23 @@ static void handle_msg(struct moag *m, int id, const char* msg, int len)
         strcat(notice, m->players[id].name);
         broadcast_chat(id, NAME_CHANGE, m->players[id].name, strlen(m->players[id].name) + 1);
         broadcast_chat(-1, SERVER_NOTICE, notice, strlen(notice) + 1);
-    }
-    else
-    {
+    } else {
         broadcast_chat(id, CHAT, msg, len + 1);
     }
 }
 
-static void init_game(struct moag *m)
-{
-    for (int i = 0; i < g_max_players; i++)
+static void init_game(struct moag *m) {
+    for (int i = 0; i < g_max_players; i++) {
         m->players[i].connected = 0;
-    for (int i = 0; i < MAX_BULLETS; i++)
+    }
+    for (int i = 0; i < MAX_BULLETS; i++) {
         m->bullets[i].active = 0;
+    }
     m->crate.active = false;
     m->frame = 1;
 
-    for (int y = 0; y < g_land_height; ++y)
-    {
-        for (int x = 0; x < g_land_width; ++x)
-        {
+    for (int y = 0; y < g_land_height; ++y) {
+        for (int x = 0; x < g_land_width; ++x) {
             if (y < g_land_height / 3) {
                 main_land.set_air(x, y);
             } else {
@@ -633,8 +627,7 @@ static void init_game(struct moag *m)
     }
 }
 
-static void on_receive(struct moag *m, m::packet &p, uint8_t type, int id)
-{
+static void process_packet(struct moag *m, m::packet &p, uint8_t type, int id) {
     switch (type) {
         case INPUT_CHUNK: {
             uint8_t key;
@@ -676,17 +669,13 @@ static void on_receive(struct moag *m, m::packet &p, uint8_t type, int id)
     }
 }
 
-void server_main(void)
-{
+void server_main() {
     server.reset(new m::server);
 
     struct moag moag;
     init_game(&moag);
 
-    ENetEvent event;
-
-    for (;;)
-    {
+    while (true) {
         while (true) {
             int id;
             auto packet = server->recv(id);
@@ -701,7 +690,7 @@ void server_main(void)
             } else if (type == m::packet_type_disconnection) {
                 disconnect_client(&moag, id);
             } else {
-                on_receive(&moag, packet, type, id);
+                process_packet(&moag, packet, type, id);
             }
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(20));

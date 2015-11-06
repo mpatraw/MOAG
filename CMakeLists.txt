@@ -5,7 +5,6 @@ project(moag)
 set(CMAKE_CXX_COMPILER clang++)
 
 set(COMMON
-    src/common.cpp
     src/encoding.cpp
     src/networking.cpp
 )
