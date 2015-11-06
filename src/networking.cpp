@@ -85,10 +85,8 @@ public:
         current_packet.reread();
         current_packet.rewrite();
         ENetEvent event;
-        if (enet_host_service(host, &event, 10))
-        {
-            switch (event.type)
-            {
+        if (enet_host_service(host, &event, 10)) {
+            switch (event.type) {
                 case ENET_EVENT_TYPE_CONNECT: {
                     if (is_server) {
                         size_t i;

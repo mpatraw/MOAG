@@ -25,83 +25,11 @@
 #define RAD2DEG(rad)    ((rad) * (180 / M_PI))
 
 /******************************************************************************\
-Networking.
-\******************************************************************************/
-
-void init_enet_client(const char *ip, unsigned port);
-void init_enet_server(unsigned port);
-void uninit_enet(void);
-
-ENetHost *get_client_host(void);
-ENetHost *get_server_host(void);
-ENetPeer *get_peer(void);
-
-static inline void send_packet(uint8_t *buf, size_t len, bool broadcast, bool reliable)
-{
-    uint32_t flags = 0;
-    if (reliable)
-        flags |= ENET_PACKET_FLAG_RELIABLE;
-    ENetPacket *packet = enet_packet_create(NULL, len, flags);
-    memcpy(packet->data, buf, len);
-    if (broadcast)
-        enet_host_broadcast(get_server_host(), 0, packet);
-    else
-        enet_peer_send(get_peer(), 1, packet);
-}
-
-static inline void write8(unsigned char *buf, size_t *pos, uint8_t val)
-{
-    *(unsigned char *)(&buf[*pos]) = val;
-    (*pos) += 1;
-}
-
-static inline void write16(unsigned char *buf, size_t *pos, uint16_t val)
-{
-    *(uint16_t *)(&buf[*pos]) = htons(val);
-    (*pos) += 2;
-}
-
-static inline void write32(unsigned char *buf, size_t *pos, uint32_t val)
-{
-    *(uint32_t *)(&buf[*pos]) = htonl(val);
-    (*pos) += 4;
-}
-
-static inline uint8_t read8(unsigned char *buf, size_t *pos)
-{
-    uint8_t val = *(char *)(&buf[*pos]);
-    (*pos) += 1;
-    return val;
-}
-
-static inline uint16_t read16(unsigned char *buf, size_t *pos)
-{
-    uint16_t val = ntohs(*(uint16_t *)(&buf[*pos]));
-    (*pos) += 2;
-    return val;
-}
-
-static inline uint32_t read32(unsigned char *buf, size_t *pos)
-{
-    uint32_t val = ntohl(*(uint32_t *)(&buf[*pos]));
-    (*pos) += 4;
-    return val;
-}
-
-/******************************************************************************\
 Shared structures.
 \******************************************************************************/
 
-#define INPUT_CHUNK_SIZE        4
-#define CLIENT_MSG_CHUNK_SIZE   258
-#define TANK_CHUNK_SIZE         8
-#define BULLET_CHUNK_SIZE       7
-#define CRATE_CHUNK_SIZE        6
-#define SERVER_MSG_CHUNK_SIZE   260
-
 /* Chunk types. */
-enum
-{
+enum {
     /******************
      * Client -> Server
      */
@@ -181,8 +109,7 @@ enum
 /* Input types.
  * KFIRE_RELEASED is special. It has extra info on the time spent charging up.
  */
-enum
-{
+enum {
     KLEFT_PRESSED, KLEFT_RELEASED,
     KRIGHT_PRESSED, KRIGHT_RELEASED,
     KUP_PRESSED, KUP_RELEASED,
@@ -190,8 +117,7 @@ enum
     KFIRE_PRESSED, KFIRE_RELEASED,
 };
 
-enum
-{
+enum {
     /* RELIABLE */
     SPAWN,
     /* RELIABLE */
@@ -201,104 +127,17 @@ enum
 };
 
 /* SERVER_MSG_CHUNK commands */
-enum
-{
+enum {
     CHAT,
     SERVER_NOTICE,
     NAME_CHANGE,
 };
 
-/* The following structs must be tightly packed
- * because they're used to read packet data. */
-#ifdef _MSC_VER
-#  define PACKED_STRUCT(name) \
-    __pragma(pack(push, 1)) struct name __pragma(pack(pop))
-#elif defined(__GNUC__)
-#  define PACKED_STRUCT(name) struct __attribute__((packed)) name
-#endif
-
-PACKED_STRUCT(chunk_header)
-{
-    uint8_t type;
-};
-
-PACKED_STRUCT(input_chunk)
-{
-    struct chunk_header _;
-    uint8_t key;
-    uint16_t ms;
-};
-
-PACKED_STRUCT(client_msg_chunk)
-{
-    struct chunk_header _;
-    uint8_t data[];
-};
-
-PACKED_STRUCT(land_chunk)
-{
-    struct chunk_header _;
-    int16_t x;
-    int16_t y;
-    int16_t width;
-    int16_t height;
-    uint8_t data[];
-};
-
-PACKED_STRUCT(packed_land_chunk)
-{
-    struct chunk_header _;
-    int16_t x;
-    int16_t y;
-    int16_t width;
-    int16_t height;
-    uint8_t data[];
-};
-
-PACKED_STRUCT(tank_chunk)
-{
-    struct chunk_header _;
-    uint8_t action;
-    uint8_t id;
-    uint16_t x;
-    uint16_t y;
-    uint8_t angle;
-};
-
-PACKED_STRUCT(bullet_chunk)
-{
-    struct chunk_header _;
-    uint8_t action;
-    uint8_t id;
-    uint16_t x;
-    uint16_t y;
-};
-
-PACKED_STRUCT(crate_chunk)
-{
-    struct chunk_header _;
-    uint8_t action;
-    uint16_t x;
-    uint16_t y;
-};
-
-PACKED_STRUCT(server_msg_chunk)
-{
-    struct chunk_header _;
-    uint8_t id;
-    uint8_t action;
-    uint8_t data[];
-};
-
-/******************************************************************************\
-\******************************************************************************/
-
 #define MAX_BULLETS     64
 #define MAX_TIMERS      64
 #define MAX_NAME_LEN    16
 
-struct tank
-{
+struct tank {
     int x, y;
     int velx, vely;
     int angle, power;
@@ -307,23 +146,20 @@ struct tank
     bool facingleft;
 };
 
-struct bullet
-{
+struct bullet {
     int x, y;
     int velx, vely;
     char active;
     char type;
 };
 
-struct crate
-{
+struct crate {
     int x, y;
     bool active;
     char type;
 };
 
-struct player
-{
+struct player {
     struct tank tank;
 
     char name[MAX_NAME_LEN];
@@ -334,8 +170,7 @@ struct player
     bool kleft, kright, kup, kdown, kfire;
 };
 
-struct moag
-{
+struct moag {
     struct player players[g_max_players];
     struct bullet bullets[MAX_BULLETS];
     struct crate crate;

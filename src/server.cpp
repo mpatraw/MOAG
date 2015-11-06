@@ -63,8 +63,6 @@ static inline void broadcast_packed_land_chunk(struct moag *m, int x, int y, int
     uint8_t *packed_data = rlencode(land, w * h, &packed_data_len);
     free(land);
 
-    struct packed_land_chunk *chunk = (struct packed_land_chunk *)malloc(sizeof *chunk + packed_data_len);
-
     m::packet p;
 
     p << static_cast<uint8_t>(PACKED_LAND_CHUNK);
