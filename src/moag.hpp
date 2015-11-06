@@ -1,8 +1,8 @@
 /*
  *
  */
-#ifndef MOAG_H
-#define MOAG_H
+#ifndef MOAG_HPP
+#define MOAG_HPP
 
 #include <cassert>
 #include <algorithm>
@@ -17,8 +17,7 @@
 
 namespace m {
 
-class client_impl;
-class server_impl;
+class network_impl;
 
 class initialization_error {
 public:
@@ -82,6 +81,9 @@ private:
     std::unique_ptr<land_delegate> delegate;
     std::array<uint8_t, g_land_width * g_land_height> dirt;
 };
+
+const uint8_t packet_type_connection = 0;
+const uint8_t packet_type_disconnection = 1;
 
 class packet final {
 public:
@@ -176,7 +178,7 @@ public:
 
     uint32_t rtt() const;
 private:
-    std::unique_ptr<client_impl> impl;
+    std::unique_ptr<network_impl> impl;
 };
 
 class server final {
@@ -195,7 +197,7 @@ public:
 
     uint32_t rtt(int id) const;
 private:
-    std::unique_ptr<server_impl> impl;
+    std::unique_ptr<network_impl> impl;
 };
 
 }

@@ -8,9 +8,9 @@
 
 namespace m {
 
-class client_impl {
+class network_impl {
 public:
-    client_impl(const char *ip, unsigned short port,
+    network_impl(const char *ip, unsigned short port,
                 int max_connections, int num_channels) {
         if (enet_initialize() != 0) {
             throw initialization_error("could not initialize enet");
@@ -27,81 +27,27 @@ public:
         ENetAddress address;
         enet_address_set_host(&address, ip);
         address.port = port;
+
+        peers.reserve(1);
 #ifdef OLD_ENET
-        peer = enet_host_connect(host, &address, num_channels);
+        peers[0] = enet_host_connect(host, &address, num_channels);
 #else
-        peer = enet_host_connect(host, &address, num_channels, 0);
+        peers[0] = enet_host_connect(host, &address, num_channels, 0);
 #endif
-        if (!peer) {
+        if (!peers[0]) {
             throw initialization_error("no available peers");
         }
 
         ENetEvent ev;
         if (enet_host_service(host, &ev, g_connect_timeout) == 0 ||
             ev.type != ENET_EVENT_TYPE_CONNECT) {
-            enet_peer_reset(peer);
+            enet_peer_reset(peers[0]);
             throw initialization_error("connection timed out");
         }
+
+        is_server = false;
     }
-    ~client_impl() {
-        enet_peer_disconnect(peer, 0);
-        enet_peer_reset(peer);
-        enet_host_destroy(host);
-        enet_deinitialize();
-    }
-
-    packet &recv() {
-        current_packet.reread();
-        current_packet.rewrite();
-        ENetEvent event;
-        if (enet_host_service(host, &event, 10))
-        {
-            switch (event.type)
-            {
-                case ENET_EVENT_TYPE_CONNECT:
-                    break;
-
-                case ENET_EVENT_TYPE_DISCONNECT:
-                    break;
-
-                case ENET_EVENT_TYPE_RECEIVE:
-                    current_packet.load(event.packet->data, event.packet->dataLength);
-                    enet_packet_destroy(event.packet);
-                    break;
-
-                default:
-                    break;
-            }
-        }
-        return current_packet;
-    }
-
-    void send(const packet &p, bool reliable=true) {
-        uint32_t flags = 0;
-        if (reliable) {
-            flags |= ENET_PACKET_FLAG_RELIABLE;
-        }
-        ENetPacket *packet = enet_packet_create(NULL, p.size(), flags);
-        if (!packet) {
-            throw std::bad_alloc();
-        }
-        std::copy_n(p.data(), p.size(), packet->data);
-        enet_peer_send(peer, 1, packet);
-    }
-
-    uint32_t rtt() const {
-        return peer->roundTripTime;
-    }
-
-private:
-    ENetHost *host;
-    ENetPeer *peer;
-    packet current_packet;
-};
-
-class server_impl {
-public:
-    server_impl(unsigned short port, int max_connections, int num_channels) {
+    network_impl(unsigned short port, int max_connections, int num_channels) {
         if (enet_initialize() != 0) {
             throw initialization_error("could not initialize enet");
         }
@@ -120,13 +66,18 @@ public:
         }
 
         peers.reserve(max_connections);
+        is_server = true;
     }
-    ~server_impl() {
+    ~network_impl() {
+        if (!is_server) {
+            enet_peer_disconnect(peers[0], 0);
+            enet_peer_reset(peers[0]);
+        }
         enet_host_destroy(host);
         enet_deinitialize();
     }
 
-    bool is_connected(int id) const {
+    bool is_connected(int id=0) const {
         return peers[id] != nullptr;
     }
 
@@ -134,29 +85,41 @@ public:
         current_packet.reread();
         current_packet.rewrite();
         ENetEvent event;
-        if (enet_host_service(host, &event, 10)) {
-            switch (event.type) {
+        if (enet_host_service(host, &event, 10))
+        {
+            switch (event.type)
+            {
                 case ENET_EVENT_TYPE_CONNECT: {
-                    size_t i;
-                    for (i = 0; i < peers.size(); ++i) {
-                        if (!peers[i]) {
-                            break;
+                    if (is_server) {
+                        size_t i;
+                        for (i = 0; i < peers.size(); ++i) {
+                            if (!peers[i]) {
+                                break;
+                            }
                         }
+                        event.peer->data = static_cast<void *>(&i);
+                        peers[i] = event.peer;
+                        id = i;
                     }
-                    event.peer->data = static_cast<void *>(&i);
-                    peers[i] = event.peer;
+                    current_packet << packet_type_connection;
                     break;
                 }
 
                 case ENET_EVENT_TYPE_DISCONNECT: {
-                    size_t i = *static_cast<size_t *>(event.peer->data);
-                    peers[i] = nullptr;
+                    if (is_server) {
+                        size_t i = *static_cast<size_t *>(event.peer->data);
+                        peers[i] = nullptr;
+                        id = i;
+                    }
+                    current_packet << packet_type_disconnection;
                     break;
                 }
 
                 case ENET_EVENT_TYPE_RECEIVE: {
-                    size_t i = *static_cast<size_t *>(event.peer->data);
-                    id = static_cast<int>(i);
+                    if (is_server) {
+                        size_t i = *static_cast<size_t *>(event.peer->data);
+                        id = static_cast<int>(i);
+                    }
                     current_packet.load(event.packet->data, event.packet->dataLength);
                     enet_packet_destroy(event.packet);
                     break;
@@ -174,7 +137,7 @@ public:
         if (reliable) {
             flags |= ENET_PACKET_FLAG_RELIABLE;
         }
-        ENetPacket *packet = enet_packet_create(NULL, p.size(), flags);
+        ENetPacket *packet = enet_packet_create(NULL, p.size() + 2, flags);
         if (!packet) {
             throw std::bad_alloc();
         }
@@ -183,6 +146,7 @@ public:
     }
 
     void broadcast(const packet &p, bool reliable=true) {
+        assert(is_server);
         uint32_t flags = 0;
         if (reliable) {
             flags |= ENET_PACKET_FLAG_RELIABLE;
@@ -195,27 +159,30 @@ public:
         enet_host_broadcast(host, 1, packet);
     }
 
-    uint32_t rtt(int id) const {
+    uint32_t rtt(int id=0) const {
         return peers[id]->roundTripTime;
     }
+
 private:
     ENetHost *host;
     std::vector<ENetPeer *> peers;
     packet current_packet;
+    bool is_server;
 };
 
 client::client() :
-    impl{std::make_unique<client_impl>(g_host, g_port, g_max_players, g_number_of_channels)} {
+    impl{std::make_unique<network_impl>(g_host, g_port, g_max_players, g_number_of_channels)} {
 }
 
 client::~client() { }
 
 packet &client::recv() {
-    return impl->recv();
+    int _;
+    return impl->recv(_);
 }
 
 void client::send(const packet &p, bool reliable) {
-    impl->send(p, reliable);
+    impl->send(p, 0, reliable);
 }
 
 uint32_t client::rtt() const {
@@ -223,7 +190,7 @@ uint32_t client::rtt() const {
 }
 
 server::server() :
-    impl{std::make_unique<server_impl>(g_port, g_max_players, g_number_of_channels)} {
+    impl{std::make_unique<network_impl>(g_port, g_max_players, g_number_of_channels)} {
 }
 
 bool server::is_connected(int id) const {

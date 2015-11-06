@@ -111,7 +111,7 @@ enum
      * 1: *_*_CHUNK
      * 2: Milliseconds held.
      */
-    INPUT_CHUNK,
+    INPUT_CHUNK = 2,
 
     /* RELIABLE
      * 1: CLIENT_MSG_CHUNK
