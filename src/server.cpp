@@ -35,6 +35,7 @@ enum
     E_COLLAPSE
 };
 
+static std::unique_ptr<m::server> server;
 static m::land main_land;
 
 static inline void broadcast_packed_land_chunk(struct moag *m, int x, int y, int w, int h)
@@ -587,21 +588,6 @@ static void step_game(struct moag *m)
     m->frame += 1;
 }
 
-static intptr_t client_connect(struct moag *m)
-{
-    intptr_t i = 0;
-    while (m->players[i].connected) {
-        if(++i >= g_max_players) {
-            printf("Client failed to connect, too many clients.\n");
-            return -1;
-        }
-    }
-
-    spawn_client(m, i);
-
-    return i;
-}
-
 static void handle_msg(struct moag *m, int id, const char* msg, int len)
 {
     if (msg[0] == '/' && msg[1] == 'n' && msg[2] == ' ')
@@ -647,20 +633,14 @@ static void init_game(struct moag *m)
     }
 }
 
-static void on_receive(struct moag *m, ENetEvent *ev)
+static void on_receive(struct moag *m, m::packet &p, uint8_t type, int id)
 {
-    struct chunk_header *chunk;
-
-    chunk = receive_chunk(ev->packet);
-    intptr_t id = (intptr_t)ev->peer->data;
-
-    switch (chunk->type)
-    {
-        case INPUT_CHUNK:
-        {
-            struct input_chunk *input = (struct input_chunk *)chunk;
-            switch (input->key)
-            {
+    switch (type) {
+        case INPUT_CHUNK: {
+            uint8_t key;
+            uint16_t ms;
+            p >> key >> ms;
+            switch (key) {
                 case KLEFT_PRESSED:   m->players[id].kleft = true; break;
                 case KLEFT_RELEASED:  m->players[id].kleft = false; break;
                 case KRIGHT_PRESSED:  m->players[id].kright = true; break;
@@ -670,9 +650,8 @@ static void on_receive(struct moag *m, ENetEvent *ev)
                 case KDOWN_PRESSED:   m->players[id].kdown = true; break;
                 case KDOWN_RELEASED:  m->players[id].kdown = false; break;
                 case KFIRE_PRESSED:   m->players[id].kfire = true; break;
-                case KFIRE_RELEASED:
-                {
-                    m->players[id].tank.power = input->ms;
+                case KFIRE_RELEASED: {
+                    m->players[id].tank.power = ms;
                     m->players[id].kfire = false;
                     auto p = &m->players[id].tank.power;
                     if (*p < 0) {
@@ -686,22 +665,20 @@ static void on_receive(struct moag *m, ENetEvent *ev)
             break;
         }
 
-        case CLIENT_MSG_CHUNK:
-        {
-            struct client_msg_chunk *client_msg = (struct client_msg_chunk *)chunk;
-            handle_msg(m, id, (char *)client_msg->data, ev->packet->dataLength - 1);
+        case CLIENT_MSG_CHUNK: {
+            std::string msg;
+            p >> msg;
+            handle_msg(m, id, msg.c_str(), msg.length());
             break;
         }
 
         default: break;
     }
-
-    free(chunk);
 }
 
 void server_main(void)
 {
-    init_enet_server(g_port);
+    server.reset(new m::server);
 
     struct moag moag;
     init_game(&moag);
@@ -710,31 +687,25 @@ void server_main(void)
 
     for (;;)
     {
-        while (enet_host_service(get_server_host(), &event, 0))
-        {
-            switch (event.type)
-            {
-                case ENET_EVENT_TYPE_CONNECT:
-                    event.peer->data = (void *)client_connect(&moag);
-                    break;
+        while (true) {
+            int id;
+            auto packet = server->recv(id);
+            if (packet.empty()) {
+                break;
+            }
 
-                case ENET_EVENT_TYPE_DISCONNECT:
-                    disconnect_client(&moag, (intptr_t)event.peer->data);
-                    break;
-
-                case ENET_EVENT_TYPE_RECEIVE:
-                    on_receive(&moag, &event);
-                    enet_packet_destroy(event.packet);
-                    break;
-
-                default:
-                    break;
+            uint8_t type;
+            packet >> type;
+            if (type == m::packet_type_connection) {
+                spawn_client(&moag, id);
+            } else if (type == m::packet_type_disconnection) {
+                disconnect_client(&moag, id);
+            } else {
+                on_receive(&moag, packet, type, id);
             }
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
         step_game(&moag);
     }
-
-    uninit_enet();
 }

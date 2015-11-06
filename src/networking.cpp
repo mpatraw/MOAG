@@ -193,6 +193,9 @@ server::server() :
     impl{std::make_unique<network_impl>(g_port, g_max_players, g_number_of_channels)} {
 }
 
+server::~server() {
+}
+
 bool server::is_connected(int id) const {
     return impl->is_connected(id);
 }

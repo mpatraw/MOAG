@@ -84,6 +84,7 @@ private:
 
 const uint8_t packet_type_connection = 0;
 const uint8_t packet_type_disconnection = 1;
+const uint8_t packet_type_user_defined = 2;
 
 class packet final {
 public:
@@ -184,7 +185,7 @@ private:
 class server final {
 public:
     server();
-    ~server() = default;
+    ~server();
     server(const server &) = delete;
     server(server &&) = delete;
     server &operator =(server) = delete;

@@ -290,9 +290,6 @@ PACKED_STRUCT(server_msg_chunk)
     uint8_t data[];
 };
 
-struct chunk_header *receive_chunk(ENetPacket *packet);
-void send_chunk(struct chunk_header *chunk, size_t len, bool broadcast, bool reliable);
-
 /******************************************************************************\
 \******************************************************************************/
 
