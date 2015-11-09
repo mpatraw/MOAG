@@ -1,5 +1,13 @@
 
+#if defined(_MSC_VER)
+#include <boost/optional.hpp>
+template <class T>
+using optional = boost::optional<T>;
+#else
 #include <experimental/optional>
+template <class T>
+using optional = std::experimental::optional<T>;
+#endif
 #include <iostream>
 #include <string>
 #include <thread>
@@ -12,8 +20,7 @@ bool g_is_server = false;
 const char *g_host = "localhost";
 int g_port = 6624;
 
-static bool has_arg(int argc, char *argv[], const char *search)
-{
+static bool has_arg(int argc, char *argv[], const char *search) {
     for (int i = 0; i < argc; ++i) {
         std::string a{argv[i]};
         if (a.find(search) != std::string::npos) {
@@ -24,9 +31,8 @@ static bool has_arg(int argc, char *argv[], const char *search)
 }
 
 // Inefficient but gets the work done.
-static std::experimental::optional<const char *>
-get_arg(int argc, char *argv[], const char *search)
-{
+static optional<const char *>
+get_arg(int argc, char *argv[], const char *search) {
     for (int i = 0; i < argc; ++i) {
         std::string a{argv[i]};
         if (a.find(search) != std::string::npos) {
@@ -38,8 +44,7 @@ get_arg(int argc, char *argv[], const char *search)
     return {};
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     g_is_server = has_arg(argc, argv, "--server");
     g_is_client = !has_arg(argc, argv, "--no-client");
     g_host = get_arg(argc, argv, "--host").value_or("localhost");

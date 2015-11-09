@@ -1,6 +1,7 @@
 
 #include <deque>
 #include <iostream>
+#include <string>
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -141,7 +142,7 @@ public:
         }
     }
 
-    typedef typename std::deque<SDL_Texture *>::const_iterator const_iterator;
+    typedef std::deque<SDL_Texture *>::const_iterator const_iterator;
 
     const_iterator begin() const { return message_texts.begin(); }
     const_iterator end() const { return message_texts.end(); }

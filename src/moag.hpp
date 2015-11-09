@@ -186,7 +186,7 @@ public:
         if (x < 0 || y < 0 || x >= g_land_width || y >= g_land_height) {
             return true;
         }
-        return dirt[y * g_land_width + x];
+        return dirt[y * g_land_width + x] != 0;
     }
 
     bool is_air(int x, int y) const {
