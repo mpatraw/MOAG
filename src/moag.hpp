@@ -214,6 +214,7 @@ class bullet {
 public:
     int x, y;
     int velx, vely;
+	int origin;
     char active;
     char type;
 };

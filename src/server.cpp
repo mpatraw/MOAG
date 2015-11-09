@@ -236,14 +236,15 @@ static void launch_ladder(m::moag *m, int x, int y) {
     broadcast_bullet_chunk(m, SPAWN, i);
 }
 
-static void fire_bullet(m::moag *m, char type, int x, int y, int vx, int vy) {
+static void fire_bullet(m::moag *m, int origin, char type, int x, int y, int vx, int vy) {
     int i = 0;
     while (m->bullets[i].active) {
         if (++i >= g_max_bullets) {
             return;
         }
     }
-    m->bullets[i].active = 4;
+    m->bullets[i].active = 1;
+	m->bullets[i].origin = origin;
     m->bullets[i].type = type;
     m->bullets[i].x = x;
     m->bullets[i].y = y;
@@ -252,8 +253,8 @@ static void fire_bullet(m::moag *m, char type, int x, int y, int vx, int vy) {
     broadcast_bullet_chunk(m, SPAWN, i);
 }
 
-static void fire_bullet_ang(m::moag *m, char type, int x, int y, int angle, int vel) {
-    fire_bullet(m, type, x + 5 * cosf(DEG2RAD(angle)),
+static void fire_bullet_ang(m::moag *m, int origin, char type, int x, int y, int angle, int vel) {
+    fire_bullet(m, origin, type, x + 5 * cosf(DEG2RAD(angle)),
                          y - 5 * sinf(DEG2RAD(angle)),
                          vel * cosf(DEG2RAD(angle)) / 10,
                         -vel * sinf(DEG2RAD(angle)) / 10);
@@ -392,7 +393,7 @@ static void tank_update(m::moag *m, int id) {
         float start_angle = t->facingleft ? 180 - t->angle : t->angle;
         start_angle -= (num_burst-1)*burst_spread/2.0;
         for (int i = 0; i < num_burst; i++) {
-            fire_bullet_ang(m, t->bullet, t->x, t->y - 70,
+            fire_bullet_ang(m, id, t->bullet, t->x, t->y - 70,
                             start_angle + i*burst_spread,
                             t->power);
         }
@@ -475,9 +476,9 @@ static void bullet_detonate(m::moag *m, int id) {
 static void bullet_update(m::moag *m, int id) {
     m::bullet *b = &m->bullets[id];
 
-    if (!b->active) {
-        return;
-    }
+	if (!b->active) {
+		return;
+	}
 
     b->x += b->velx;
     b->y += b->vely;
@@ -488,11 +489,14 @@ static void bullet_update(m::moag *m, int id) {
         return;
     }
 
-    for (int i = 0; i < g_max_players; i++) {
+	for (int i = 0; i < g_max_players; i++) {
+		if (!m->players[i].connected) {
+			continue;
+		}
         const auto &t = m->players[i].tank;
         auto dx = t.x - b->x;
         auto dy = t.y - b->y;
-        if (dx * dx + dy * dy < 90) {
+        if (dx * dx + dy * dy < 90 && i != b->origin) {
             bullet_detonate(m, id);
             return;
         }
