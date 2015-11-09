@@ -69,23 +69,23 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>..\bin</OutDir>
+    <OutDir>..\bin\</OutDir>
     <TargetName>moag</TargetName>
-    <IntDir>.\output\$(ProjectName)</IntDir>
+    <IntDir>.\output\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>..\bin</OutDir>
-    <IntDir>.\output\$(ProjectName)</IntDir>
+    <OutDir>..\bin\</OutDir>
+    <IntDir>.\output\$(ProjectName)\</IntDir>
     <TargetName>moag</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>..\bin</OutDir>
-    <IntDir>.\output\$(ProjectName)</IntDir>
+    <OutDir>..\bin\</OutDir>
+    <IntDir>.\output\$(ProjectName)\</IntDir>
     <TargetName>moag</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>..\bin</OutDir>
-    <IntDir>.\output\$(ProjectName)</IntDir>
+    <OutDir>..\bin\</OutDir>
+    <IntDir>.\output\$(ProjectName)\</IntDir>
     <TargetName>moag</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">

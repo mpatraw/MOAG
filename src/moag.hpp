@@ -259,7 +259,7 @@ public:
     const uint8_t *data() const { return chunk.data(); }
     const uint8_t *remaining_data() const { return data() + pos; }
     size_t remaining_size() const { return size() - pos; }
-    bool can_read(int amount=1) const { return remaining_size() >= amount; }
+    bool can_read(size_t amount=1) const { return remaining_size() >= amount; }
 
     void reread() { pos = 0; }
     void rewrite() { chunk.clear(); }

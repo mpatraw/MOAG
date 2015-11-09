@@ -381,22 +381,26 @@ static void process_packet(m::moag *m, m::packet &p)
                     int linelen = namelen + len + 4;
                     char *line = (char *)malloc(linelen);
                     line[0] = '<';
-                    for(int i = 0; i < namelen; i++)
-                        line[i + 1] = m->players[id].name[i];
+					for (int i = 0; i < namelen; i++) {
+						line[i + 1] = m->players[id].name[i];
+					}
                     line[namelen+1] = '>';
                     line[namelen+2] = ' ';
-                    for (int i = 0; i < len; ++i)
-                        line[namelen + 3 + i] = data[i];
+					for (size_t i = 0; i < len; ++i) {
+						line[namelen + 3 + i] = data[i];
+					}
                     line[linelen - 1] = '\0';
                     chat_line.add_message(line);
                     break;
                 }
 
                 case NAME_CHANGE: {
-                    if (len < 1 || len > 15)
-                        break;
-                    for (int i = 0; i < len; ++i)
-                        m->players[id].name[i] =data[i];
+					if (len < 1 || len > 15) {
+						break;
+					}
+					for (size_t i = 0; i < len; ++i) {
+						m->players[id].name[i] = data[i];
+					}
                     m->players[id].name[len]='\0';
                     break;
                 }

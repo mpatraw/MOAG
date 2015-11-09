@@ -127,7 +127,7 @@ static inline void broadcast_crate_chunk(m::moag *m, int action) {
     }
 }
 
-static inline void broadcast_chat(int id, char action, const char *msg, unsigned char len) {
+static inline void broadcast_chat(int id, char action, const char *msg, size_t len) {
     m::packet p;
     
     p << static_cast<uint8_t>(SERVER_MSG_CHUNK);
@@ -254,10 +254,11 @@ static void fire_bullet(m::moag *m, int origin, char type, int x, int y, int vx,
 }
 
 static void fire_bullet_ang(m::moag *m, int origin, char type, int x, int y, int angle, int vel) {
-    fire_bullet(m, origin, type, x + 5 * cosf(DEG2RAD(angle)),
-                         y - 5 * sinf(DEG2RAD(angle)),
-                         vel * cosf(DEG2RAD(angle)) / 10,
-                        -vel * sinf(DEG2RAD(angle)) / 10);
+    fire_bullet(m, origin, type,
+		static_cast<int>(x + 5 * cos(DEG2RAD(angle))),
+		static_cast<int>(y - 5 * sin(DEG2RAD(angle))),
+		static_cast<int>(vel * cos(DEG2RAD(angle)) / 10),
+		static_cast<int>(-vel * sin(DEG2RAD(angle)) / 10));
 }
 
 static void tank_update(m::moag *m, int id) {
@@ -384,21 +385,8 @@ static void tank_update(m::moag *m, int id) {
 
     // Fire
     if (t->power) {
-        float burst_spread = 4.0;
-        if (t->bullet == SHOTGUN) {
-            t->num_burst *= g_shotgun_pellets;
-            burst_spread = 2.0;
-        }
-        int num_burst = t->bullet == MISSILE ? 1 : t->num_burst;
-        float start_angle = t->facingleft ? 180 - t->angle : t->angle;
-        start_angle -= (num_burst-1)*burst_spread/2.0;
-        for (int i = 0; i < num_burst; i++) {
-            fire_bullet_ang(m, id, t->bullet, t->x, t->y - 70,
-                            start_angle + i*burst_spread,
-                            t->power);
-        }
-        if (t->bullet != MISSILE)
-            t->num_burst = 1;
+        int start_angle = t->facingleft ? 180 - t->angle : t->angle;
+        fire_bullet_ang(m, id, t->bullet, t->x, t->y - 70, start_angle, t->power);
         t->bullet = MISSILE;
         t->power = 0;
     }
