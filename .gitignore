@@ -1,5 +1,13 @@
 *.o
+*.ilk
+*.pdb
+*.opensdf
+*.sdf
+*.user
+*.swp
+~
 moag
+moag.exe
 test
 CMakeCache.txt
 CMakeFiles/
