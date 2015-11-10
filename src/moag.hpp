@@ -232,8 +232,6 @@ public:
     char name[g_max_name_len];
     bool connected;
     unsigned spawn_timer;
-    unsigned ladder_count;
-    int ladder_timer;
     bool kleft, kright, kup, kdown, kfire;
 };
 

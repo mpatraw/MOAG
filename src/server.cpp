@@ -178,8 +178,6 @@ static void explode(int x, int y, int rad, char type) {
 static void spawn_tank(int id) {
     players[id].connected = true;
     players[id].spawn_timer = 0;
-    players[id].ladder_timer = g_ladder_time;
-    players[id].ladder_count = 3;
     players[id].kleft = false;
     players[id].kright = false;
     players[id].kup = false;
@@ -225,22 +223,6 @@ static void disconnect_client(int id) {
     broadcast_tank_chunk(KILL, id);
 }
 
-static void launch_ladder(int x, int y) {
-    int i = 0;
-    while (bullets[i].active) {
-        if (++i >= g_max_bullets) {
-            return;
-        }
-    }
-    bullets[i].active = g_ladder_length;
-    bullets[i].type = LADDER;
-    bullets[i].x = x;
-    bullets[i].y = y;
-    bullets[i].velx = 0;
-    bullets[i].vely = -1;
-    broadcast_bullet_chunk(SPAWN, i);
-}
-
 static void fire_bullet(int origin, char type, int x, int y, int vx, int vy) {
     int i = 0;
     while (bullets[i].active) {
@@ -282,25 +264,8 @@ static void tank_update(int id) {
 
     bool moved = false;
     bool grav = true;
-    if (players[id].ladder_timer >= 0 && (!players[id].kleft || !players[id].kright)) {
-        players[id].ladder_timer = g_ladder_time;
-    }
 
-    if (players[id].kleft && players[id].kright) {
-        if (players[id].ladder_timer > 0) {
-            if (main_land.is_dirt(t->x, t->y + 1)) {
-                players[id].ladder_timer--;
-            } else {
-                players[id].ladder_timer = g_ladder_time;
-            }
-        } else if (players[id].ladder_timer == 0) {
-            if (players[id].ladder_count > 0) {
-                launch_ladder(t->x, t->y);
-                players[id].ladder_count--;
-            }
-            players[id].ladder_timer = g_ladder_time;
-        }
-    } else if (players[id].kleft) {
+    if (players[id].kleft) {
         t->facingleft = 1;
         if (main_land.is_air(t->x - 1, t->y) && t->x >= 1) {
             t->x -= 1;
@@ -348,7 +313,6 @@ static void tank_update(int id) {
     }
 
     if (abs(t->x - crate.x) < 14 && abs(t->y - crate.y) < 14) {
-        players[id].ladder_timer = g_ladder_time;
         if (crate.type == TRIPLER) {
             t->num_burst *= 3;
         } else {
