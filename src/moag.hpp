@@ -272,12 +272,20 @@ public:
         chunk.push_back(i);
         return *this;
     }
+	packet &operator <<(int8_t i) {
+		*this << static_cast<uint8_t>(i);
+		return *this;
+	}
     packet &operator <<(uint16_t i) {
         auto v = htons(i);
         chunk.push_back((v >> 0) & 0xff);
         chunk.push_back((v >> 8) & 0xff);
         return *this;
     }
+	packet &operator <<(int16_t i) {
+		*this << static_cast<uint16_t>(i);
+		return *this;
+	}
     packet &operator <<(uint32_t i) {
         auto v = htonl(i);
         chunk.push_back((v >> 0) & 0xff);
@@ -286,6 +294,10 @@ public:
         chunk.push_back((v >> 24) & 0xff);
         return *this;
     }
+	packet &operator <<(int32_t i) {
+		*this << static_cast<uint32_t>(i);
+		return *this;
+	}
     packet &operator <<(const char *str) {
         while (*str) {
             chunk.push_back(*str++);
@@ -300,6 +312,10 @@ public:
         i = chunk[pos++];
         return *this;
     }
+	packet &operator >>(int8_t &i) {
+		*this >> reinterpret_cast<uint8_t &>(i);
+		return *this;
+	}
     packet &operator >>(uint16_t &i) {
         assert(can_read(2));
         uint16_t v{0};
@@ -308,6 +324,10 @@ public:
         i = ntohs(v);
         return *this;
     }
+	packet &operator >>(int16_t &i) {
+		*this >> reinterpret_cast<uint16_t &>(i);
+		return *this;
+	}
     packet &operator >>(uint32_t &i) {
         assert(can_read(4));
         uint32_t v{0};
@@ -318,6 +338,10 @@ public:
         i = ntohl(v);
         return *this;
     }
+	packet &operator >>(int32_t &i) {
+		*this >> reinterpret_cast<uint32_t &>(i);
+		return *this;
+	}
     packet &operator >>(std::string &str) {
         while (auto c = chunk[pos++]) {
             str.push_back(c);
