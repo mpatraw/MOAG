@@ -27,11 +27,6 @@ static inline double degrees(double radians) {
 	return radians * (180.0 / pi);
 }
 
-/******************************************************************************\
-Shared structures.
-\******************************************************************************/
-
-/* Chunk types. */
 enum {
     /******************
      * Client -> Server
@@ -203,11 +198,12 @@ private:
     std::array<uint8_t, g_land_width * g_land_height> dirt;
 };
 
-class tank {
+class tank final {
 public:
-    int x, y;
+    int16_t x, y;
+	int8_t angle;
     int velx, vely;
-    int angle, power;
+    int power;
     char bullet;
     int num_burst;
     bool facingleft;
@@ -239,14 +235,6 @@ public:
     unsigned ladder_count;
     int ladder_timer;
     bool kleft, kright, kup, kdown, kfire;
-};
-
-class moag {
-public:
-    player players[g_max_players];
-    bullet bullets[g_max_bullets];
-    crate crate;
-    int frame;
 };
 
 const uint8_t packet_type_connection = 0;

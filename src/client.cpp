@@ -18,6 +18,10 @@ struct input {
     }
 };
 
+static m::player players[g_max_players];
+static m::bullet bullets[g_max_bullets];
+static m::crate crate;
+
 static SDL_Window *main_window = nullptr;
 static SDL_Renderer *main_renderer = nullptr;
 static SDL_Texture *tank_texture = nullptr;
@@ -183,9 +187,9 @@ static void draw_crate(int x, int y)
     SDL_RenderCopy(main_renderer, crate_texture, NULL, &src);
 }
 
-static void draw_bullets(m::moag *m) {
+static void draw_bullets() {
     for (int i = 0; i < g_max_bullets; i++) {
-        m::bullet *b = &m->bullets[i];
+        m::bullet *b = &bullets[i];
         if (b->active) {
             SDL_Rect src = {b->x / 10, b->y / 10, bullet_width, bullet_height};
             SDL_RenderCopy(main_renderer, bullet_texture, NULL, &src);
@@ -193,26 +197,24 @@ static void draw_bullets(m::moag *m) {
     }
 }
       
-static void draw(m::moag *m)
+static void draw()
 {
     SDL_SetRenderDrawColor(main_renderer, 128, 128, 128, 255);
     auto del = dynamic_cast<land_texture const *>(main_land.get_delegate());
     SDL_RenderCopy(main_renderer, const_cast<SDL_Texture *>(del->sdl_texture()), nullptr, nullptr);
 
-    if (m->crate.active) {
-        draw_crate((m->crate.x - 4) / 10, (m->crate.y - 8) / 10);
+    if (crate.active) {
+        draw_crate((crate.x - 4) / 10, (crate.y - 8) / 10);
     }
 
-    draw_bullets(m);
+    draw_bullets();
 
-    for (int i = 0; i < g_max_players; i++)
-    {
-        if (m->players[i].connected)
-        {
-            draw_tank(m->players[i].tank.x / 10,
-                      m->players[i].tank.y / 10,
-                      m->players[i].tank.angle,
-                      m->players[i].tank.facingleft);
+    for (int i = 0; i < g_max_players; i++) {
+        if (players[i].connected) {
+            draw_tank(players[i].tank.x / 10,
+                      players[i].tank.y / 10,
+                      players[i].tank.angle,
+                      players[i].tank.facingleft);
         }
     }
 
@@ -236,7 +238,7 @@ static void draw(m::moag *m)
     }
 }
 
-static void process_packet(m::moag *m, m::packet &p)
+static void process_packet(m::packet &p)
 {
     uint8_t type;
     p >> type;
@@ -294,31 +296,31 @@ static void process_packet(m::moag *m, m::packet &p)
             assert(id >= 0 && id <= g_max_players);
 
             if (action == SPAWN) {
-                m->players[id].connected = true;
+                players[id].connected = true;
 
-                m->players[id].tank.x = tx;
-                m->players[id].tank.y = ty;
+                players[id].tank.x = tx;
+                players[id].tank.y = ty;
 
-                m->players[id].tank.facingleft = false;
+                players[id].tank.facingleft = false;
                 if (angle < 0){
                     angle = -angle;
-                    m->players[id].tank.facingleft = true;
+                    players[id].tank.facingleft = true;
                 }
-                m->players[id].tank.angle = angle;
+                players[id].tank.angle = angle;
             } else if (action == MOVE) {
-                m->players[id].tank.x = tx;
-                m->players[id].tank.y = ty;
+                players[id].tank.x = tx;
+                players[id].tank.y = ty;
 
-                m->players[id].tank.facingleft = false;
+                players[id].tank.facingleft = false;
                 if (angle < 0){
                     angle = -angle;
-                    m->players[id].tank.facingleft = true;
+                    players[id].tank.facingleft = true;
                 }
-                m->players[id].tank.angle = angle;
+                players[id].tank.angle = angle;
             } else if (action == KILL) {
-                m->players[id].tank.x = -1;
-                m->players[id].tank.y = -1;
-                m->players[id].connected = false;
+                players[id].tank.x = -1;
+                players[id].tank.y = -1;
+                players[id].connected = false;
             } else {
                 fprintf(stderr, "Invalid TANK_CHUNK type.\n");
                 exit(-1);
@@ -332,14 +334,14 @@ static void process_packet(m::moag *m, m::packet &p)
             p >> action >> id >> bx >> by;
 
             if (action == SPAWN) {
-                m->bullets[id].active = true;
-                m->bullets[id].x = bx;
-                m->bullets[id].y = by;
+                bullets[id].active = true;
+                bullets[id].x = bx;
+                bullets[id].y = by;
             } else if (action == MOVE) {
-                m->bullets[id].x = bx;
-                m->bullets[id].y = by;
+                bullets[id].x = bx;
+                bullets[id].y = by;
             } else if (action == KILL) {
-                m->bullets[id].active = false;
+                bullets[id].active = false;
             } else {
                 fprintf(stderr, "Invalid BULLET_CHUNK type.\n");
                 exit(-1);
@@ -353,14 +355,14 @@ static void process_packet(m::moag *m, m::packet &p)
             p >> action >> cx >> cy;
 
             if (action == SPAWN) {
-                m->crate.active = true;
-                m->crate.x = cx;
-                m->crate.y = cy;
+                crate.active = true;
+                crate.x = cx;
+                crate.y = cy;
             } else if (action == MOVE) {
-                m->crate.x = cx;
-                m->crate.y = cy;
+                crate.x = cx;
+                crate.y = cy;
             } else if (action == KILL) {
-                m->crate.active = false;
+                crate.active = false;
             } else {
                 fprintf(stderr, "Invalid CRATE_CHUNK type.\n");
                 exit(-1);
@@ -377,12 +379,12 @@ static void process_packet(m::moag *m, m::packet &p)
 
             switch (action) {
                 case CHAT: {
-                    int namelen = strlen(m->players[id].name);
+                    int namelen = strlen(players[id].name);
                     int linelen = namelen + len + 4;
                     char *line = (char *)malloc(linelen);
                     line[0] = '<';
 					for (int i = 0; i < namelen; i++) {
-						line[i + 1] = m->players[id].name[i];
+						line[i + 1] = players[id].name[i];
 					}
                     line[namelen+1] = '>';
                     line[namelen+2] = ' ';
@@ -399,9 +401,9 @@ static void process_packet(m::moag *m, m::packet &p)
 						break;
 					}
 					for (size_t i = 0; i < len; ++i) {
-						m->players[id].name[i] = data[i];
+						players[id].name[i] = data[i];
 					}
-                    m->players[id].name[len]='\0';
+                    players[id].name[len]='\0';
                     break;
                 }
 
@@ -469,9 +471,6 @@ void client_main(void)
         std::cerr << SDL_GetError() << std::endl;
         goto font_load_fail;
     }
-
-    m::moag moag;
-    memset(&moag, 0, sizeof(moag));
 
     main_land.set_delegate(new land_texture(main_renderer));
 
@@ -575,12 +574,12 @@ void client_main(void)
             if (packet.empty()) {
                 break;
             }
-            process_packet(&moag, packet);
+            process_packet(packet);
         }
 
         SDL_SetRenderDrawColor(main_renderer, 0, 0, 0, 255);
         SDL_RenderClear(main_renderer);
-        draw(&moag);
+        draw();
         quick_render_string(g_land_width - 30, 0, std::to_string(client->rtt()).c_str());
         SDL_RenderPresent(main_renderer);
     }
