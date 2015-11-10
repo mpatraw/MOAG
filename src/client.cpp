@@ -440,7 +440,9 @@ void client_main(void)
         goto ttf_init_fail;
     }
 
-    main_window = SDL_CreateWindow("MOAG", -1, -1, g_land_width, g_land_height, 0);
+    main_window = SDL_CreateWindow("MOAG",
+		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+		g_land_width, g_land_height, 0);
     if (!main_window) {
         std::cerr << SDL_GetError() << std::endl;
         goto main_window_fail;

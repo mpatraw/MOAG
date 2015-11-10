@@ -343,7 +343,6 @@ static void tank_update(int id) {
     if (grav) {
         if (main_land.is_air(t->x, t->y + 1)) {
             t->y += 1;
-			std::cout << t->y << std::endl;
             moved = true;
         }
     }
