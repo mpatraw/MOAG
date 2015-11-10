@@ -4,7 +4,7 @@
 
 #include <cstdint>
 
-template <int P=10, typename T=int>
+template <int P=10>
 class precision_integer {
 public:
 	precision_integer(int i=0, bool precision=false) :
