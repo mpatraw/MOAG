@@ -147,6 +147,7 @@ class game_controller {
 public:
 	virtual ~game_controller() {}
 	virtual bool solid(int x, int y) = 0;
+	virtual bool collide(int x, int y) = 0;
 	virtual void explode(int x, int y, int size) = 0;
 	virtual void fire(int x, int y, int angle, int velocity) = 0;
 };
@@ -198,7 +199,50 @@ private:
     std::array<uint8_t, g_land_width * g_land_height> dirt;
 };
 
+class entity {
+public:
+	enum class state {
+		moving,
+		stopped,
+		collided
+	};
+public:
+	entity() {}
+
+	virtual void step(game_controller &con, uint32_t dt) {
+		auto sec = precision_integer<>{dt / 1000.0};
+		auto tx = x + velx * sec;
+		auto ty = y + vely * sec;
+		vely += g_gravity;
+		current_state = state::moving;
+
+		int px, py;
+		line_path<> lp{x, y, tx, ty};
+		for (const auto &p : lp) {
+			std::tie(px, py) = p;
+			if (con.solid(px, py)) {
+				current_state = state::stopped;
+				break;
+			}
+			if (con.collide(px, py)) {
+				current_state = state::collided;
+				break;
+			}
+		}
+
+		x = px;
+		y = py;
+	}
+
+protected:
+	precision_integer<> x, y;
+	precision_integer<> velx, vely;
+	state current_state;
+	bool active;
+};
+
 class tank final {
+public:
 public:
 	precision_integer<> x, y;
 	precision_integer<> velx, vely;
@@ -221,6 +265,7 @@ public:
 class crate {
 public:
 	precision_integer<> x, y;
+	precision_integer<> velx, vely;
     bool active;
     char type;
 };
