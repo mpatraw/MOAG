@@ -5,6 +5,7 @@
 #define MOAG_HPP
 
 #include <cassert>
+#include <cmath>
 #include <algorithm>
 #include <array>
 #include <memory>
@@ -13,16 +14,18 @@
 #include <enet/enet.h>
 
 #include "config.hpp"
+#include "line_path.hpp"
 #include "precision_integer.hpp"
 
-#define SQ(x)           ((x) * (x))
+static inline double radians(double degrees) {
+	const double pi = 3.14159;
+	return degrees * (pi / 180.0);
+}
 
-#ifndef M_PI
-#   define M_PI         3.14159
-#endif
-
-#define DEG2RAD(deg)    ((deg) * (M_PI / 180))
-#define RAD2DEG(rad)    ((rad) * (180 / M_PI))
+static inline double degrees(double radians) {
+	const double pi = 3.14159;
+	return radians * (180.0 / pi);
+}
 
 /******************************************************************************\
 Shared structures.

@@ -23,4 +23,12 @@ int main() {
     assert(d == 255);
     assert(s == "Hello, world");
     assert(sh == 15);
+
+
+	int x, y;
+	const auto lp = line_path<>(5, 0, 10, 10);
+	for (const auto &p : lp) {
+		std::tie(x, y) = p;
+		std::cout << x << ", " << y << std::endl;
+	}
 }

@@ -149,7 +149,7 @@ static void kill_tank(m::moag *m, int id) {
 static void explode(m::moag *m, int x, int y, int rad, char type) {
     for (int iy = -rad; iy <= rad; iy++) {
         for (int ix = -rad; ix <= rad; ix++) {
-            if (SQ(ix) + SQ(iy) < SQ(rad)) {
+            if (std::pow(ix, 2) + std::pow(iy, 2) < std::pow(rad, 2)) {
                 if (type == E_DIRT) {
                     main_land.set_dirt(x/10 + ix, y/10 + iy);
                 } else {
@@ -160,8 +160,9 @@ static void explode(m::moag *m, int x, int y, int rad, char type) {
     }
     if (type == E_EXPLODE) {
         for (int i = 0; i < g_max_players; i++) {
+			const auto &t = m->players[i].tank;
             if (m->players[i].connected &&
-                SQ(m->players[i].tank.x - x) + SQ(m->players[i].tank.y - 3 - y) < SQ(rad * 10 + 4)) {
+				std::pow(t.x - x, 2) + std::pow(t.y - 3 - y, 2) < std::pow(rad * 10 + 4, 2)) {
                 kill_tank(m, i);
             }
         }
@@ -255,10 +256,10 @@ static void fire_bullet(m::moag *m, int origin, char type, int x, int y, int vx,
 
 static void fire_bullet_ang(m::moag *m, int origin, char type, int x, int y, int angle, int vel) {
     fire_bullet(m, origin, type,
-		static_cast<int>(x + 5 * cos(DEG2RAD(angle))),
-		static_cast<int>(y - 5 * sin(DEG2RAD(angle))),
-		static_cast<int>(vel * cos(DEG2RAD(angle)) / 10),
-		static_cast<int>(-vel * sin(DEG2RAD(angle)) / 10));
+		static_cast<int>(x + 5 * cos(radians(angle))),
+		static_cast<int>(y - 5 * sin(radians(angle))),
+		static_cast<int>(vel * cos(radians(angle)) / 10),
+		static_cast<int>(-vel * sin(radians(angle)) / 10));
 }
 
 static void tank_update(m::moag *m, int id) {

@@ -151,6 +151,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\config.hpp" />
+    <ClInclude Include="..\src\line_path.hpp" />
     <ClInclude Include="..\src\moag.hpp" />
     <ClInclude Include="..\src\precision_integer.hpp" />
   </ItemGroup>
