@@ -5,10 +5,11 @@
 *.sdf
 *.user
 *.swp
-~
+*~
 moag
 moag.exe
 test
+text.exe
 CMakeCache.txt
 CMakeFiles/
 build/Makefile

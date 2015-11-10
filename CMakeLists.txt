@@ -6,7 +6,7 @@ set(CMAKE_CXX_COMPILER clang++)
 
 set(COMMON
     src/encoding.cpp
-    src/networking.cpp
+    src/network.cpp
 )
 
 set(MOAG
