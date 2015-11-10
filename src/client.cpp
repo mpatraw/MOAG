@@ -191,7 +191,7 @@ static void draw_bullets() {
     for (int i = 0; i < g_max_bullets; i++) {
         m::bullet *b = &bullets[i];
         if (b->active) {
-            SDL_Rect src = {b->x / 10, b->y / 10, bullet_width, bullet_height};
+            SDL_Rect src = {b->x, b->y, bullet_width, bullet_height};
             SDL_RenderCopy(main_renderer, bullet_texture, NULL, &src);
         }
     }
@@ -211,8 +211,8 @@ static void draw()
 
     for (int i = 0; i < g_max_players; i++) {
         if (players[i].connected) {
-            draw_tank(players[i].tank.x / 10,
-                      players[i].tank.y / 10,
+            draw_tank(players[i].tank.x,
+                      players[i].tank.y,
                       players[i].tank.angle,
                       players[i].tank.facingleft);
         }

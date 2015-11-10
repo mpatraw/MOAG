@@ -155,9 +155,9 @@ static void explode(int x, int y, int rad, char type) {
         for (int ix = -rad; ix <= rad; ix++) {
             if (std::pow(ix, 2) + std::pow(iy, 2) < std::pow(rad, 2)) {
                 if (type == E_DIRT) {
-                    main_land.set_dirt(x/10 + ix, y/10 + iy);
+                    main_land.set_dirt(x + ix, y + iy);
                 } else {
-                    main_land.set_air(x/10 + ix, y/10 + iy);
+                    main_land.set_air(x + ix, y + iy);
                 }
             }
         }
@@ -166,13 +166,13 @@ static void explode(int x, int y, int rad, char type) {
         for (int i = 0; i < g_max_players; i++) {
 			const auto &t = players[i].tank;
             if (players[i].connected &&
-				std::pow(t.x - x, 2) + std::pow(t.y - 3 - y, 2) < std::pow(rad * 10 + 4, 2)) {
+				std::pow(t.x - x, 2) + std::pow(t.y - 3 - y, 2) < std::pow(rad + 4, 2)) {
                 kill_tank(i);
             }
         }
     }
 
-    broadcast_packed_land_chunk(x/10 - rad, y/10 - rad, rad * 2, rad * 2);
+    broadcast_packed_land_chunk(x - rad, y - rad, rad * 2, rad * 2);
 }
 
 static void spawn_tank(int id) {
@@ -185,7 +185,7 @@ static void spawn_tank(int id) {
     players[id].kup = false;
     players[id].kdown = false;
     players[id].kfire = false;
-    players[id].tank.x = rand() % g_land_width * 10;
+    players[id].tank.x = rand() % g_land_width;
     players[id].tank.y = 60;
     players[id].tank.velx = 0;
     players[id].tank.vely = 0;
@@ -262,8 +262,8 @@ static void fire_bullet_ang(int origin, char type, int x, int y, int angle, int 
     fire_bullet(origin, type,
 		static_cast<int>(x + 5 * cos(radians(angle))),
 		static_cast<int>(y - 5 * sin(radians(angle))),
-		static_cast<int>(vel * cos(radians(angle)) / 10),
-		static_cast<int>(-vel * sin(radians(angle)) / 10));
+		static_cast<int>(vel * cos(radians(angle))),
+		static_cast<int>(-vel * sin(radians(angle))));
 }
 
 static void tank_update(int id) {
@@ -288,7 +288,7 @@ static void tank_update(int id) {
 
     if (players[id].kleft && players[id].kright) {
         if (players[id].ladder_timer > 0) {
-            if (main_land.is_dirt(t->x/10, t->y/10 + 1)) {
+            if (main_land.is_dirt(t->x, t->y + 1)) {
                 players[id].ladder_timer--;
             } else {
                 players[id].ladder_timer = g_ladder_time;
@@ -302,32 +302,32 @@ static void tank_update(int id) {
         }
     } else if (players[id].kleft) {
         t->facingleft = 1;
-        if (main_land.is_air(t->x/10 - 1, t->y/10) && t->x >= 10) {
-            t->x -= 10;
-        } else if (main_land.is_air(t->x/10 - 1, t->y/10 - 1) && t->x >= 10) {
-            t->x -= 10;
-            t->y -= 10;
-        } else if (main_land.is_air(t->x/10, t->y/10 - 1) ||
-                 main_land.is_air(t->x/10, t->y/10 - 2) ||
-                 main_land.is_air(t->x/10, t->y/10 - 3)) {
+        if (main_land.is_air(t->x - 1, t->y) && t->x >= 1) {
+            t->x -= 1;
+        } else if (main_land.is_air(t->x - 1, t->y - 1) && t->x >= 1) {
+            t->x -= 1;
+            t->y -= 1;
+        } else if (main_land.is_air(t->x, t->y - 1) ||
+                 main_land.is_air(t->x, t->y - 2) ||
+                 main_land.is_air(t->x, t->y - 3)) {
             grav = false;
-            t->y -= 10;
+            t->y -= 1;
         } else {
             grav = false;
         }
         moved = true;
     } else if (players[id].kright) {
         t->facingleft = 0;
-        if (main_land.is_air(t->x/10 + 1, t->y/10) && t->x/10 < g_land_width - 10) {
-            t->x += 10;
-        } else if (main_land.is_air(t->x/10 + 1, t->y/10 - 1) && t->x < g_land_width - 10) {
-            t->x += 10;
-            t->y -= 10;
-        } else if (main_land.is_air(t->x/10, t->y/10 - 1) ||
-                 main_land.is_air(t->x/10, t->y/10 - 2) ||
-                 main_land.is_air(t->x/10, t->y/10 - 3)) {
+        if (main_land.is_air(t->x + 1, t->y) && t->x < g_land_width - 1) {
+            t->x += 1;
+        } else if (main_land.is_air(t->x + 1, t->y - 1) && t->x < g_land_width - 1) {
+            t->x += 1;
+            t->y -= 1;
+        } else if (main_land.is_air(t->x, t->y - 1) ||
+                 main_land.is_air(t->x, t->y - 2) ||
+                 main_land.is_air(t->x, t->y - 3)) {
             grav = false;
-            t->y -= 10;
+            t->y -= 1;
         } else {
             grav = false;
         }
@@ -335,19 +335,20 @@ static void tank_update(int id) {
     }
 
     // Physics
-    if (t->y / 10 < 20) {
-        t->y = 200;
+    if (t->y < 20) {
+        t->y = 20;
         moved = true;
     }
 
     if (grav) {
-        if (main_land.is_air(t->x/10, t->y/10 + 1)) {
-            t->y += 10;
+        if (main_land.is_air(t->x, t->y + 1)) {
+            t->y += 1;
+			std::cout << t->y << std::endl;
             moved = true;
         }
     }
 
-    if (abs(t->x - crate.x * 10) < 14 && abs(t->y - crate.y * 10) < 14) {
+    if (abs(t->x - crate.x) < 14 && abs(t->y - crate.y) < 14) {
         players[id].ladder_timer = g_ladder_time;
         if (crate.type == TRIPLER) {
             t->num_burst *= 3;
@@ -391,7 +392,7 @@ static void tank_update(int id) {
     // Fire
     if (t->power) {
         int start_angle = t->facingleft ? 180 - t->angle : t->angle;
-        fire_bullet_ang(id, t->bullet, t->x, t->y - 70, start_angle, t->power);
+        fire_bullet_ang(id, t->bullet, t->x, t->y - 7, start_angle, t->power / 50);
         t->bullet = MISSILE;
         t->power = 0;
     }
@@ -477,7 +478,7 @@ static void bullet_update(int id) {
     b->y += b->vely;
     b->vely += g_gravity;
 
-    if (main_land.is_dirt(b->x / 10, b->y / 10)) {
+    if (main_land.is_dirt(b->x, b->y)) {
         bullet_detonate(id);
         return;
     }
@@ -541,7 +542,7 @@ static void crate_update() {
     }
 
     if (main_land.is_air(static_cast<uint16_t>(crate.x), static_cast<uint16_t>(crate.y + 1))) {
-        crate.y += 10;
+        crate.y += 1;
         broadcast_crate_chunk(MOVE);
     }
 }

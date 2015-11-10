@@ -200,9 +200,9 @@ private:
 
 class tank final {
 public:
-    int16_t x, y;
+	precision_integer<> x, y;
+	precision_integer<> velx, vely;
 	int8_t angle;
-    int velx, vely;
     int power;
     char bullet;
     int num_burst;
@@ -211,8 +211,8 @@ public:
 
 class bullet {
 public:
-    int x, y;
-    int velx, vely;
+	precision_integer<> x, y;
+	precision_integer<> velx, vely;
 	int origin;
     char active;
     char type;
