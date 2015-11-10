@@ -148,7 +148,7 @@
     <ClCompile Include="..\src\client.cpp" />
     <ClCompile Include="..\src\encoding.cpp" />
     <ClCompile Include="..\src\main.cpp" />
-    <ClCompile Include="..\src\networking.cpp" />
+    <ClCompile Include="..\src\network.cpp" />
     <ClCompile Include="..\src\server.cpp" />
   </ItemGroup>
   <ItemGroup>

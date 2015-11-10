@@ -2,10 +2,12 @@
 #ifndef PRECISION_INTEGER_HPP
 #define PRECISION_INTEGER_HPP
 
-template <int P=10>
+#include <cstdint>
+
+template <int P=10, typename T=int>
 class precision_integer {
 public:
-	explicit precision_integer(int i=0, bool precision=false) :
+	precision_integer(int i=0, bool precision=false) :
 		val{i * (precision ? 1 : P)} { }
 	explicit precision_integer(double d, bool precision=false) :
 		val{static_cast<int>(d * (precision ? 1 : P))} { }
@@ -69,12 +71,15 @@ public:
 		val /= i;
 		return *this;
 	}
+
+	explicit operator uint8_t() const { return static_cast<int32_t>(*this); }
+	explicit operator int8_t() const { return static_cast<int32_t>(*this); }
+	explicit operator uint16_t() const { return static_cast<int32_t>(*this); }
+	explicit operator int16_t() const { return static_cast<int32_t>(*this); }
+	explicit operator uint32_t() const { return static_cast<int32_t>(*this); }
+	operator int32_t() const { return val / P; }
 	
-	explicit operator int() {
-		return val / P;
-	}
-	
-	explicit operator double() {
+	explicit operator double() const {
 		return val / static_cast<double>(P);
 	}
 private:

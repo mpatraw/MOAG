@@ -347,7 +347,7 @@ static void tank_update(int id) {
         }
     }
 
-    if (abs(t->x - crate.x) < 14 && abs(t->y - crate.y) < 14) {
+    if (abs(t->x - crate.x * 10) < 14 && abs(t->y - crate.y * 10) < 14) {
         players[id].ladder_timer = g_ladder_time;
         if (crate.type == TRIPLER) {
             t->num_burst *= 3;
@@ -503,9 +503,8 @@ static void bullet_update(int id) {
 static void crate_update() {
     if (!crate.active) {
         crate.active = true;
-        crate.x = rand() % g_land_width * 10;
-        crate.y = 300;
-        explode(crate.x, crate.y - 120, 12, E_SAFE_EXPLODE);
+        crate.x = static_cast<uint16_t>(rand() % g_land_width);
+        crate.y = static_cast<uint16_t>(30);
 
         const int PBABYNUKE = 100;
         const int PNUKE = 20;
@@ -541,7 +540,7 @@ static void crate_update() {
         broadcast_crate_chunk(SPAWN);
     }
 
-    if (main_land.is_air(crate.x / 10, (crate.y + 1) / 10)) {
+    if (main_land.is_air(static_cast<uint16_t>(crate.x), static_cast<uint16_t>(crate.y + 1))) {
         crate.y += 10;
         broadcast_crate_chunk(MOVE);
     }

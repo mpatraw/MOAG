@@ -204,7 +204,7 @@ static void draw()
     SDL_RenderCopy(main_renderer, const_cast<SDL_Texture *>(del->sdl_texture()), nullptr, nullptr);
 
     if (crate.active) {
-        draw_crate((crate.x - 4) / 10, (crate.y - 8) / 10);
+        draw_crate(crate.x - 4, crate.y - 8);
     }
 
     draw_bullets();

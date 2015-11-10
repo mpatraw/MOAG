@@ -21,7 +21,7 @@
     <ClCompile Include="..\src\encoding.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\networking.cpp">
+    <ClCompile Include="..\src\network.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

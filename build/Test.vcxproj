@@ -146,7 +146,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\src\encoding.cpp" />
-    <ClCompile Include="..\src\networking.cpp" />
+    <ClCompile Include="..\src\network.cpp" />
     <ClCompile Include="..\src\test.cpp" />
   </ItemGroup>
   <ItemGroup>

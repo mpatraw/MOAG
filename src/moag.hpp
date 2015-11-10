@@ -143,6 +143,14 @@ public:
     virtual void set_air(int x, int y) = 0;
 };
 
+class game_controller {
+public:
+	virtual ~game_controller() {}
+	virtual bool solid(int x, int y) = 0;
+	virtual void explode(int x, int y, int size) = 0;
+	virtual void fire(int x, int y, int angle, int velocity) = 0;
+};
+
 class land {
 public:
 
@@ -212,7 +220,7 @@ public:
 
 class crate {
 public:
-    int x, y;
+	precision_integer<> x, y;
     bool active;
     char type;
 };
