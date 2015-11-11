@@ -9,6 +9,14 @@
 
 #include <enet/enet.h>
 
+static inline uint32_t host_to_network_float(float f) {
+    return htonl(*reinterpret_cast<uint32_t *>(&f));
+}
+
+static inline float network_to_host_float(uint32_t i) {
+    return *reinterpret_cast<float *>(&i);
+}
+
 namespace m {
 
 class network_impl;
@@ -35,6 +43,10 @@ public:
 		std::copy_n(data, len, std::back_inserter(chunk));
 	}
 
+    packet &operator <<(float f) {
+        *this << host_to_network_float(f);
+        return *this;
+    }
 	packet &operator <<(uint8_t i) {
 		chunk.push_back(i);
 		return *this;
@@ -73,7 +85,13 @@ public:
 		return *this;
 	}
 
-
+    packet &operator >>(float &f) {
+        assert(can_read(sizeof(f)));
+        int32_t i;
+        *this >> i;
+        f = network_to_host_float(i);
+        return *this;
+    }
 	packet &operator >>(uint8_t &i) {
 		assert(can_read(1));
 		i = chunk[pos++];
