@@ -1,4 +1,5 @@
 
+#include <cmath>
 #include <cstring>
 
 #include <chrono>
@@ -244,10 +245,10 @@ static void fire_bullet(int origin, char type, int x, int y, int vx, int vy) {
 
 static void fire_bullet_ang(int origin, char type, int x, int y, int angle, int vel) {
     fire_bullet(origin, type,
-		static_cast<int>(x + 5 * cos(radians(angle))),
-		static_cast<int>(y - 5 * sin(radians(angle))),
-		static_cast<int>(vel * cos(radians(angle))),
-		static_cast<int>(-vel * sin(radians(angle))));
+		static_cast<int>(x + 5 * std::cos(radians(angle))),
+		static_cast<int>(y - 5 * std::sin(radians(angle))),
+		static_cast<int>(vel * std::cos(radians(angle))),
+		static_cast<int>(-vel * std::sin(radians(angle))));
 }
 
 static void tank_update(int id) {
