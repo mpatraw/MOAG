@@ -166,7 +166,9 @@ static void explode(int x, int y, int rad, char type) {
         for (int i = 0; i < g_max_players; i++) {
 			const auto &t = players[i].tank;
             if (players[i].connected &&
-				std::pow(t.x - x, 2) + std::pow(t.y - 3 - y, 2) < std::pow(rad + 4, 2)) {
+				std::pow((t.x - x), 2) +
+                std::pow((t.y - 3 - y), 2) <
+                std::pow(rad + 4, 2)) {
                 kill_tank(i);
             }
         }
@@ -192,7 +194,7 @@ static void spawn_tank(int id) {
     players[id].tank.power = 0;
     players[id].tank.bullet = MISSILE;
     players[id].tank.num_burst = 1;
-    explode(players[id].tank.x, players[id].tank.y - 12, 12, E_SAFE_EXPLODE);
+    explode(players[id].tank.x, (players[id].tank.y - 12), 12, E_SAFE_EXPLODE);
     broadcast_tank_chunk(SPAWN, id);
 }
 

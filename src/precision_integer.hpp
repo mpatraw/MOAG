@@ -4,8 +4,16 @@
 
 #include <cstdint>
 
+#include <boost/operators.hpp>
+
 template <int P=10>
-class precision_integer {
+class precision_integer :
+    boost::operators<precision_integer<P>,
+    boost::addable2<precision_integer<P>, int,
+    boost::subtractable2<precision_integer<P>, int,
+    boost::multipliable2<precision_integer<P>, int,
+    boost::dividable2<precision_integer<P>, int,
+    boost::less_than_comparable<precision_integer<P>, int>>>>>> {
 public:
 	precision_integer(int i=0, bool precision=false) :
 		val{i * (precision ? 1 : P)} { }
@@ -15,30 +23,18 @@ public:
 	precision_integer operator -() {
 		return precision_integer{-val, true};
 	}
-	precision_integer operator +(const precision_integer &other) {
-		return precision_integer{val + other.val, true};
-	}
-	precision_integer operator +(int i) {
-		return precision_integer{val + (i * P), true};
-	}
-	precision_integer operator -(const precision_integer &other) {
-		return precision_integer{val - other.val, true};
-	}
-	precision_integer operator -(int i) {
-		return precision_integer{val - (i * P), true};
-	}
-	precision_integer operator *(const precision_integer &other) {
-		return precision_integer{(val * other.val) / P, true};
-	}
-	precision_integer operator *(int i) {
-		return precision_integer{val * i, true};
-	}
-	precision_integer operator /(const precision_integer &other) {
-		return precision_integer{(val * P) / other.val, true};
-	}
-	precision_integer operator /(int i) {
-		return precision_integer{val / i, true};
-	}
+    bool operator <(const precision_integer &pi) const {
+        return val < pi.val;
+    }
+    bool operator <(int i) const {
+        return val < i * P;
+    }
+    bool operator ==(const precision_integer &pi) const {
+        return val == pi.val;
+    }
+    bool operator ==(int i) const {
+        return val == i * P;
+    }
 	precision_integer &operator +=(const precision_integer &other) {
 		val += other.val;
 		return *this;
