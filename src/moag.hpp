@@ -199,43 +199,21 @@ private:
     std::array<uint8_t, g_land_width * g_land_height> dirt;
 };
 
-class physical {
+class entity {
 public:
-	physical() {}
-    virtual ~physical() { }
-
-	virtual void step(game_controller &con, uint32_t dt) {
-		auto sec = precision_integer<>{dt / 1000.0};
-		auto tx = x + velx * sec;
-		auto ty = y + vely * sec;
-		vely += g_gravity;
-
-		int px, py;
-		line_path<> lp{x, y, tx, ty};
-		for (const auto &p : lp) {
-			std::tie(px, py) = p;
-			if (con.solid(px, py)) {
-				break;
-			}
-			if (con.collide(px, py)) {
-				break;
-			}
-		}
-
-		x = px;
-		y = py;
-	}
-
-    virtual bool falling() const {
-        return vely > 0;
-    }
-
-	precision_integer<> x, y;
-	precision_integer<> velx, vely;
-	bool active;
+    virtual ~entity() { }
 };
 
-class tank final {
+class body {
+public:
+
+    const entity &ent;
+    float x, y;
+    float vx, vy;
+    float w, h;
+};
+
+class tank {
 public:
 	precision_integer<> x, y;
 	precision_integer<> velx, vely;

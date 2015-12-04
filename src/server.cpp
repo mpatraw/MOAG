@@ -7,6 +7,7 @@
 #include <thread>
 
 #include "moag.hpp"
+#include "server/physics.hpp"
 
 enum {
     MISSILE,
