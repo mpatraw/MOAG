@@ -3,6 +3,7 @@
 
 #include "moag.hpp"
 
+// must exist or link errors.
 int g_port;
 const char *g_host;
 

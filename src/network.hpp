@@ -43,10 +43,10 @@ public:
         std::copy_n(data, len, std::back_inserter(chunk));
     }
 
-        packet &operator <<(float f) {
-                *this << host_to_network_float(f);
-                return *this;
-        }
+    packet &operator <<(float f) {
+        *this << host_to_network_float(f);
+        return *this;
+    }
     packet &operator <<(uint8_t i) {
         chunk.push_back(i);
         return *this;

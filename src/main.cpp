@@ -12,6 +12,7 @@ using optional = std::experimental::optional<T>;
 #include <string>
 #include <thread>
 
+// Defined in server.cpp and client.cpp.
 void server_main();
 void client_main();
 
