@@ -265,27 +265,27 @@ static void process_packet(m::packet &p)
         case PACKED_LAND_CHUNK: {
             uint16_t lx, ly, lw, lh;
             p >> lx >> ly >> lw >> lh;
-            size_t datalen = 0;
-            uint8_t *data = rldecode(p.remaining_data(), p.remaining_size(), &datalen);
+            auto dataptr = p.remaining_data();
+            auto datasiz = p.remaining_size();
+            auto land_data = rldecode(std::vector<uint8_t>(dataptr, dataptr + datasiz));
 
             size_t i = 0;
             for (int y = ly; y < lh + ly; ++y) {
-                if (i >= datalen) {
+                if (i >= land_data.size()) {
                     break;
                 }
                 for (int x = lx; x < lw + lx; ++x) {
-                    if (data[i]) {
+                    if (land_data[i]) {
                         main_land.set_dirt(x, y);
                     } else {
                         main_land.set_air(x, y);
                     }
                     i++;
-                    if (i >= datalen) {
+                    if (i >= land_data.size()) {
                         break;
                     }
                 }
             }
-            free(data);
             break;
         }
 

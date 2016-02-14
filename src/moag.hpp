@@ -254,7 +254,7 @@ public:
 
 /* encoding/decoding
  */
-uint8_t *rlencode(const uint8_t *src, size_t len, size_t *outlen);
-uint8_t *rldecode(const uint8_t *src, size_t len, size_t *outlen);
+std::vector<uint8_t> rlencode(const std::vector<uint8_t> &src);
+std::vector<uint8_t> rldecode(const std::vector<uint8_t> &src);
 
 #endif

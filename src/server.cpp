@@ -54,7 +54,7 @@ static inline void broadcast_packed_land_chunk(int x, int y, int w, int h) {
         return;
     }
 
-    uint8_t *land = (uint8_t *)malloc(w * h);
+    std::vector<uint8_t> land(w * h);
     int i = 0;
     for (int yy = y; yy < h + y; ++yy) {
         for (int xx = x; xx < w + x; ++xx) {
@@ -63,9 +63,7 @@ static inline void broadcast_packed_land_chunk(int x, int y, int w, int h) {
         }
     }
 
-    size_t packed_data_len = 0;
-    uint8_t *packed_data = rlencode(land, w * h, &packed_data_len);
-    free(land);
+    auto packed_data = rlencode(land);
 
     m::packet p;
 
@@ -74,11 +72,9 @@ static inline void broadcast_packed_land_chunk(int x, int y, int w, int h) {
     p << static_cast<uint16_t>(y);
     p << static_cast<uint16_t>(w);
     p << static_cast<uint16_t>(h);
-    p.load(packed_data, packed_data_len);
+    p.load(packed_data.data(), packed_data.size());
 
     server->broadcast(p);
-
-    free(packed_data);
 }
 
 static inline void broadcast_tank_chunk(int action, int id) {
