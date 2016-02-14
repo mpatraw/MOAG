@@ -1,3 +1,4 @@
+#include <memory>
 #include <iostream>
 #include <exception>
 
@@ -11,6 +12,7 @@ namespace m {
 
 class network_impl {
 public:
+
     network_impl(const char *ip, unsigned short port,
                 int max_connections, int num_channels) {
         if (enet_initialize() != 0) {

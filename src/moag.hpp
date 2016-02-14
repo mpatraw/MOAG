@@ -9,16 +9,15 @@
 #include "config.hpp"
 #include "line_path.hpp"
 #include "network.hpp"
-#include "precision_integer.hpp"
 
 static inline double radians(double degrees) {
-	const double pi = 3.14159;
-	return degrees * (pi / 180.0);
+    const double pi = 3.14159;
+    return degrees * (pi / 180.0);
 }
 
 static inline double degrees(double radians) {
-	const double pi = 3.14159;
-	return radians * (180.0 / pi);
+    const double pi = 3.14159;
+    return radians * (180.0 / pi);
 }
 
 enum {
@@ -145,11 +144,11 @@ public:
 
 class game_controller {
 public:
-	virtual ~game_controller() {}
-	virtual bool solid(int x, int y) = 0;
-	virtual bool collide(int x, int y) = 0;
-	virtual void explode(int x, int y, int size) = 0;
-	virtual void fire(int x, int y, int angle, int velocity) = 0;
+    virtual ~game_controller() {}
+    virtual bool solid(int x, int y) = 0;
+    virtual bool collide(int x, int y) = 0;
+    virtual void explode(int x, int y, int size) = 0;
+    virtual void fire(int x, int y, int angle, int velocity) = 0;
 };
 
 class land {
@@ -215,9 +214,9 @@ public:
 
 class tank {
 public:
-	precision_integer<> x, y;
-	precision_integer<> velx, vely;
-	int8_t angle;
+    float x, y;
+    float velx, vely;
+    int8_t angle;
     int power;
     char bullet;
     int num_burst;
@@ -226,17 +225,17 @@ public:
 
 class bullet {
 public:
-	precision_integer<> x, y;
-	precision_integer<> velx, vely;
-	int origin;
+    float x, y;
+    float velx, vely;
+    int origin;
     char active;
     char type;
 };
 
 class crate {
 public:
-	precision_integer<> x, y;
-	precision_integer<> velx, vely;
+    float x, y;
+    float velx, vely;
     bool active;
     char type;
 };

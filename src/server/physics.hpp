@@ -11,12 +11,12 @@ public:
     physics(const land &l) : main_land{l} {}
 
     void step(std::shared_ptr<body> body, uint32_t dt) {
-		float sec = dt / 1000.f;
+        float sec = dt / 1000.f;
         float tx = body->x + body->vx * sec;
         float ty = body->y + body->vy * sec;
-		body->vy += g_gravity;
+        body->vy += g_gravity;
 
-		line_path<> lp{
+        line_path<> lp{
             static_cast<int>(body->x), static_cast<int>(body->y),
             static_cast<int>(tx),  static_cast<int>(ty)};
         
@@ -26,20 +26,20 @@ public:
             return;
         }
 
-		int px, py;
+        int px, py;
 
-		for (const auto &p : lp) {
-			std::tie(px, py) = p;
-			if (main_land.is_dirt(px, py)) {
+        for (const auto &p : lp) {
+            std::tie(px, py) = p;
+            if (main_land.is_dirt(px, py)) {
                 if (hit_land) {
                     hit_land(body);
                 }
-				break;
-			}
-		}
+                break;
+            }
+        }
 
-		body->x = static_cast<float>(px);
-		body->y = static_cast<float>(py);
+        body->x = static_cast<float>(px);
+        body->y = static_cast<float>(py);
     }
 
     void step(uint32_t dt) {

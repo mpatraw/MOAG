@@ -166,9 +166,9 @@ static void explode(int x, int y, int rad, char type) {
     }
     if (type == E_EXPLODE) {
         for (int i = 0; i < g_max_players; i++) {
-			const auto &t = players[i].tank;
+            const auto &t = players[i].tank;
             if (players[i].connected &&
-				std::pow((t.x - x), 2) +
+                std::pow((t.x - x), 2) +
                 std::pow((t.y - 3 - y), 2) <
                 std::pow(rad + 4, 2)) {
                 kill_tank(i);
@@ -235,7 +235,7 @@ static void fire_bullet(int origin, char type, int x, int y, int vx, int vy) {
         }
     }
     bullets[i].active = 1;
-	bullets[i].origin = origin;
+    bullets[i].origin = origin;
     bullets[i].type = type;
     bullets[i].x = x;
     bullets[i].y = y;
@@ -246,10 +246,10 @@ static void fire_bullet(int origin, char type, int x, int y, int vx, int vy) {
 
 static void fire_bullet_ang(int origin, char type, int x, int y, int angle, int vel) {
     fire_bullet(origin, type,
-		static_cast<int>(x + 5 * std::cos(radians(angle))),
-		static_cast<int>(y - 5 * std::sin(radians(angle))),
-		static_cast<int>(vel * std::cos(radians(angle))),
-		static_cast<int>(-vel * std::sin(radians(angle))));
+        static_cast<int>(x + 5 * std::cos(radians(angle))),
+        static_cast<int>(y - 5 * std::sin(radians(angle))),
+        static_cast<int>(vel * std::cos(radians(angle))),
+        static_cast<int>(-vel * std::sin(radians(angle))));
 }
 
 static void tank_update(int id) {
@@ -316,7 +316,7 @@ static void tank_update(int id) {
         }
     }
 
-    if (abs(t->x - crate.x) < 14 && abs(t->y - crate.y) < 14) {
+    if (std::abs(t->x - crate.x) < 14 && std::abs(t->y - crate.y) < 14) {
         if (crate.type == TRIPLER) {
             t->num_burst *= 3;
         } else {
@@ -437,9 +437,9 @@ static void bullet_detonate(int id) {
 static void bullet_update(int id) {
     m::bullet *b = &bullets[id];
 
-	if (!b->active) {
-		return;
-	}
+    if (!b->active) {
+        return;
+    }
 
     b->x += b->velx;
     b->y += b->vely;
@@ -450,10 +450,10 @@ static void bullet_update(int id) {
         return;
     }
 
-	for (int i = 0; i < g_max_players; i++) {
-		if (!players[i].connected) {
-			continue;
-		}
+    for (int i = 0; i < g_max_players; i++) {
+        if (!players[i].connected) {
+            continue;
+        }
         const auto &t = players[i].tank;
         auto dx = t.x - b->x;
         auto dy = t.y - b->y;

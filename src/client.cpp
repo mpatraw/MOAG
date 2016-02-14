@@ -191,7 +191,9 @@ static void draw_bullets() {
     for (int i = 0; i < g_max_bullets; i++) {
         m::bullet *b = &bullets[i];
         if (b->active) {
-            SDL_Rect src = {b->x, b->y, bullet_width, bullet_height};
+            auto x = static_cast<int>(b->x);
+            auto y = static_cast<int>(b->y);
+            SDL_Rect src = {x, y, bullet_width, bullet_height};
             SDL_RenderCopy(main_renderer, bullet_texture, NULL, &src);
         }
     }
@@ -383,26 +385,26 @@ static void process_packet(m::packet &p)
                     int linelen = namelen + len + 4;
                     char *line = (char *)malloc(linelen);
                     line[0] = '<';
-					for (int i = 0; i < namelen; i++) {
-						line[i + 1] = players[id].name[i];
-					}
+                    for (int i = 0; i < namelen; i++) {
+                        line[i + 1] = players[id].name[i];
+                    }
                     line[namelen+1] = '>';
                     line[namelen+2] = ' ';
-					for (size_t i = 0; i < len; ++i) {
-						line[namelen + 3 + i] = data[i];
-					}
+                    for (size_t i = 0; i < len; ++i) {
+                        line[namelen + 3 + i] = data[i];
+                    }
                     line[linelen - 1] = '\0';
                     chat_line.add_message(line);
                     break;
                 }
 
                 case NAME_CHANGE: {
-					if (len < 1 || len > 15) {
-						break;
-					}
-					for (size_t i = 0; i < len; ++i) {
-						players[id].name[i] = data[i];
-					}
+                    if (len < 1 || len > 15) {
+                        break;
+                    }
+                    for (size_t i = 0; i < len; ++i) {
+                        players[id].name[i] = data[i];
+                    }
                     players[id].name[len]='\0';
                     break;
                 }
@@ -441,8 +443,8 @@ void client_main(void)
     }
 
     main_window = SDL_CreateWindow("MOAG",
-		SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-		g_land_width, g_land_height, 0);
+        SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+        g_land_width, g_land_height, 0);
     if (!main_window) {
         std::cerr << SDL_GetError() << std::endl;
         goto main_window_fail;
