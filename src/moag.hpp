@@ -4,19 +4,20 @@
 #ifndef MOAG_HPP
 #define MOAG_HPP
 
+#include <cmath>
 #include <array>
 
 #include "config.hpp"
 #include "line_path.hpp"
 #include "network.hpp"
 
+const float pi = std::acos(-1);
+
 static inline double radians(double degrees) {
-    const double pi = 3.14159;
     return degrees * (pi / 180.0);
 }
 
 static inline double degrees(double radians) {
-    const double pi = 3.14159;
     return radians * (180.0 / pi);
 }
 
