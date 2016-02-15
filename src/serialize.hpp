@@ -10,7 +10,7 @@ class serializer final {
     class impl;
 public:
     serializer();
-    serializer(const uint8_t *data, size_t len);
+    serializer(const uint8_t *data, size_t len, bool is_compressed);
     ~serializer();
 
     bool is_serializing() const;
@@ -21,6 +21,7 @@ public:
 
     void compress();
     void decompress();
+    bool is_compressed() const;
     
     serializer &operator &(bool &b);
     serializer &operator &(int8_t &i);
@@ -31,10 +32,12 @@ public:
     serializer &operator &(uint32_t &i);
     serializer &operator &(size_t &i);
     serializer &operator &(float &f);
-    serializer &operator &(double &d);
 private:
     bool writer_;
+    bool needs_decompress_;
     std::unique_ptr<impl> impl_;
+private:
+    template <typename T> serializer &serialize(T &t);
 };
 
 class serializable {

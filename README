@@ -17,6 +17,9 @@ run `cmake .. && make`.
 
 You'll need the following libraries on your system:
 * SDL2, SDL2_ttf, SDL2_image
+* scrappy
 * enet
 * pthread
+
+On Windows, you'll also need boost/optional.
 
