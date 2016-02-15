@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <vector>
 
+#include <snappy.h>
 #include <enet/enet.h>
 
 #include "serialize.hpp"
@@ -166,6 +167,26 @@ const uint8_t *serializer::data() const {
 
 size_t serializer::length() const {
     return impl_->size();
+}
+
+void serializer::compress() {
+    if (!writer_) {
+        return;
+    }
+    std::string dest;
+    snappy::Uncompress(reinterpret_cast<const char *>(impl_->data()), impl_->size(), &dest);
+    impl_->rewrite();
+    impl_->load(reinterpret_cast<const uint8_t *>(dest.data()), dest.size());
+}
+
+void serializer::decompress() {
+    if (writer_) {
+        return;
+    }
+    std::string dest;
+    snappy::Compress(reinterpret_cast<const char *>(impl_->data()), impl_->size(), &dest);
+    impl_->rewrite();
+    impl_->load(reinterpret_cast<const uint8_t *>(dest.data()), dest.size());
 }
 
 template <typename T>

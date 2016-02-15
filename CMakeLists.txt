@@ -9,6 +9,7 @@ link_directories(/usr/local/lib)
 
 set(SOURCE
     src/serialize.cpp
+    src/message.cpp
     src/encoding.cpp
     src/network.cpp
     src/server.cpp
@@ -23,5 +24,5 @@ install_files(/bin FILES bin/moag)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 
 add_executable(moag ${SOURCE})
-target_link_libraries(moag RakNetDLL enet SDL2 SDL2_ttf SDL2_image pthread)
+target_link_libraries(moag RakNetDLL snappy enet SDL2 SDL2_ttf SDL2_image pthread)
 

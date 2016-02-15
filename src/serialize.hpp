@@ -17,12 +17,21 @@ public:
 
     const uint8_t *data() const;
     size_t length() const;
+
+    void compress();
+    void decompress();
     
     template <typename T>
     serializer &operator &(T &t);
 private:
     bool writer_;
     std::unique_ptr<impl> impl_;
+};
+
+class serializable {
+public:
+    virtual ~serializable() {}
+    virtual void serialize(serializer &s);
 };
 
 }
