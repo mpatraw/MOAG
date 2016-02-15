@@ -143,9 +143,6 @@ class client final {
 public:
     client();
     ~client();
-    client(const client &) = delete;
-    client(client &&) = delete;
-    client &operator =(client) = delete;
 
     packet &recv();
     void send(const packet &p, bool reliable = true);
@@ -159,9 +156,6 @@ class server final {
 public:
     server();
     ~server();
-    server(const server &) = delete;
-    server(server &&) = delete;
-    server &operator =(server) = delete;
 
     bool is_connected(int id) const;
 

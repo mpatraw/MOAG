@@ -4,26 +4,35 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "serialize.hpp"
 
 namespace m {
 
-enum class message_type {
-    tank
+enum class message_type : uint8_t {
+    input,
+    message,
+    land,
+    tank,
+    bullet,
+    crate
 };
 
-struct message {
-    virtual ~message() {}
+struct message_def : public serializable {
+    virtual ~message_def() {}
+    virtual message_type get_type() const = 0;
 };
 
-struct input_message : public message, serializable {
+struct input_message_def : public message_def {
     uint8_t key;
     uint16_t ms;
 
-    input_message() {}
-    virtual ~input_message() {}
+    input_message_def() {}
+    input_message_def(uint8_t key, uint16_t ms) : key{key}, ms{ms} {}
+    virtual ~input_message_def() {}
+    message_type get_type() const override { return message_type::input; }
 
     void serialize(serializer &s) override {
         s & key;
@@ -31,29 +40,40 @@ struct input_message : public message, serializable {
     }
 };
 
-struct message_message : public message, serializable {
-    size_t len;
-    std::vector<uint8_t> msg;
+struct message_message_def : public message_def {
+    std::vector<int8_t> msg;
 
-    message_message() {}
-    virtual ~message_message() {}
+    message_message_def() {}
+    message_message_def(const std::string &s) : msg{s.begin(), s.end()} {}
+    virtual ~message_message_def() {}
+    message_type get_type() const override { return message_type::message; }
 
     void serialize(serializer &s) override {
-        len = msg.size();
+        uint32_t len = msg.size();
         s & len;
         msg.resize(len);
         for (size_t i = 0; i < len; ++i) {
             s & msg[i]; 
         }
     }
+
+    void set_string(std::string s) {
+        msg = std::vector<int8_t>{s.begin(), s.end()};
+    }
+    std::string get_string() const {
+        return std::string(msg.begin(), msg.end());
+    }
 };
 
-struct land_message : public message, serializable {
+struct land_message_def : public message_def {
     uint16_t x, y, w, h;
     std::vector<uint8_t> data;
 
-    land_message() {}
-    virtual ~land_message() {}
+    land_message_def() {}
+    land_message_def(uint16_t x, uint16_t y, uint16_t w, uint16_t h, const std::vector<uint8_t> &data) :
+        x{x}, y{y}, w{w}, h{h}, data{data} {}
+    virtual ~land_message_def() {}
+    message_type get_type() const override { return message_type::land; }
 
     void serialize(serializer &s) override {
         s & x;
@@ -72,12 +92,13 @@ struct land_message : public message, serializable {
     }
 };
 
-struct tank_message : public message, serializable {
+struct tank_message_def : public message_def {
     uint8_t action, id, angle;
     uint16_t x, y;
 
-    tank_message() {}
-    virtual ~tank_message() {}
+    tank_message_def() {}
+    virtual ~tank_message_def() {}
+    message_type get_type() const override { return message_type::tank; }
 
     void serialize(serializer &s) override {
         s & action;
@@ -88,12 +109,15 @@ struct tank_message : public message, serializable {
     }
 };
 
-struct bullet_message : public message, serializable {
+struct bullet_message_def : public message_def {
     uint8_t action, id;
     uint16_t x, y;
 
-    bullet_message() {}
-    virtual ~bullet_message() {}
+    bullet_message_def() {}
+    bullet_message_def(uint8_t action, uint8_t id, uint16_t x, uint16_t y) :
+        action{action}, id{id}, x{x}, y{y} {}
+    virtual ~bullet_message_def() {}
+    message_type get_type() const override { return message_type::bullet; }
 
     void serialize(serializer &s) override {
         s & action;
@@ -103,12 +127,15 @@ struct bullet_message : public message, serializable {
     }
 };
 
-struct crate_message : public message, serializable {
+struct crate_message_def : public message_def {
     uint8_t action;
     uint16_t x, y;
 
-    crate_message() {}
-    virtual ~crate_message() {}
+    crate_message_def() {}
+    crate_message_def(uint8_t a, uint16_t x, uint16_t y) :
+        action{a}, x{x}, y{y} {}
+    virtual ~crate_message_def() {}
+    message_type get_type() const override { return message_type::crate; }
 
     void serialize(serializer &s) override {
         s & action;
@@ -117,9 +144,25 @@ struct crate_message : public message, serializable {
     }
 };
 
+// The root message. Holds a type and the definition.
+class message : public message_def {
+public:
+    message(serializer &s);
+    message(message_def *mdef);
+    virtual ~message() { }
 
-std::shared_ptr<message> deserialize_message(serializer &s);
-    
+    void serialize(serializer &s) override;
+
+    void set_def(message_def *mdef);
+    message_def &get_def();
+    const message_def &get_def() const;
+    message_type get_type() const override;
+
+private:
+    message_type type_;
+    std::unique_ptr<message_def> def_;
+};
+
 }
 
 #endif
