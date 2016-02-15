@@ -101,6 +101,11 @@ serializer &serializer::operator &(uint32_t &i) {
     return *this;
 }
 
+serializer &serializer::operator &(size_t &i) {
+    impl_->bs.Serialize(writer_, i);
+    return *this;
+}
+
 serializer &serializer::operator &(float &f) {
     impl_->bs.Serialize(writer_, f);
     return *this;

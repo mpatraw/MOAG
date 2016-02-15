@@ -29,6 +29,7 @@ public:
     serializer &operator &(uint8_t &i);
     serializer &operator &(uint16_t &i);
     serializer &operator &(uint32_t &i);
+    serializer &operator &(size_t &i);
     serializer &operator &(float &f);
     serializer &operator &(double &d);
 private:
