@@ -8,7 +8,7 @@ int g_port = 6624;
 
 static auto i = 100;
 static auto b = true;
-static auto f = 3.14;
+static auto f = 3.14f;
 
 static void serialize(m::serializer &s) {
     s.decompress();
@@ -22,7 +22,7 @@ int main() {
     m::serializer s;
     serialize(s);
 
-    m::serializer d(s.data(), s.length());
+    m::serializer d(s.data(), s.length(), s.is_compressed());
     serialize(d);
     
     std::cout << i << " " << b << " " << f << std::endl;

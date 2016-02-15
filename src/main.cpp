@@ -13,8 +13,8 @@ using optional = std::experimental::optional<T>;
 #include <thread>
 
 // Defined in server.cpp and client.cpp.
-void server_main();
-void client_main();
+extern void server_main();
+extern void client_main();
 
 bool g_is_client = true;
 bool g_is_server = false;
