@@ -28,6 +28,8 @@ serializer::serializer(const uint8_t *data, size_t len) :
     impl_->bs.Write(reinterpret_cast<const char *>(data), len);
 }
 
+serializer::~serializer() {}
+
 bool serializer::is_serializing() const {
     return writer_;
 }
@@ -49,7 +51,7 @@ void serializer::compress() {
         return;
     }
     std::string dest;
-    snappy::Uncompress(reinterpret_cast<const char *>(data()), length(), &dest);
+    snappy::Compress(reinterpret_cast<const char *>(data()), length(), &dest);
     impl_->bs.Reset();
     impl_->bs.Write(dest.data(), dest.size());
 }
@@ -59,18 +61,54 @@ void serializer::decompress() {
         return;
     }
     std::string dest;
-    snappy::Compress(reinterpret_cast<const char *>(data()), length(), &dest);
+    snappy::Uncompress(reinterpret_cast<const char *>(data()), length(), &dest);
     impl_->bs.Reset();
     impl_->bs.Write(dest.data(), dest.size());
 }
 
-template <typename T>
-serializer &serializer::operator &(T &t) {
-    if (writer_) {
-        (*impl_) << t;
-    } else {
-        (*impl_) >> t;
-    }
+serializer &serializer::operator &(bool &b) {
+    impl_->bs.Serialize(writer_, b);
+    return *this;
+}
+
+serializer &serializer::operator &(int8_t &i) {
+    impl_->bs.Serialize(writer_, i);
+    return *this;
+}
+
+serializer &serializer::operator &(int16_t &i) {
+    impl_->bs.Serialize(writer_, i);
+    return *this;
+}
+
+serializer &serializer::operator &(int32_t &i) {
+    impl_->bs.Serialize(writer_, i);
+    return *this;
+}
+
+serializer &serializer::operator &(uint8_t &i) {
+    impl_->bs.Serialize(writer_, i);
+    return *this;
+}
+
+serializer &serializer::operator &(uint16_t &i) {
+    impl_->bs.Serialize(writer_, i);
+    return *this;
+}
+
+serializer &serializer::operator &(uint32_t &i) {
+    impl_->bs.Serialize(writer_, i);
+    return *this;
+}
+
+serializer &serializer::operator &(float &f) {
+    impl_->bs.Serialize(writer_, f);
+    return *this;
+}
+
+serializer &serializer::operator &(double &d) {
+    impl_->bs.Serialize(writer_, d);
+    return *this;
 }
 
 }

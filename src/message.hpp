@@ -9,12 +9,19 @@
 
 namespace m {
 
-struct message {};
+enum class message_type {
+    tank
+};
+
+struct message {
+    virtual ~message() {}
+};
 
 struct tank_message : public message, serializable {
-    tank_message();
+    tank_message() {}
+    virtual ~tank_message() {}
 
-    void serialize(serializer &s) override;
+    void serialize(serializer &s) override {}
 };
 
 std::shared_ptr<message> deserialize_message(serializer &s);

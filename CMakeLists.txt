@@ -14,7 +14,10 @@ set(SOURCE
     src/network.cpp
     src/server.cpp
     src/client.cpp
-    src/main.cpp
+)
+
+set(TEST
+    test/main.cpp
 )
 
 set(CMAKE_CXX_FLAGS "-g -std=c++14 -Wall -pedantic")
@@ -23,6 +26,8 @@ install_files(/bin FILES bin/moag)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 
-add_executable(moag ${SOURCE})
-target_link_libraries(moag RakNetDLL snappy enet SDL2 SDL2_ttf SDL2_image pthread)
+#add_executable(moag ${SOURCE} src/main.cpp)
+#target_link_libraries(moag RakNetDLL snappy enet SDL2 SDL2_ttf SDL2_image pthread)
 
+add_executable(test ${SOURCE} test/main.cpp)
+target_link_libraries(test RakNetDLL snappy enet SDL2 SDL2_ttf SDL2_image pthread)

@@ -11,6 +11,7 @@ class serializer final {
 public:
     serializer();
     serializer(const uint8_t *data, size_t len);
+    ~serializer();
 
     bool is_serializing() const;
     bool is_deserializing() const;
@@ -21,8 +22,15 @@ public:
     void compress();
     void decompress();
     
-    template <typename T>
-    serializer &operator &(T &t);
+    serializer &operator &(bool &b);
+    serializer &operator &(int8_t &i);
+    serializer &operator &(int16_t &i);
+    serializer &operator &(int32_t &i);
+    serializer &operator &(uint8_t &i);
+    serializer &operator &(uint16_t &i);
+    serializer &operator &(uint32_t &i);
+    serializer &operator &(float &f);
+    serializer &operator &(double &d);
 private:
     bool writer_;
     std::unique_ptr<impl> impl_;
@@ -31,7 +39,7 @@ private:
 class serializable {
 public:
     virtual ~serializable() {}
-    virtual void serialize(serializer &s);
+    virtual void serialize(serializer &s) = 0;
 };
 
 }

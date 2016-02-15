@@ -6,10 +6,10 @@
 *.user
 *.swp
 *~
-moag
-moag.exe
-test
-test.exe
+bin/moag
+bin/moag.exe
+bin/test
+bin/test.exe
 CMakeCache.txt
 CMakeFiles/
 build/Makefile
