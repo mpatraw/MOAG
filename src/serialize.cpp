@@ -155,7 +155,7 @@ const uint8_t *serializer::data() const {
     return impl_->data();
 }
 
-size_t serializer::length() const {
+size_t serializer::size() const {
     return impl_->size();
 }
 

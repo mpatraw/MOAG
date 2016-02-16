@@ -17,7 +17,7 @@ public:
     bool is_deserializing() const;
 
     const uint8_t *data() const;
-    size_t length() const;
+    size_t size() const;
 
     void compress();
     void decompress();

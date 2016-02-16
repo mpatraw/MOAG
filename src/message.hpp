@@ -147,8 +147,10 @@ struct crate_message_def : public message_def {
 // The root message. Holds a type and the definition.
 class message : public message_def {
 public:
+    message() {}
     message(serializer &s);
     message(message_def *mdef);
+    message(message &&msg);
     virtual ~message() { }
 
     void serialize(serializer &s) override;
