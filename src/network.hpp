@@ -36,9 +36,9 @@ private:
 class network_manager final {
 public:
     // Client constructor.
-    network_manager(const char *ip, unsigned short port, int num_channels);
+    network_manager(const char *ip, unsigned short port, int num_channels=2);
     // Server constructor.
-    network_manager(unsigned short port, int max_connections, int num_channels);
+    network_manager(unsigned short port, int max_connections, int num_channels=2);
     ~network_manager();
 
     packet recv();

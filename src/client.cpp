@@ -380,7 +380,7 @@ static void process_packet(m::packet &p) {
 
 void client_main(void)
 {
-    client.reset(new m::network_manager{g_host, g_port, 2});
+    client.reset(new m::network_manager{g_host, g_port});
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         std::cerr << SDL_GetError() << std::endl;

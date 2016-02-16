@@ -592,7 +592,7 @@ static void process_packet(m::packet &p) {
 }
 
 void server_main() {
-    server.reset(new m::network_manager{g_port, g_max_players, 2});
+    server.reset(new m::network_manager{g_port, g_max_players});
 
     init_game();
 
