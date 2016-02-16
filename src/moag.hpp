@@ -152,9 +152,4 @@ public:
 
 }
 
-/* encoding/decoding
- */
-std::vector<uint8_t> rlencode(const std::vector<uint8_t> &src);
-std::vector<uint8_t> rldecode(const std::vector<uint8_t> &src);
-
 #endif

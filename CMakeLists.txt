@@ -10,7 +10,6 @@ link_directories(/usr/local/lib)
 set(SOURCE
     src/serialize.cpp
     src/message.cpp
-    src/encoding.cpp
     src/network.cpp
     src/server.cpp
     src/client.cpp
