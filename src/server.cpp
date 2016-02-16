@@ -70,70 +70,48 @@ static inline void broadcast_packed_land_chunk(int x, int y, int w, int h) {
     server->send(msg);
 }
 
-static inline void broadcast_tank_chunk(int action, int id) {
-    uint8_t angle;
-    if (players[id].tank.facingleft) {
-        angle = static_cast<uint8_t>(-players[id].tank.angle);
-    } else {
-        angle = static_cast<uint8_t>(players[id].tank.angle);
-    }
-    
+static inline void broadcast_tank_chunk(m::entity_op_type op, uint8_t id) {
     m::message msg{new m::tank_message_def{
-        static_cast<uint8_t>(action),
-        static_cast<uint8_t>(id),
-        angle,
+        op,
+        players[id].tank.facingleft ? m::tank_facing_type::left : m::tank_facing_type::right,
+        id,
+        static_cast<uint8_t>(players[id].tank.angle),
         static_cast<uint16_t>(players[id].tank.x),
         static_cast<uint16_t>(players[id].tank.y)}};
-
-    if (action == SPAWN || action == KILL) {
-        server->send(msg);
-    } else {
-        server->send(msg, false);
-    }
-}
-
-static inline void broadcast_bullet_chunk(int action, int id) {
-    m::message msg{new m::bullet_message_def{ 
-        static_cast<uint8_t>(action),
-        static_cast<uint8_t>(id),
-        static_cast<uint16_t>(bullets[id].x),
-        static_cast<uint16_t>(bullets[id].y)}};
-
-    if (action == SPAWN || action == KILL) {
-        server->send(msg);
-    } else {
-        server->send(msg, false);
-    }
-}
-
-static inline void broadcast_crate_chunk(int action) {
-    m::message msg{new m::crate_message_def{
-        static_cast<uint8_t>(action),
-        static_cast<uint16_t>(crate.x),
-        static_cast<uint16_t>(crate.y)}};
-
-    if (action == SPAWN || action == KILL) {
-        server->send(msg);
-    } else {
-        server->send(msg, false);
-    }
-}
-
-static inline void broadcast_chat(int id, char action, const char *m) {
-    m::message msg{new m::message_message_def{ 
-        static_cast<uint8_t>(action),
-        static_cast<uint8_t>(id),
-        m}};
 
     server->send(msg);
 }
 
+static inline void broadcast_bullet_chunk(m::entity_op_type op, uint8_t id) {
+    m::message msg{new m::bullet_message_def{ 
+        op,
+        id,
+        static_cast<uint16_t>(bullets[id].x),
+        static_cast<uint16_t>(bullets[id].y)}};
 
-static void kill_tank(int id) {
+    server->send(msg);
+}
+
+static inline void broadcast_crate_chunk(m::entity_op_type op) {
+    m::message msg{new m::crate_message_def{
+        op,
+        static_cast<uint16_t>(crate.x),
+        static_cast<uint16_t>(crate.y)}};
+
+    server->send(msg);
+}
+
+static inline void broadcast_chat(m::message_op_type op, uint8_t id, const char *str) {
+    m::message msg{new m::message_message_def{op, id, str}};
+    server->send(msg);
+}
+
+
+static void kill_tank(uint8_t id) {
     players[id].tank.x = -30;
     players[id].tank.y = -30;
     players[id].spawn_timer = g_respawn_time;
-    broadcast_tank_chunk(KILL, id);
+    broadcast_tank_chunk(m::entity_op_type::kill, id);
 }
 
 static void explode(int x, int y, int rad, char type) {
@@ -181,7 +159,7 @@ static void spawn_tank(int id) {
     players[id].tank.bullet = MISSILE;
     players[id].tank.num_burst = 1;
     explode(players[id].tank.x, (players[id].tank.y - 12), 12, E_SAFE_EXPLODE);
-    broadcast_tank_chunk(SPAWN, id);
+    broadcast_tank_chunk(m::entity_op_type::spawn, id);
 }
 
 static void spawn_client(int id) {
@@ -189,26 +167,26 @@ static void spawn_client(int id) {
     char notice[64] = "  ";
     strcat(notice, players[id].name);
     strcat(notice, " has connected");
-    broadcast_chat(-1, SERVER_NOTICE, notice);
+    broadcast_chat(m::message_op_type::server_notice, -1, notice);
 
     spawn_tank(id);
     broadcast_packed_land_chunk(0, 0, g_land_width, g_land_height);
-    broadcast_chat(id, NAME_CHANGE,players[id].name);
+    broadcast_chat(m::message_op_type::name_change, id, players[id].name);
     if (crate.active) {
-        broadcast_crate_chunk(SPAWN);
+        broadcast_crate_chunk(m::entity_op_type::spawn);
     }
 
     for (int i = 0; i < g_max_players; ++i) {
         if (players[i].connected) {
-            broadcast_tank_chunk(SPAWN, i);
-            broadcast_chat(i, NAME_CHANGE, players[i].name);
+            broadcast_tank_chunk(m::entity_op_type::spawn, i);
+            broadcast_chat(m::message_op_type::name_change, i, players[i].name);
         }
     }
 }
 
 static void disconnect_client(int id) {
     players[id].connected = 0;
-    broadcast_tank_chunk(KILL, id);
+    broadcast_tank_chunk(m::entity_op_type::kill, id);
 }
 
 static void fire_bullet(int origin, char type, int x, int y, int vx, int vy) {
@@ -225,7 +203,7 @@ static void fire_bullet(int origin, char type, int x, int y, int vx, int vy) {
     bullets[i].y = y;
     bullets[i].velx = vx;
     bullets[i].vely = vy;
-    broadcast_bullet_chunk(SPAWN, i);
+    broadcast_bullet_chunk(m::entity_op_type::spawn, i);
 }
 
 static void fire_bullet_ang(int origin, char type, int x, int y, int angle, int vel) {
@@ -307,7 +285,7 @@ static void tank_update(int id) {
             t->bullet = crate.type;
         }
         crate.active = false;
-        broadcast_crate_chunk(KILL);
+        broadcast_crate_chunk(m::entity_op_type::kill);
         char notice[64] = "* ";
         strcat(notice, players[id].name);
         strcat(notice, " got ");
@@ -328,7 +306,7 @@ static void tank_update(int id) {
             case 16: strcat(notice, "*Triple*"); break;
             default: strcat(notice, "???"); break;
         }
-        broadcast_chat(-1, SERVER_NOTICE, notice);
+        broadcast_chat(m::message_op_type::server_notice, -1, notice);
     }
 
     // Aim
@@ -349,7 +327,7 @@ static void tank_update(int id) {
     }
 
     if (moved) {
-        broadcast_tank_chunk(MOVE, id);
+        broadcast_tank_chunk(m::entity_op_type::move, id);
     }
 }
 
@@ -414,7 +392,7 @@ static void bullet_detonate(int id) {
 
     if (b->active >= 0) {
         b->active = 0;
-        broadcast_bullet_chunk(KILL, id);
+        broadcast_bullet_chunk(m::entity_op_type::kill, id);
     }
 }
 
@@ -448,7 +426,7 @@ static void bullet_update(int id) {
     }
 
     if (b->active) {
-        broadcast_bullet_chunk(MOVE, id);
+        broadcast_bullet_chunk(m::entity_op_type::move, id);
     }
 }
 
@@ -489,12 +467,12 @@ static void crate_update() {
         else if ((r -= PSHOTGUN) < 0)    crate.type = SHOTGUN;
         else if ((r -= PTRIPLER) < 0)    crate.type = TRIPLER;
         else                             crate.type = DIRT;
-        broadcast_crate_chunk(SPAWN);
+        broadcast_crate_chunk(m::entity_op_type::spawn);
     }
 
     if (main_land.is_air(static_cast<uint16_t>(crate.x), static_cast<uint16_t>(crate.y + 1))) {
         crate.y += 1;
-        broadcast_crate_chunk(MOVE);
+        broadcast_crate_chunk(m::entity_op_type::move);
     }
 }
 
@@ -522,10 +500,10 @@ static void handle_msg(int id, const char* msg, int len) {
         players[id].name[len] = '\0';
         strcat(notice, " is now known as ");
         strcat(notice, players[id].name);
-        broadcast_chat(id, NAME_CHANGE, players[id].name);
-        broadcast_chat(-1, SERVER_NOTICE, notice);
+        broadcast_chat(m::message_op_type::name_change, id, players[id].name);
+        broadcast_chat(m::message_op_type::server_notice, -1, notice);
     } else {
-        broadcast_chat(id, CHAT, msg);
+        broadcast_chat(m::message_op_type::chat, id, msg);
     }
 }
 

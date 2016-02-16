@@ -70,8 +70,7 @@ private:
 static std::unique_ptr<m::network_manager> client;
 static m::land main_land;
 
-static SDL_Texture *load_texture_from_file(const char *filename)
-{
+static SDL_Texture *load_texture_from_file(const char *filename) {
     auto surface = IMG_Load(filename);
     if (!surface) {
         return nullptr;
@@ -81,8 +80,7 @@ static SDL_Texture *load_texture_from_file(const char *filename)
     return texture;
 }
 
-static SDL_Texture *create_string_texture(const char *text, SDL_Color c={255, 255, 25,255})
-{
+static SDL_Texture *create_string_texture(const char *text, SDL_Color c={255, 255, 255,255}) {
     auto surface = TTF_RenderText_Solid(main_font, text, c);
     if (!surface) {
         return nullptr;
@@ -92,8 +90,7 @@ static SDL_Texture *create_string_texture(const char *text, SDL_Color c={255, 25
     return texture;
 }
 
-static void quick_render_string(int x, int y, const char *text, SDL_Color c={255, 255, 255, 255})
-{
+static void quick_render_string(int x, int y, const char *text, SDL_Color c={255, 255, 255, 255}) {
     auto texture = create_string_texture(text, c);
     if (!texture) {
         return;
@@ -105,20 +102,17 @@ static void quick_render_string(int x, int y, const char *text, SDL_Color c={255
     SDL_DestroyTexture(texture);
 }
 
-class message_scroller
-{
+class message_scroller {
 public:
     enum { lines = 7, expires_after = 18000 };
     message_scroller() {}
-    ~message_scroller()
-    {
+    ~message_scroller() {
         for (auto text : message_texts) {
             SDL_DestroyTexture(text);
         }
     }
 
-    void add_message(const char *str)
-    {
+    void add_message(const char *str) {
         message_expirations.push_back(SDL_GetTicks() + expires_after);
         message_texts.push_back(create_string_texture(str));
         if (message_texts.size() > lines) {
@@ -128,8 +122,7 @@ public:
         }
     }
 
-    void expire_messages()
-    {
+    void expire_messages() {
         while (!message_expirations.empty() && message_expirations.front() < SDL_GetTicks()) {
             SDL_DestroyTexture(message_texts.front());
             message_expirations.pop_front();
@@ -150,14 +143,12 @@ private:
 static message_scroller chat_line;
 static std::string typing_str;
 
-static inline void send_input_chunk(uint8_t key, uint16_t t)
-{
+static inline void send_input_chunk(uint8_t key, uint16_t t) {
     m::message msg{new m::input_message_def{key, t}};
     client->send(msg);
 }
 
-static void draw_tank(int x, int y, int turret_angle, bool facingleft)
-{
+static void draw_tank(int x, int y, int turret_angle, bool facingleft) {
     SDL_Rect tank_src = {x - tank_width / 2, y - tank_height, tank_width, tank_height};
     SDL_RenderCopy(main_renderer, tank_texture, NULL, &tank_src);
     if (facingleft) {
@@ -170,8 +161,7 @@ static void draw_tank(int x, int y, int turret_angle, bool facingleft)
     SDL_RenderCopyEx(main_renderer, turret_texture, NULL, &turret_src, turret_angle, &cen, SDL_FLIP_NONE);
 }
 
-static void draw_crate(int x, int y)
-{
+static void draw_crate(int x, int y) {
     x = x - (crate_width / 2);
     SDL_Rect src = {x, y, crate_width, crate_height};
     SDL_RenderCopy(main_renderer, crate_texture, NULL, &src);
@@ -189,8 +179,7 @@ static void draw_bullets() {
     }
 }
       
-static void draw()
-{
+static void draw() {
     SDL_SetRenderDrawColor(main_renderer, 128, 128, 128, 255);
     auto del = dynamic_cast<land_texture const *>(main_land.get_delegate());
     SDL_RenderCopy(main_renderer, const_cast<SDL_Texture *>(del->sdl_texture()), nullptr, nullptr);
@@ -220,8 +209,7 @@ static void draw()
         i++;
     }
 
-    if (SDL_IsTextInputActive())
-    {
+    if (SDL_IsTextInputActive()) {
         SDL_SetRenderDrawColor(main_renderer, 128, 128, 128, 255);
         SDL_Rect rect = {6, 8 + 12 * message_scroller::lines, 4, 4};
         SDL_RenderDrawRect(main_renderer, &rect);
@@ -253,29 +241,21 @@ static void process_packet(m::packet &p) {
         case m::message_type::tank: {
             auto tank = dynamic_cast<m::tank_message_def &>(msg.get_def());
             auto id = tank.id;
-            if (tank.action == SPAWN) {
+            if (tank.op == m::entity_op_type::spawn) {
                 players[id].connected = true;
 
                 players[id].tank.x = tank.x;
                 players[id].tank.y = tank.y;
 
-                players[id].tank.facingleft = false;
-                if (tank.angle < 0){
-                    tank.angle = -tank.angle;
-                    players[id].tank.facingleft = true;
-                }
+                players[id].tank.facingleft = tank.facing == m::tank_facing_type::left;
                 players[id].tank.angle = tank.angle;
-            } else if (tank.action == MOVE) {
+            } else if (tank.op == m::entity_op_type::move) {
                 players[id].tank.x = tank.x;
                 players[id].tank.y = tank.y;
 
-                players[id].tank.facingleft = false;
-                if (tank.angle < 0){
-                    tank.angle = -tank.angle;
-                    players[id].tank.facingleft = true;
-                }
+                players[id].tank.facingleft = tank.facing == m::tank_facing_type::left;
                 players[id].tank.angle = tank.angle;
-            } else if (tank.action == KILL) {
+            } else if (tank.op == m::entity_op_type::kill) {
                 players[id].tank.x = -1;
                 players[id].tank.y = -1;
                 players[id].connected = false;
@@ -290,14 +270,14 @@ static void process_packet(m::packet &p) {
             auto bullet = dynamic_cast<m::bullet_message_def &>(msg.get_def());
             auto id = bullet.id;
 
-            if (bullet.action == SPAWN) {
+            if (bullet.op == m::entity_op_type::spawn) {
                 bullets[id].active = true;
                 bullets[id].x = bullet.x;
                 bullets[id].y = bullet.y;
-            } else if (bullet.action == MOVE) {
+            } else if (bullet.op == m::entity_op_type::move) {
                 bullets[id].x = bullet.x;
                 bullets[id].y = bullet.y;
-            } else if (bullet.action == KILL) {
+            } else if (bullet.op == m::entity_op_type::kill) {
                 bullets[id].active = false;
             } else {
                 fprintf(stderr, "Invalid BULLET_CHUNK type.\n");
@@ -309,14 +289,14 @@ static void process_packet(m::packet &p) {
         case m::message_type::crate: {
             auto c = dynamic_cast<m::crate_message_def &>(msg.get_def());
 
-            if (c.action == SPAWN) {
+            if (c.op == m::entity_op_type::spawn) {
                 crate.active = true;
                 crate.x = c.x;
                 crate.y = c.y;
-            } else if (c.action == MOVE) {
+            } else if (c.op == m::entity_op_type::move) {
                 crate.x = c.x;
                 crate.y = c.y;
-            } else if (c.action == KILL) {
+            } else if (c.op == m::entity_op_type::kill) {
                 crate.active = false;
             } else {
                 fprintf(stderr, "Invalid CRATE_CHUNK type.\n");
@@ -330,8 +310,8 @@ static void process_packet(m::packet &p) {
             auto id = m.id;
             auto str = m.get_string();
 
-            switch (m.action) {
-                case CHAT: {
+            switch (m.op) {
+                case m::message_op_type::chat: {
                     int namelen = strlen(players[id].name);
                     int linelen = namelen + str.length() + 4;
                     char *line = (char *)malloc(linelen);
@@ -349,7 +329,7 @@ static void process_packet(m::packet &p) {
                     break;
                 }
 
-                case NAME_CHANGE: {
+                case m::message_op_type::name_change: {
                     if (str.length() < 1 || str.length() > 15) {
                         break;
                     }
@@ -360,13 +340,13 @@ static void process_packet(m::packet &p) {
                     break;
                 }
 
-                case SERVER_NOTICE: {
+                case m::message_op_type::server_notice: {
                     chat_line.add_message(str.c_str());
                     break;
                 }
 
                 default:
-                    fprintf(stderr, "Invalid SERVER_MSG_CHUNK action (%d).\n", m.action);
+                    fprintf(stderr, "Invalid SERVER_MSG_CHUNK action (%d).\n", (int)m.op);
                     exit(-1);
             }
             break;
@@ -378,8 +358,7 @@ static void process_packet(m::packet &p) {
     }
 }
 
-void client_main(void)
-{
+void client_main() {
     client.reset(new m::network_manager{g_host, g_port});
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
@@ -515,7 +494,8 @@ void client_main(void)
                 || kb[SDL_SCANCODE_DOWN]) {
                 SDL_StopTextInput();
             } else if (kb[SDL_SCANCODE_RETURN]) {
-                m::message msg{new m::message_message_def{0, 0, typing_str.c_str()}};
+                m::message msg{new m::message_message_def{
+                    m::message_op_type::client, 0, typing_str.c_str()}};
                 client->send(msg);
 
                 SDL_StopTextInput();

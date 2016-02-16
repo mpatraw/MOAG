@@ -85,6 +85,10 @@ message_type message::get_type() const {
     return type_;
 }
 
+bool message::should_be_reliable() const {
+    return def_->should_be_reliable();
+}
+
 void message::serialize(serializer &s) {
     uint8_t tmp = static_cast<uint8_t>(type_);
     s & tmp;

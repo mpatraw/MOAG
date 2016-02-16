@@ -2,7 +2,6 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
-// Defined in main.cpp.
 extern bool g_is_client;
 extern bool g_is_server;
 extern const char *g_host;

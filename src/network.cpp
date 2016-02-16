@@ -138,12 +138,12 @@ public:
         return packet{};
     }
 
-    void send(message &msg, bool reliable=true) {
+    void send(message &msg) {
         serializer s;
         msg.serialize(s);
         s.compress();
         uint32_t flags = 0;
-        if (reliable) {
+        if (msg.should_be_reliable()) {
             flags |= ENET_PACKET_FLAG_RELIABLE;
         }
         ENetPacket *packet = enet_packet_create(NULL, s.size(), flags);
@@ -183,8 +183,8 @@ packet network_manager::recv() {
     return impl->recv();
 }
 
-void network_manager::send(message &msg, bool reliable) {
-    impl->send(msg, reliable);
+void network_manager::send(message &msg) {
+    impl->send(msg);
 }
 
 uint32_t network_manager::rtt() const {

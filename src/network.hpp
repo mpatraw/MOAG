@@ -19,8 +19,7 @@ enum class packet_type {
 
 class packet final {
 public:
-    packet() {}
-    packet(packet_type type, int id) : type_{type}, id_{id} {}
+    packet(packet_type type=packet_type::none, int id=0) : type_{type}, id_{id} {}
 
     packet_type get_type() const { return type_; }
     int get_id() const { return id_; }
@@ -28,7 +27,7 @@ public:
     message &get_message() { return msg_; }
 
 private:
-    packet_type type_ = packet_type::none;
+    packet_type type_;
     message msg_;
     int id_;
 };
@@ -42,7 +41,7 @@ public:
     ~network_manager();
 
     packet recv();
-    void send(message &msg, bool reliable = true);
+    void send(message &msg);
 
     uint32_t rtt() const;
 private:
