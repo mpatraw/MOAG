@@ -39,6 +39,8 @@ get_arg(int argc, char *argv[], const char *search) {
         if (a.find(search) != std::string::npos) {
             if (i + 1 < argc) {
                 return argv[i + 1];
+            } else {
+                std::cout << "warning: no provided argument for " << argv[i] << std::endl;
             }
         }
     }
