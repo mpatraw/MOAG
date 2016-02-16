@@ -11,6 +11,7 @@ const int connect_timeout = 10000;
 class network_impl;
 
 enum class packet_type {
+    none,
     connection,
     disconnection,
     message
@@ -20,11 +21,6 @@ class packet final {
 public:
     packet() {}
     packet(packet_type type, int id) : type_{type}, id_{id} {}
-    packet(packet &&p) {
-        type_ = p.type_;
-        msg_ = std::move(p.msg_);
-        id_ = p.id_;
-    }
 
     packet_type get_type() const { return type_; }
     int get_id() const { return id_; }
@@ -32,7 +28,7 @@ public:
     message &get_message() { return msg_; }
 
 private:
-    packet_type type_;
+    packet_type type_ = packet_type::none;
     message msg_;
     int id_;
 };

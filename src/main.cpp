@@ -19,7 +19,7 @@ extern void client_main();
 bool g_is_client = true;
 bool g_is_server = false;
 const char *g_host = "localhost";
-int g_port = 6624;
+unsigned short g_port = 6624;
 
 static bool has_arg(int argc, char *argv[], const char *search) {
     for (int i = 0; i < argc; ++i) {

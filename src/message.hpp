@@ -41,14 +41,18 @@ struct input_message_def : public message_def {
 };
 
 struct message_message_def : public message_def {
+    uint8_t action, id;
     std::vector<int8_t> msg;
 
     message_message_def() {}
-    message_message_def(const std::string &s) : msg{s.begin(), s.end()} {}
+    message_message_def(uint8_t action, uint8_t id, const std::string &s) :
+        action{action}, id{id}, msg{s.begin(), s.end()} {}
     virtual ~message_message_def() {}
     message_type get_type() const override { return message_type::message; }
 
     void serialize(serializer &s) override {
+        s & action;
+        s & id;
         uint32_t len = msg.size();
         s & len;
         msg.resize(len);
@@ -82,8 +86,8 @@ struct land_message_def : public message_def {
         s & h;
         data.resize(w * h);
         size_t i = 0;
-        for (size_t yy = y; y < h + y; ++y) {
-            for (size_t xx = x; x < w + x; ++x) {
+        for (size_t yy = y; yy < h + y; ++yy) {
+            for (size_t xx = x; xx < w + x; ++xx) {
                 (void)yy;
                 (void)xx;
                 s & data[i++];
@@ -97,6 +101,8 @@ struct tank_message_def : public message_def {
     uint16_t x, y;
 
     tank_message_def() {}
+    tank_message_def(uint8_t action, uint8_t id, uint8_t angle, uint16_t x, uint16_t y) :
+        action{action}, id{id}, angle{angle}, x{x}, y{y} {}
     virtual ~tank_message_def() {}
     message_type get_type() const override { return message_type::tank; }
 
@@ -145,12 +151,13 @@ struct crate_message_def : public message_def {
 };
 
 // The root message. Holds a type and the definition.
-class message : public message_def {
+class message : public serializable {
 public:
     message() {}
     message(serializer &s);
     message(message_def *mdef);
-    message(message &&msg);
+    message(message &&) = default;
+    message &operator =(message &&) = default;
     virtual ~message() { }
 
     void serialize(serializer &s) override;
@@ -158,7 +165,7 @@ public:
     void set_def(message_def *mdef);
     message_def &get_def();
     const message_def &get_def() const;
-    message_type get_type() const override;
+    message_type get_type() const;
 
 private:
     message_type type_;

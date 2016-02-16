@@ -68,11 +68,6 @@ message::message(message_def *mdef) :
     type_{mdef->get_type()}, def_{mdef} {
 }
 
-message::message(message &&msg) {
-    type_ = msg.type_;
-    def_ = std::move(msg.def_);
-}
-
 void message::set_def(message_def *mdef) {
     type_ = mdef->get_type();
     def_.reset(mdef);

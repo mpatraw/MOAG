@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <memory>
 #include <iostream>
 #include <exception>
@@ -103,8 +104,7 @@ public:
                         peers[i] = event.peer;
                         id = i;
                     }
-                    return std::move(packet{packet_type::connection, id});
-                    break;
+                    return packet{packet_type::connection, id};
                 }
 
                 case ENET_EVENT_TYPE_DISCONNECT: {
@@ -125,6 +125,7 @@ public:
                     }
                     serializer s{event.packet->data, event.packet->dataLength, true};
                     packet p{packet_type::message, id};
+                    s.decompress();
                     p.get_message().serialize(s);
                     enet_packet_destroy(event.packet);
                     return p;
@@ -175,6 +176,8 @@ network_manager::network_manager(const char *ip, unsigned short port, int num_ch
 network_manager::network_manager(unsigned short port, int max_connections, int num_channels) :
     impl{std::make_unique<network_impl>(port, max_connections, num_channels)} {
 }
+
+network_manager::~network_manager() {}
 
 packet network_manager::recv() {
     return impl->recv();

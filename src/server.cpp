@@ -35,7 +35,7 @@ enum {
     E_COLLAPSE
 };
 
-static std::unique_ptr<m::server> server;
+static std::unique_ptr<m::network_manager> server;
 static m::land main_land;
 
 static m::player players[g_max_players];
@@ -62,81 +62,70 @@ static inline void broadcast_packed_land_chunk(int x, int y, int w, int h) {
         }
     }
 
-    auto packed_data = rlencode(land);
-
-    m::packet p;
-
-    p << static_cast<uint8_t>(PACKED_LAND_CHUNK);
-    p << static_cast<uint16_t>(x);
-    p << static_cast<uint16_t>(y);
-    p << static_cast<uint16_t>(w);
-    p << static_cast<uint16_t>(h);
-    p.load(packed_data.data(), packed_data.size());
-
-    server->broadcast(p);
+    m::message msg{new m::land_message_def{
+        static_cast<uint16_t>(x),
+        static_cast<uint16_t>(y),
+        static_cast<uint16_t>(w),
+        static_cast<uint16_t>(h), land}};
+    server->send(msg);
 }
 
 static inline void broadcast_tank_chunk(int action, int id) {
-    m::packet p;
-    
-    p << static_cast<uint8_t>(TANK_CHUNK);
-    p << static_cast<uint8_t>(action);
-    p << static_cast<uint8_t>(id);
-    p << static_cast<uint16_t>(players[id].tank.x);
-    p << static_cast<uint16_t>(players[id].tank.y);
+    uint8_t angle;
     if (players[id].tank.facingleft) {
-        p << static_cast<uint8_t>(-players[id].tank.angle);
+        angle = static_cast<uint8_t>(-players[id].tank.angle);
     } else {
-        p << static_cast<uint8_t>(players[id].tank.angle);
+        angle = static_cast<uint8_t>(players[id].tank.angle);
     }
+    
+    m::message msg{new m::tank_message_def{
+        static_cast<uint8_t>(action),
+        static_cast<uint8_t>(id),
+        angle,
+        static_cast<uint16_t>(players[id].tank.x),
+        static_cast<uint16_t>(players[id].tank.y)}};
 
     if (action == SPAWN || action == KILL) {
-        server->broadcast(p);
+        server->send(msg);
     } else {
-        server->broadcast(p, false);
+        server->send(msg, false);
     }
 }
 
 static inline void broadcast_bullet_chunk(int action, int id) {
-    m::packet p;
-    
-    p << static_cast<uint8_t>(BULLET_CHUNK);
-    p << static_cast<uint8_t>(action);
-    p << static_cast<uint8_t>(id);
-    p << static_cast<uint16_t>(bullets[id].x);
-    p << static_cast<uint16_t>(bullets[id].y);
+    m::message msg{new m::bullet_message_def{ 
+        static_cast<uint8_t>(action),
+        static_cast<uint8_t>(id),
+        static_cast<uint16_t>(bullets[id].x),
+        static_cast<uint16_t>(bullets[id].y)}};
 
     if (action == SPAWN || action == KILL) {
-        server->broadcast(p);
+        server->send(msg);
     } else {
-        server->broadcast(p, false);
+        server->send(msg, false);
     }
 }
 
 static inline void broadcast_crate_chunk(int action) {
-    m::packet p;
-    
-    p << static_cast<uint8_t>(CRATE_CHUNK);
-    p << static_cast<uint8_t>(action);
-    p << static_cast<uint16_t>(crate.x);
-    p << static_cast<uint16_t>(crate.y);
+    m::message msg{new m::crate_message_def{
+        static_cast<uint8_t>(action),
+        static_cast<uint16_t>(crate.x),
+        static_cast<uint16_t>(crate.y)}};
 
     if (action == SPAWN || action == KILL) {
-        server->broadcast(p);
+        server->send(msg);
     } else {
-        server->broadcast(p, false);
+        server->send(msg, false);
     }
 }
 
-static inline void broadcast_chat(int id, char action, const char *msg, size_t len) {
-    m::packet p;
-    
-    p << static_cast<uint8_t>(SERVER_MSG_CHUNK);
-    p << static_cast<uint8_t>(id);
-    p << static_cast<uint8_t>(action);
-    p << msg;
+static inline void broadcast_chat(int id, char action, const char *m) {
+    m::message msg{new m::message_message_def{ 
+        static_cast<uint8_t>(action),
+        static_cast<uint8_t>(id),
+        m}};
 
-    server->broadcast(p);
+    server->send(msg);
 }
 
 
@@ -200,11 +189,11 @@ static void spawn_client(int id) {
     char notice[64] = "  ";
     strcat(notice, players[id].name);
     strcat(notice, " has connected");
-    broadcast_chat(-1, SERVER_NOTICE, notice, strlen(notice) + 1);
+    broadcast_chat(-1, SERVER_NOTICE, notice);
 
     spawn_tank(id);
     broadcast_packed_land_chunk(0, 0, g_land_width, g_land_height);
-    broadcast_chat(id, NAME_CHANGE,players[id].name, strlen(players[id].name) + 1);
+    broadcast_chat(id, NAME_CHANGE,players[id].name);
     if (crate.active) {
         broadcast_crate_chunk(SPAWN);
     }
@@ -212,7 +201,7 @@ static void spawn_client(int id) {
     for (int i = 0; i < g_max_players; ++i) {
         if (players[i].connected) {
             broadcast_tank_chunk(SPAWN, i);
-            broadcast_chat(i, NAME_CHANGE, players[i].name, strlen(players[i].name) + 1);
+            broadcast_chat(i, NAME_CHANGE, players[i].name);
         }
     }
 }
@@ -339,7 +328,7 @@ static void tank_update(int id) {
             case 16: strcat(notice, "*Triple*"); break;
             default: strcat(notice, "???"); break;
         }
-        broadcast_chat(-1, SERVER_NOTICE, notice, strlen(notice) + 1);
+        broadcast_chat(-1, SERVER_NOTICE, notice);
     }
 
     // Aim
@@ -533,10 +522,10 @@ static void handle_msg(int id, const char* msg, int len) {
         players[id].name[len] = '\0';
         strcat(notice, " is now known as ");
         strcat(notice, players[id].name);
-        broadcast_chat(id, NAME_CHANGE, players[id].name, strlen(players[id].name) + 1);
-        broadcast_chat(-1, SERVER_NOTICE, notice, strlen(notice) + 1);
+        broadcast_chat(id, NAME_CHANGE, players[id].name);
+        broadcast_chat(-1, SERVER_NOTICE, notice);
     } else {
-        broadcast_chat(id, CHAT, msg, len + 1);
+        broadcast_chat(id, CHAT, msg);
     }
 }
 
@@ -560,13 +549,13 @@ static void init_game() {
     }
 }
 
-static void process_packet(m::packet &p, uint8_t type, int id) {
-    switch (type) {
-        case INPUT_CHUNK: {
-            uint8_t key;
-            uint16_t ms;
-            p >> key >> ms;
-            switch (key) {
+static void process_packet(m::packet &p) {
+    auto &msg = p.get_message();
+    auto id = p.get_id();
+    switch (msg.get_type()) {
+        case m::message_type::input: {
+            auto &input = dynamic_cast<m::input_message_def &>(msg.get_def());
+            switch (input.key) {
                 case KLEFT_PRESSED:   players[id].kleft = true; break;
                 case KLEFT_RELEASED:  players[id].kleft = false; break;
                 case KRIGHT_PRESSED:  players[id].kright = true; break;
@@ -577,7 +566,7 @@ static void process_packet(m::packet &p, uint8_t type, int id) {
                 case KDOWN_RELEASED:  players[id].kdown = false; break;
                 case KFIRE_PRESSED:   players[id].kfire = true; break;
                 case KFIRE_RELEASED: {
-                    players[id].tank.power = ms;
+                    players[id].tank.power = input.ms;
                     players[id].kfire = false;
                     auto p = &players[id].tank.power;
                     if (*p < 0) {
@@ -591,10 +580,10 @@ static void process_packet(m::packet &p, uint8_t type, int id) {
             break;
         }
 
-        case CLIENT_MSG_CHUNK: {
-            std::string msg;
-            p >> msg;
-            handle_msg(id, msg.c_str(), msg.length());
+        case m::message_type::message: {
+            auto msgmsg = dynamic_cast<m::message_message_def &>(msg.get_def());
+            auto str = msgmsg.get_string();
+            handle_msg(id, str.c_str(), str.length());
             break;
         }
 
@@ -603,26 +592,24 @@ static void process_packet(m::packet &p, uint8_t type, int id) {
 }
 
 void server_main() {
-    server.reset(new m::server);
+    server.reset(new m::network_manager{g_port, g_max_players, 2});
 
     init_game();
 
     while (true) {
         while (true) {
-            int id;
-            auto packet = server->recv(id);
-            if (packet.empty()) {
+            auto packet = server->recv();
+            if (packet.get_type() == m::packet_type::none) {
                 break;
             }
 
-            uint8_t type;
-            packet >> type;
-            if (type == m::packet_type_connection) {
-                spawn_client(id);
-            } else if (type == m::packet_type_disconnection) {
-                disconnect_client(id);
+            auto type = packet.get_type();
+            if (type == m::packet_type::connection) {
+                spawn_client(packet.get_id());
+            } else if (type == m::packet_type::disconnection) {
+                disconnect_client(packet.get_id());
             } else {
-                process_packet(packet, type, id);
+                process_packet(packet);
             }
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(20));

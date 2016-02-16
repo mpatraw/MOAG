@@ -160,7 +160,7 @@ size_t serializer::size() const {
 }
 
 void serializer::compress() {
-    if (writer_) {
+    if (!writer_) {
         return;
     }
     std::string dest;
@@ -171,7 +171,7 @@ void serializer::compress() {
 }
 
 void serializer::decompress() {
-    if (!writer_) {
+    if (writer_) {
         return;
     }
     std::string dest;
