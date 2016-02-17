@@ -533,17 +533,17 @@ static void process_packet(m::packet &p) {
     switch (msg.get_type()) {
         case m::message_type::input: {
             auto &input = dynamic_cast<m::input_message_def &>(msg.get_def());
-            switch (input.key) {
-                case KLEFT_PRESSED:   players[id].kleft = true; break;
-                case KLEFT_RELEASED:  players[id].kleft = false; break;
-                case KRIGHT_PRESSED:  players[id].kright = true; break;
-                case KRIGHT_RELEASED: players[id].kright = false; break;
-                case KUP_PRESSED:     players[id].kup = true; break;
-                case KUP_RELEASED:    players[id].kup = false; break;
-                case KDOWN_PRESSED:   players[id].kdown = true; break;
-                case KDOWN_RELEASED:  players[id].kdown = false; break;
-                case KFIRE_PRESSED:   players[id].kfire = true; break;
-                case KFIRE_RELEASED: {
+            switch (input.op) {
+                case m::input_op_type::start_move_left: players[id].kleft = true; break;
+                case m::input_op_type::stop_move_left: players[id].kleft = false; break;
+                case m::input_op_type::start_move_right: players[id].kright = true; break;
+                case m::input_op_type::stop_move_right: players[id].kright = false; break;
+                case m::input_op_type::start_move_up: players[id].kup = true; break;
+                case m::input_op_type::stop_move_up: players[id].kup = false; break;
+                case m::input_op_type::start_move_down: players[id].kdown = true; break;
+                case m::input_op_type::stop_move_down: players[id].kdown = false; break;
+                case m::input_op_type::start_fire: players[id].kfire = true; break;
+                case m::input_op_type::stop_fire: {
                     players[id].tank.power = input.ms;
                     players[id].kfire = false;
                     auto p = &players[id].tank.power;

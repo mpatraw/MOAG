@@ -143,8 +143,8 @@ private:
 static message_scroller chat_line;
 static std::string typing_str;
 
-static inline void send_input_chunk(uint8_t key, uint16_t t) {
-    m::message msg{new m::input_message_def{key, t}};
+static inline void send_input_chunk(m::input_op_type op, uint16_t t) {
+    m::message msg{new m::input_message_def{op, t}};
     client->send(msg);
 }
 
@@ -181,8 +181,8 @@ static void draw_bullets() {
       
 static void draw() {
     SDL_SetRenderDrawColor(main_renderer, 128, 128, 128, 255);
-    auto del = dynamic_cast<land_texture const *>(main_land.get_delegate());
-    SDL_RenderCopy(main_renderer, const_cast<SDL_Texture *>(del->sdl_texture()), nullptr, nullptr);
+    auto &del = dynamic_cast<land_texture &>(main_land.get_delegate());
+    SDL_RenderCopy(main_renderer, const_cast<SDL_Texture *>(del.sdl_texture()), nullptr, nullptr);
 
     if (crate.active) {
         draw_crate(crate.x - 4, crate.y - 8);
@@ -416,36 +416,29 @@ void client_main() {
             switch (ev.type) {
             case SDL_KEYDOWN:
                 if (ev.key.keysym.sym == SDLK_LEFT) {
-                    send_input_chunk(KLEFT_PRESSED, 0);
+                    send_input_chunk(m::input_op_type::start_move_left, 0);
                 }
-
                 if (ev.key.keysym.sym == SDLK_RIGHT) {
-                    send_input_chunk(KRIGHT_PRESSED, 0);
+                    send_input_chunk(m::input_op_type::start_move_right, 0);
                 }
-
                 if (ev.key.keysym.sym == SDLK_UP) {
-                    send_input_chunk(KUP_PRESSED, 0);
+                    send_input_chunk(m::input_op_type::start_move_up, 0);
                 }
-
                 if (ev.key.keysym.sym == SDLK_DOWN) {
-                    send_input_chunk(KDOWN_PRESSED, 0);
+                    send_input_chunk(m::input_op_type::start_move_down, 0);
                 }
-
                 if (ev.key.keysym.sym == SDLK_SPACE && kfire_held_start == 0) {
-                    send_input_chunk(KFIRE_PRESSED, 0);
+                    send_input_chunk(m::input_op_type::start_fire, 0);
                     kfire_held_start = SDL_GetTicks();
                 }
-
                 if (ev.key.keysym.sym == SDLK_t) {
                     SDL_StartTextInput();
                     typing_str = "";
                 }
-
                 if (ev.key.keysym.sym == SDLK_SLASH) {
                     SDL_StartTextInput();
                     typing_str = "/";
                 }
-
                 if (ev.key.keysym.sym == SDLK_ESCAPE) {
                     goto end_loop;
                 }
@@ -453,23 +446,20 @@ void client_main() {
 
             case SDL_KEYUP:
                 if (ev.key.keysym.sym == SDLK_LEFT) {
-                    send_input_chunk(KLEFT_RELEASED, 0);
+                    send_input_chunk(m::input_op_type::stop_move_left, 0);
                 }
-
                 if (ev.key.keysym.sym == SDLK_RIGHT) {
-                    send_input_chunk(KRIGHT_RELEASED, 0);
+                    send_input_chunk(m::input_op_type::stop_move_right, 0);
                 }
-
                 if (ev.key.keysym.sym == SDLK_UP) {
-                    send_input_chunk(KUP_RELEASED, 0);
+                    send_input_chunk(m::input_op_type::stop_move_up, 0);
                 }
-
                 if (ev.key.keysym.sym == SDLK_DOWN) {
-                    send_input_chunk(KDOWN_RELEASED, 0);
+                    send_input_chunk(m::input_op_type::stop_move_down, 0);
                 }
 
                 if (ev.key.keysym.sym == SDLK_SPACE) {
-                    send_input_chunk(KFIRE_RELEASED, SDL_GetTicks() - kfire_held_start);
+                    send_input_chunk(m::input_op_type::stop_fire, SDL_GetTicks() - kfire_held_start);
                     kfire_held_start = 0;
                 }
                 break;

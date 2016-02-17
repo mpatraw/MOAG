@@ -2,9 +2,14 @@
 #ifndef PHYSICS_HPP
 #define PHYSICS_HPP
 
-#include "../moag.hpp"
+#include "land.hpp"
 
 namespace m {
+
+struct body {
+    float x, y;
+    float vx, vy;
+};
 
 class physics final {
 public:

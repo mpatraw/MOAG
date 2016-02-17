@@ -11,6 +11,14 @@
 
 namespace m {
 
+enum class input_op_type : uint8_t {
+    start_move_left, stop_move_left,
+    start_move_right, stop_move_right,
+    start_move_up, stop_move_up,
+    start_move_down, stop_move_down,
+    start_fire, stop_fire
+};
+
 enum class entity_op_type : uint8_t {
     spawn,
     kill,
@@ -45,17 +53,19 @@ struct message_def : public serializable {
 };
 
 struct input_message_def : public message_def {
-    uint8_t key;
+    input_op_type op;
     uint16_t ms;
 
     input_message_def() {}
-    input_message_def(uint8_t key, uint16_t ms) : key{key}, ms{ms} {}
+    input_message_def(input_op_type op, uint16_t ms) : op{op}, ms{ms} {}
     virtual ~input_message_def() {}
     message_type get_type() const override { return message_type::input; }
     bool should_be_reliable() const override { return true; }
 
     void serialize(serializer &s) override {
-        s & key;
+        uint8_t o = static_cast<uint8_t>(op);
+        s & o;
+        op = static_cast<input_op_type>(o);
         s & ms;
     }
 };

@@ -5,7 +5,7 @@
 #include <vector>
 #include <tuple>
 
-template <typename I = int>
+template <typename I=int>
 class line_path final {
 public:
     typedef std::tuple<I, I> point;
@@ -25,7 +25,7 @@ public:
         I e2;
 
         while (true) {
-            points.push_back(point{ x0, y0 });
+            points.push_back(point{x0, y0});
             if (x0 == x1 && y0 == y1) {
                 break;
             }
