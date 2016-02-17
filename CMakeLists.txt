@@ -19,7 +19,7 @@ set(TEST
     test/main.cpp
 )
 
-set(CMAKE_CXX_FLAGS "-g -std=c++14 -Wall -pedantic")
+set(CMAKE_CXX_FLAGS "-g -std=c++14 -Wall -Wextra -Werror -pedantic")
 
 install_files(/bin FILES bin/moag)
 

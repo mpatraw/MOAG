@@ -15,19 +15,19 @@ class physics final {
 public:
     physics(const land &l) : main_land{l} {}
 
-    void step(body &bod, uint32_t dt) {
+    void step(std::shared_ptr<body> bod, uint32_t dt) {
         float sec = dt / 1000.f;
-        float tx = body->x + body->vx * sec;
-        float ty = body->y + body->vy * sec;
+        float tx = bod->x + bod->vx * sec;
+        float ty = bod->y + bod->vy * sec;
         bod->vy += g_gravity;
 
         line_path<> lp{
-            static_cast<int>(body->x), static_cast<int>(body->y),
+            static_cast<int>(bod->x), static_cast<int>(bod->y),
             static_cast<int>(tx),  static_cast<int>(ty)};
         
         if (lp.length() == 1) {
-            body->x = tx;
-            body->y = ty;
+            bod->x = tx;
+            bod->y = ty;
             return;
         }
 
@@ -37,14 +37,14 @@ public:
             std::tie(px, py) = p;
             if (main_land.is_dirt(px, py)) {
                 if (hit_land) {
-                    hit_land(body);
+                    hit_land(bod);
                 }
                 break;
             }
         }
 
-        body->x = static_cast<float>(px);
-        body->y = static_cast<float>(py);
+        bod->x = static_cast<float>(px);
+        bod->y = static_cast<float>(py);
     }
 
     void step(uint32_t dt) {
@@ -60,14 +60,14 @@ public:
         }
     }
 
-    void append_body(std::weak_ptr<body> body) {
-        bodies.push_back(body);
+    void append_body(std::weak_ptr<body> bod) {
+        bodies.push_back(bod);
     }
 
 private:
     const land &main_land;
     std::vector<std::weak_ptr<body>> bodies;
-    std::function<void(std::shared_ptr<body>, std::shared_ptr<body>)> hit_body;
+    std::function<void(std::shared_ptr<body>, std::shared_ptr<body>)> hit_bod;
     std::function<void(std::shared_ptr<body>)> hit_land;
 };
 
