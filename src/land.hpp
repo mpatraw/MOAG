@@ -22,6 +22,10 @@ public:
 
 class land {
 public:
+    land() {
+        dirt.fill(0);
+    }
+
     // Takes ownership.
     void set_delegate(land_delegate *d) {
         delegate.reset(d);
