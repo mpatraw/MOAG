@@ -16,11 +16,6 @@ using optional = std::experimental::optional<T>;
 extern void server_main(unsigned short port);
 extern void client_main(const char *host, unsigned short port);
 
-static bool is_client = true;
-static bool is_server = false;
-static const char *host = "localhost";
-static unsigned short port = 6624;
-
 static bool has_arg(int argc, char *argv[], const char *search) {
     for (int i = 0; i < argc; ++i) {
         std::string a{argv[i]};
@@ -48,10 +43,10 @@ get_arg(int argc, char *argv[], const char *search) {
 }
 
 int main(int argc, char *argv[]) {
-    is_server = has_arg(argc, argv, "--server");
-    is_client = !has_arg(argc, argv, "--no-client");
-    host = get_arg(argc, argv, "--host").value_or("localhost");
-    port = std::stoi(get_arg(argc, argv, "--port").value_or("6624"));
+    bool is_server = has_arg(argc, argv, "--server");
+    bool is_client = !has_arg(argc, argv, "--no-client");
+    const char *host = get_arg(argc, argv, "--host").value_or("localhost");
+    unsigned short port = std::stoi(get_arg(argc, argv, "--port").value_or("6624"));
 
     std::thread server;
     if (is_server) {
