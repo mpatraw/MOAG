@@ -37,7 +37,7 @@ public:
                 renderer,
                 SDL_PIXELFORMAT_RGBA8888,
                 SDL_TEXTUREACCESS_TARGET,
-                g_land_width, g_land_height);
+                m::land_width, m::land_height);
     }
     land_texture(const land_texture &) = delete;
     ~land_texture() {
@@ -358,8 +358,8 @@ static void process_packet(m::packet &p) {
     }
 }
 
-void client_main() {
-    client.reset(new m::network_manager{g_host, g_port});
+void client_main(const char *host, unsigned short port) {
+    client.reset(new m::network_manager{host, port});
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         std::cerr << SDL_GetError() << std::endl;
@@ -374,7 +374,7 @@ void client_main() {
 
     main_window = SDL_CreateWindow("MOAG",
         SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-        g_land_width, g_land_height, 0);
+        m::land_width, m::land_height, 0);
     if (!main_window) {
         std::cerr << SDL_GetError() << std::endl;
         goto main_window_fail;
@@ -503,7 +503,7 @@ void client_main() {
         SDL_SetRenderDrawColor(main_renderer, 0, 0, 0, 255);
         SDL_RenderClear(main_renderer);
         draw();
-        quick_render_string(g_land_width - 30, 0, std::to_string(client->rtt()).c_str());
+        quick_render_string(m::land_width - 30, 0, std::to_string(client->rtt()).c_str());
         SDL_RenderPresent(main_renderer);
     }
 end_loop:

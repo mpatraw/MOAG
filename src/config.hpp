@@ -2,19 +2,10 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
-extern bool g_is_client;
-extern bool g_is_server;
-extern const char *g_host;
-extern unsigned short g_port;
-
-const int g_land_width = 800;
-const int g_land_height = 600;
-
 const int g_max_players = 8;
-const int g_number_of_channels = 2;
 
 // Server constants.
-const int g_gravity = 1;
+const int g_gravity = 5;
 const int g_bouncer_bounces = 11;
 const int g_tunnel_tunnelings = 20;
 const int g_shotgun_pellets = 6;

@@ -4,6 +4,9 @@
 
 namespace m {
 
+const int land_width = 600;
+const int land_height = 800;
+
 // This is used so another class can be informed when dirt is set or unset,
 // this is primarily usefull for a sprite class or something.
 //
@@ -23,20 +26,20 @@ public:
     }
 
     void set_dirt(int x, int y) {
-        if (x < 0 || y < 0 || x >= g_land_width || y >= g_land_height) {
+        if (x < 0 || y < 0 || x >= land_width || y >= land_height) {
             return;
         }
-        dirt[y * g_land_width + x] = 1;
+        dirt[y * land_width + x] = 1;
         if (delegate) {
             delegate->set_dirt(x, y);
         }
     }
 
     void set_air(int x, int y) {
-        if (x < 0 || y < 0 || x >= g_land_width || y >= g_land_height) {
+        if (x < 0 || y < 0 || x >= land_width || y >= land_height) {
             return;
         }
-        dirt[y * g_land_width + x] = 0;
+        dirt[y * land_width + x] = 0;
         if (delegate) {
             delegate->set_air(x, y);
         }
@@ -45,10 +48,10 @@ public:
     land_delegate &get_delegate() { return *delegate.get(); }
 
     bool is_dirt(int x, int y) const {
-        if (x < 0 || y < 0 || x >= g_land_width || y >= g_land_height) {
+        if (x < 0 || y < 0 || x >= land_width || y >= land_height) {
             return true;
         }
-        return dirt[y * g_land_width + x] != 0;
+        return dirt[y * land_width + x] != 0;
     }
 
     bool is_air(int x, int y) const {
@@ -59,7 +62,7 @@ public:
 
 private:
     std::unique_ptr<land_delegate> delegate;
-    std::array<uint8_t, g_land_width * g_land_height> dirt;
+    std::array<uint8_t, land_width * land_height> dirt;
 };
 
 }

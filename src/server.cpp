@@ -45,11 +45,11 @@ static m::crate crate;
 static inline void broadcast_packed_land_chunk(int x, int y, int w, int h) {
     if (x < 0) { w += x; x = 0; }
     if (y < 0) { h += y; y = 0; }
-    if (x + w > g_land_width) { w = g_land_width - x; }
-    if (y + h > g_land_height) {
-        h = g_land_height - y;
+    if (x + w > m::land_width) { w = m::land_width - x; }
+    if (y + h > m::land_height) {
+        h = m::land_height - y;
     }
-    if (w <= 0 || h <= 0 || x + w > g_land_width || y + h > g_land_height) {
+    if (w <= 0 || h <= 0 || x + w > m::land_width || y + h > m::land_height) {
         return;
     }
 
@@ -149,7 +149,7 @@ static void spawn_tank(int id) {
     players[id].kup = false;
     players[id].kdown = false;
     players[id].kfire = false;
-    players[id].the_tank.x = rand() % g_land_width;
+    players[id].the_tank.x = rand() % m::land_width;
     players[id].the_tank.y = 60;
     players[id].the_tank.velx = 0;
     players[id].the_tank.vely = 0;
@@ -170,7 +170,7 @@ static void spawn_client(int id) {
     broadcast_chat(m::message_op_type::server_notice, -1, notice);
 
     spawn_tank(id);
-    broadcast_packed_land_chunk(0, 0, g_land_width, g_land_height);
+    broadcast_packed_land_chunk(0, 0, m::land_width, m::land_height);
     broadcast_chat(m::message_op_type::name_change, id, players[id].name);
     if (crate.active) {
         broadcast_crate_chunk(m::entity_op_type::spawn);
@@ -249,9 +249,9 @@ static void tank_update(int id) {
         moved = true;
     } else if (players[id].kright) {
         t->facingleft = 0;
-        if (main_land.is_air(t->x + 1, t->y) && t->x < g_land_width - 1) {
+        if (main_land.is_air(t->x + 1, t->y) && t->x < m::land_width - 1) {
             t->x += 1;
-        } else if (main_land.is_air(t->x + 1, t->y - 1) && t->x < g_land_width - 1) {
+        } else if (main_land.is_air(t->x + 1, t->y - 1) && t->x < m::land_width - 1) {
             t->x += 1;
             t->y -= 1;
         } else if (main_land.is_air(t->x, t->y - 1) ||
@@ -433,7 +433,7 @@ static void bullet_update(int id) {
 static void crate_update() {
     if (!crate.active) {
         crate.active = true;
-        crate.x = static_cast<uint16_t>(rand() % g_land_width);
+        crate.x = static_cast<uint16_t>(rand() % m::land_width);
         crate.y = static_cast<uint16_t>(30);
 
         const int PBABYNUKE = 100;
@@ -516,9 +516,9 @@ static void init_game() {
     }
     crate.active = false;
 
-    for (int y = 0; y < g_land_height; ++y) {
-        for (int x = 0; x < g_land_width; ++x) {
-            if (y < g_land_height / 3) {
+    for (int y = 0; y < m::land_height; ++y) {
+        for (int x = 0; x < m::land_width; ++x) {
+            if (y < m::land_height / 3) {
                 main_land.set_air(x, y);
             } else {
                 main_land.set_dirt(x, y);
@@ -569,8 +569,8 @@ static void process_packet(m::packet &p) {
     }
 }
 
-void server_main() {
-    server.reset(new m::network_manager{g_port, g_max_players});
+void server_main(unsigned short port) {
+    server.reset(new m::network_manager{port, g_max_players});
 
     init_game();
 

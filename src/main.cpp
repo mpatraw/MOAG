@@ -13,13 +13,13 @@ using optional = std::experimental::optional<T>;
 #include <thread>
 
 // Defined in server.cpp and client.cpp.
-extern void server_main();
-extern void client_main();
+extern void server_main(unsigned short port);
+extern void client_main(const char *host, unsigned short port);
 
-bool g_is_client = true;
-bool g_is_server = false;
-const char *g_host = "localhost";
-unsigned short g_port = 6624;
+static bool is_client = true;
+static bool is_server = false;
+static const char *host = "localhost";
+static unsigned short port = 6624;
 
 static bool has_arg(int argc, char *argv[], const char *search) {
     for (int i = 0; i < argc; ++i) {
@@ -48,19 +48,19 @@ get_arg(int argc, char *argv[], const char *search) {
 }
 
 int main(int argc, char *argv[]) {
-    g_is_server = has_arg(argc, argv, "--server");
-    g_is_client = !has_arg(argc, argv, "--no-client");
-    g_host = get_arg(argc, argv, "--host").value_or("localhost");
-    g_port = std::stoi(get_arg(argc, argv, "--port").value_or("6624"));
+    is_server = has_arg(argc, argv, "--server");
+    is_client = !has_arg(argc, argv, "--no-client");
+    host = get_arg(argc, argv, "--host").value_or("localhost");
+    port = std::stoi(get_arg(argc, argv, "--port").value_or("6624"));
 
     std::thread server;
-    if (g_is_server) {
+    if (is_server) {
         std::cout << "starting server..." << std::endl;
-        server = std::thread(server_main);
+        server = std::thread(server_main, port);
     }
 
-    if (g_is_client) {
-        client_main();
+    if (is_client) {
+        client_main(host, port);
     }
 
     if (server.joinable()) {
