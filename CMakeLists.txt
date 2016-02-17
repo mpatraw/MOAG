@@ -25,8 +25,8 @@ install_files(/bin FILES bin/moag)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 
-add_executable(moag ${SOURCE} src/main.cpp)
-target_link_libraries(moag snappy enet SDL2 SDL2_ttf SDL2_image pthread)
+#add_executable(moag ${SOURCE} src/main.cpp)
+#target_link_libraries(moag snappy enet SDL2 SDL2_ttf SDL2_image pthread)
 
-#add_executable(test ${SOURCE} test/main.cpp)
-#target_link_libraries(test snappy enet SDL2 SDL2_ttf SDL2_image pthread)
+add_executable(test ${SOURCE} test/main.cpp)
+target_link_libraries(test snappy enet SDL2 SDL2_ttf SDL2_image pthread)

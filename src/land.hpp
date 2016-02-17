@@ -2,6 +2,8 @@
 #ifndef LAND_HPP
 #define LAND_HPP
 
+#include <array>
+
 namespace m {
 
 const int land_width = 600;

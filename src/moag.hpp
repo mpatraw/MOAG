@@ -9,15 +9,13 @@
 
 #include "config.hpp"
 #include "error.hpp"
-#include "line_path.hpp"
 #include "network.hpp"
 #include "physics.hpp"
 #include "util.hpp"
 
 namespace m {
 
-class tank {
-public:
+struct tank {
     float x, y;
     float velx, vely;
     int8_t angle;
@@ -27,8 +25,7 @@ public:
     bool facingleft;
 };
 
-class bullet {
-public:
+struct bullet {
     float x, y;
     float velx, vely;
     int origin;
@@ -36,16 +33,14 @@ public:
     char type;
 };
 
-class crate {
-public:
+struct crate {
     float x, y;
     float velx, vely;
     bool active;
     char type;
 };
 
-class player {
-public:
+struct player {
     tank the_tank;
 
     char name[g_max_name_len];

@@ -1,22 +1,16 @@
 
+#include <memory>
 #include <iostream>
 
-#include "../src/message.hpp"
-
-const char *g_host = "localhost";
-int g_port = 6624;
+//#include "../src/spatial_partition.hpp"
 
 int main() {
-    m::message msg(new m::message_message_def{"Hello, world"});
-    std::cout << static_cast<int>(msg.get_type()) << std::endl;
-
-    m::serializer s;
-    msg.serialize(s);
-    s.compress();
-
-    m::serializer d(s.data(), s.length(), s.is_compressed());
-    d.decompress();
-    m::message msg2(d);
-    std::cout << static_cast<int>(msg2.get_type()) << std::endl;
-    std::cout << dynamic_cast<m::message_message_def &>(msg2.get_def()).get_string() << std::endl;
+    std::weak_ptr<int> a;
+    std::weak_ptr<int> b;
+    {
+        std::shared_ptr<int> c(new int(5));
+        std::cout << (a == c) << std::endl;
+        a = c;
+    }
+    std::cout << (a.lock() == b.lock()) << std::endl;
 }
