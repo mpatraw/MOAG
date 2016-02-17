@@ -46,7 +46,7 @@ public:
 
 class player {
 public:
-    tank tank;
+    tank the_tank;
 
     char name[g_max_name_len];
     bool connected;

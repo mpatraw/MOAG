@@ -192,10 +192,10 @@ static void draw() {
 
     for (int i = 0; i < g_max_players; i++) {
         if (players[i].connected) {
-            draw_tank(players[i].tank.x,
-                      players[i].tank.y,
-                      players[i].tank.angle,
-                      players[i].tank.facingleft);
+            draw_tank(players[i].the_tank.x,
+                      players[i].the_tank.y,
+                      players[i].the_tank.angle,
+                      players[i].the_tank.facingleft);
         }
     }
 
@@ -244,20 +244,20 @@ static void process_packet(m::packet &p) {
             if (tank.op == m::entity_op_type::spawn) {
                 players[id].connected = true;
 
-                players[id].tank.x = tank.x;
-                players[id].tank.y = tank.y;
+                players[id].the_tank.x = tank.x;
+                players[id].the_tank.y = tank.y;
 
-                players[id].tank.facingleft = tank.facing == m::tank_facing_type::left;
-                players[id].tank.angle = tank.angle;
+                players[id].the_tank.facingleft = tank.facing == m::tank_facing_type::left;
+                players[id].the_tank.angle = tank.angle;
             } else if (tank.op == m::entity_op_type::move) {
-                players[id].tank.x = tank.x;
-                players[id].tank.y = tank.y;
+                players[id].the_tank.x = tank.x;
+                players[id].the_tank.y = tank.y;
 
-                players[id].tank.facingleft = tank.facing == m::tank_facing_type::left;
-                players[id].tank.angle = tank.angle;
+                players[id].the_tank.facingleft = tank.facing == m::tank_facing_type::left;
+                players[id].the_tank.angle = tank.angle;
             } else if (tank.op == m::entity_op_type::kill) {
-                players[id].tank.x = -1;
-                players[id].tank.y = -1;
+                players[id].the_tank.x = -1;
+                players[id].the_tank.y = -1;
                 players[id].connected = false;
             } else {
                 fprintf(stderr, "Invalid TANK_CHUNK type.\n");

@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 2.6)
 project(moag)
 
-set(CMAKE_CXX_COMPILER clang++)
+set(CMAKE_CXX_COMPILER g++)
 
 include_directories(/usr/local/include)
 link_directories(/usr/local/lib)

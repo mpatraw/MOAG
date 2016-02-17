@@ -73,11 +73,11 @@ static inline void broadcast_packed_land_chunk(int x, int y, int w, int h) {
 static inline void broadcast_tank_chunk(m::entity_op_type op, uint8_t id) {
     m::message msg{new m::tank_message_def{
         op,
-        players[id].tank.facingleft ? m::tank_facing_type::left : m::tank_facing_type::right,
+        players[id].the_tank.facingleft ? m::tank_facing_type::left : m::tank_facing_type::right,
         id,
-        static_cast<uint8_t>(players[id].tank.angle),
-        static_cast<uint16_t>(players[id].tank.x),
-        static_cast<uint16_t>(players[id].tank.y)}};
+        static_cast<uint8_t>(players[id].the_tank.angle),
+        static_cast<uint16_t>(players[id].the_tank.x),
+        static_cast<uint16_t>(players[id].the_tank.y)}};
 
     server->send(msg);
 }
@@ -108,8 +108,8 @@ static inline void broadcast_chat(m::message_op_type op, uint8_t id, const char 
 
 
 static void kill_tank(uint8_t id) {
-    players[id].tank.x = -30;
-    players[id].tank.y = -30;
+    players[id].the_tank.x = -30;
+    players[id].the_tank.y = -30;
     players[id].spawn_timer = g_respawn_time;
     broadcast_tank_chunk(m::entity_op_type::kill, id);
 }
@@ -128,7 +128,7 @@ static void explode(int x, int y, int rad, char type) {
     }
     if (type == E_EXPLODE) {
         for (int i = 0; i < g_max_players; i++) {
-            const auto &t = players[i].tank;
+            const auto &t = players[i].the_tank;
             if (players[i].connected &&
                 std::pow((t.x - x), 2) +
                 std::pow((t.y - 3 - y), 2) <
@@ -149,16 +149,16 @@ static void spawn_tank(int id) {
     players[id].kup = false;
     players[id].kdown = false;
     players[id].kfire = false;
-    players[id].tank.x = rand() % g_land_width;
-    players[id].tank.y = 60;
-    players[id].tank.velx = 0;
-    players[id].tank.vely = 0;
-    players[id].tank.angle = 35;
-    players[id].tank.facingleft = 0;
-    players[id].tank.power = 0;
-    players[id].tank.bullet = MISSILE;
-    players[id].tank.num_burst = 1;
-    explode(players[id].tank.x, (players[id].tank.y - 12), 12, E_SAFE_EXPLODE);
+    players[id].the_tank.x = rand() % g_land_width;
+    players[id].the_tank.y = 60;
+    players[id].the_tank.velx = 0;
+    players[id].the_tank.vely = 0;
+    players[id].the_tank.angle = 35;
+    players[id].the_tank.facingleft = 0;
+    players[id].the_tank.power = 0;
+    players[id].the_tank.bullet = MISSILE;
+    players[id].the_tank.num_burst = 1;
+    explode(players[id].the_tank.x, (players[id].the_tank.y - 12), 12, E_SAFE_EXPLODE);
     broadcast_tank_chunk(m::entity_op_type::spawn, id);
 }
 
@@ -215,7 +215,7 @@ static void fire_bullet_ang(int origin, char type, int x, int y, int angle, int 
 }
 
 static void tank_update(int id) {
-    m::tank *t = &players[id].tank;
+    m::tank *t = &players[id].the_tank;
 
     if (!players[id].connected) {
         return;
@@ -416,7 +416,7 @@ static void bullet_update(int id) {
         if (!players[i].connected) {
             continue;
         }
-        const auto &t = players[i].tank;
+        const auto &t = players[i].the_tank;
         auto dx = t.x - b->x;
         auto dy = t.y - b->y;
         if (dx * dx + dy * dy < 90 && i != b->origin) {
@@ -544,9 +544,9 @@ static void process_packet(m::packet &p) {
                 case m::input_op_type::stop_move_down: players[id].kdown = false; break;
                 case m::input_op_type::start_fire: players[id].kfire = true; break;
                 case m::input_op_type::stop_fire: {
-                    players[id].tank.power = input.ms;
+                    players[id].the_tank.power = input.ms;
                     players[id].kfire = false;
-                    auto p = &players[id].tank.power;
+                    auto p = &players[id].the_tank.power;
                     if (*p < 0) {
                         *p = 0;
                     } else if (*p > 1000) {

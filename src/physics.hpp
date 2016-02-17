@@ -15,11 +15,11 @@ class physics final {
 public:
     physics(const land &l) : main_land{l} {}
 
-    void step(std::shared_ptr<body> body, uint32_t dt) {
+    void step(body &bod, uint32_t dt) {
         float sec = dt / 1000.f;
         float tx = body->x + body->vx * sec;
         float ty = body->y + body->vy * sec;
-        body->vy += g_gravity;
+        bod->vy += g_gravity;
 
         line_path<> lp{
             static_cast<int>(body->x), static_cast<int>(body->y),
