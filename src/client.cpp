@@ -170,9 +170,9 @@ static void draw_crate(int x, int y) {
 static void draw_bullets() {
     for (int i = 0; i < g_max_bullets; i++) {
         m::bullet *b = &bullets[i];
-        if (b->active) {
-            auto x = static_cast<int>(b->x);
-            auto y = static_cast<int>(b->y);
+        if (b->alive) {
+            auto x = static_cast<int>(b->get_body().x);
+            auto y = static_cast<int>(b->get_body().y);
             SDL_Rect src = {x, y, bullet_width, bullet_height};
             SDL_RenderCopy(main_renderer, bullet_texture, NULL, &src);
         }
@@ -271,14 +271,14 @@ static void process_packet(m::packet &p) {
             auto id = bullet.id;
 
             if (bullet.op == m::entity_op_type::spawn) {
-                bullets[id].active = true;
-                bullets[id].x = bullet.x;
-                bullets[id].y = bullet.y;
+                bullets[id].alive = true;
+                bullets[id].get_body().x = bullet.x;
+                bullets[id].get_body().y = bullet.y;
             } else if (bullet.op == m::entity_op_type::move) {
-                bullets[id].x = bullet.x;
-                bullets[id].y = bullet.y;
+                bullets[id].get_body().x = bullet.x;
+                bullets[id].get_body().y = bullet.y;
             } else if (bullet.op == m::entity_op_type::kill) {
-                bullets[id].active = false;
+                bullets[id].alive = false;
             } else {
                 fprintf(stderr, "Invalid BULLET_CHUNK type.\n");
                 exit(-1);

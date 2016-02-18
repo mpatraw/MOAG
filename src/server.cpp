@@ -87,8 +87,8 @@ static inline void broadcast_bullet_chunk(m::entity_op_type op, uint8_t id) {
     m::message msg{new m::bullet_message_def{ 
         op,
         id,
-        static_cast<uint16_t>(bullets[id].x),
-        static_cast<uint16_t>(bullets[id].y)}};
+        static_cast<uint16_t>(bullets[id].get_body().x),
+        static_cast<uint16_t>(bullets[id].get_body().y)}};
 
     server->send(msg);
 }
@@ -192,18 +192,18 @@ static void disconnect_client(int id) {
 
 static void fire_bullet(int origin, char type, int x, int y, int vx, int vy) {
     int i = 0;
-    while (bullets[i].active) {
+    while (bullets[i].alive) {
         if (++i >= g_max_bullets) {
             return;
         }
     }
-    bullets[i].active = 1;
+    bullets[i].alive = 1;
     bullets[i].origin = origin;
     bullets[i].type = type;
-    bullets[i].x = x;
-    bullets[i].y = y;
-    bullets[i].velx = vx;
-    bullets[i].vely = vy;
+    bullets[i].get_body().x = x;
+    bullets[i].get_body().y = y;
+    bullets[i].get_physics_body().vx = vx;
+    bullets[i].get_physics_body().vy = vy;
     broadcast_bullet_chunk(m::entity_op_type::spawn, i);
 }
 
@@ -332,27 +332,27 @@ static void tank_update(int id) {
     }
 }
 
-static void bullet_detonate(int id) {
+void bullet_detonate(int id) {
     m::bullet *b = &bullets[id];
 
     switch (b->type) {
         case MISSILE:
-            explode(b->x, b->y, 12, E_EXPLODE);
+            explode(b->get_body().x, b->get_body().y, 12, E_EXPLODE);
             break;
 
         case SHOTGUN:
             break;
 
         case BABY_NUKE:
-            explode(b->x, b->y, 55, E_EXPLODE);
+            explode(b->get_body().x, b->get_body().y, 55, E_EXPLODE);
             break;
 
         case NUKE:
-            explode(b->x, b->y, 150, E_EXPLODE);
+            explode(b->get_body().x, b->get_body().y, 150, E_EXPLODE);
             break;
 
         case DIRT:
-            explode(b->x, b->y, 55, E_DIRT);
+            explode(b->get_body().x, b->get_body().y, 55, E_DIRT);
             break;
 
         case SUPER_DIRT:
@@ -391,42 +391,21 @@ static void bullet_detonate(int id) {
         default: break;
     }
 
-    if (b->active >= 0) {
-        b->active = 0;
+    if (b->alive) {
+        b->alive = false;
         broadcast_bullet_chunk(m::entity_op_type::kill, id);
     }
 }
 
-static void bullet_update(int id) {
+static void bullet_update(int id, float dt) {
     m::bullet *b = &bullets[id];
+    b->physics_step(physics, dt);
 
-    if (!b->active) {
+    if (!b->alive) {
         return;
     }
 
-    b->x += b->velx;
-    b->y += b->vely;
-    b->vely += g_gravity;
-
-    if (main_land.is_dirt(b->x, b->y)) {
-        bullet_detonate(id);
-        return;
-    }
-
-    for (int i = 0; i < g_max_players; i++) {
-        if (!players[i].connected) {
-            continue;
-        }
-        const auto &t = players[i].the_tank;
-        auto dx = t.x - b->x;
-        auto dy = t.y - b->y;
-        if (dx * dx + dy * dy < 90 && i != b->origin) {
-            bullet_detonate(id);
-            return;
-        }
-    }
-
-    if (b->active) {
+    if (b->alive) {
         broadcast_bullet_chunk(m::entity_op_type::move, id);
     }
 }
@@ -481,7 +460,7 @@ static void step_game(float dt) {
         tank_update(i);
     }
     for (int i = 0; i < g_max_bullets; i++) {
-        bullet_update(i);
+        bullet_update(i, dt);
     }
 }
 
@@ -511,7 +490,7 @@ static void init_game() {
         players[i].connected = 0;
     }
     for (int i = 0; i < g_max_bullets; i++) {
-        bullets[i].active = 0;
+        bullets[i].alive = 0;
     }
     crate.alive = false;
 

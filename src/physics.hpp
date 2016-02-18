@@ -31,9 +31,9 @@ class physics_body : public component {
 public:
     // Must be set.
     std::shared_ptr<body> bod;
-    // If two masks equal something other than 0 when bitwise-anded together,
-    // they collide. Default is just 0x00000001.
+    // If collides_with & collision_mask > 0, they collide.
     int collision_mask = 0x1;
+    int collides_with = 0x1;
     float vx = 0.f;
     float vy = 0.f;
 
@@ -174,7 +174,7 @@ private:
                         continue;
                     }
                     // Do they touch? ;)
-                    if (pb->collision_mask & other->collision_mask) {
+                    if (pb->collides_with & other->collision_mask) {
                         bodies.push_back(other);
                     }
                     it++;
