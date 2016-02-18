@@ -10,7 +10,8 @@
 #include <set>
 #include <tuple>
 
-#include "geom.hpp"
+#include "entity.hpp"
+#include "body.hpp"
 #include "land.hpp"
 #include "line_path.hpp"
 
@@ -21,56 +22,62 @@ const float cell_size = 40;
 const float max_body_size = cell_size / 2;
 const float gravity = 98.f;
 
-enum class body_action : bool {
+enum class physics_body_action : uint8_t {
     stop,
     keep_going
 };
 
-class body {
+class physics_body : public component {
 public:
-    friend class physics;
-
-    std::shared_ptr<rectangle<>> bounds;
+    // Must be set.
+    std::shared_ptr<body> bod;
     // If two masks equal something other than 0 when bitwise-anded together,
     // they collide. Default is just 0x00000001.
-    int collision_mask;
-    float vx;
-    float vy;
+    int collision_mask = 0x1;
+    float vx = 0.f;
+    float vy = 0.f;
 
-public:
-    body() {}
-    body(std::shared_ptr<rectangle<>> bounds, int mask=0x1, float x=0.f, float y=0.f) :
-        bounds{bounds}, collision_mask{mask}, vx{x}, vy{y}, steps_til_death_{-1} {}
+    std::function<physics_body_action(std::shared_ptr<physics_body> &pb)> hit_body;
+    std::function<physics_body_action(int x, int y)> hit_land;
 
-    void kill() { steps_til_death_ = 1; }
-    void unkill() { steps_til_death_ = -1; }
-    bool is_dying() const { return steps_til_death_ > 0; }
-    bool is_dead() const { return steps_til_death_ == 0; }
+    physics_body(entity *parent, std::shared_ptr<body> bod_) :
+        component{parent}, bod{bod_} {
+        assert(bod_ && "initialized physics_body without body");
+    }
+    virtual ~physics_body() {}
 
-    // Both return true when moving should stop.
-    std::function<body_action(std::shared_ptr<body>)> hit_body;
-    std::function<body_action(int x, int y)> hit_land;
+    physics_body &with_collision_mask(int collision_mask_) {
+        collision_mask = collision_mask_;
+        return *this;
+    }
 
-private:
-    int steps_til_death_;
+    physics_body &with_velocity(float vx_, float vy_) {
+        vx = vx_;
+        vy = vy_;
+        return *this;
+    }
 };
 
 class physics final {
 public:
     physics(const land &l) : main_land_{l} {}
 
-    void step(std::shared_ptr<body> bod, float sec) {
-        float tx = bod->bounds->center().x + bod->vx * sec;
-        float ty = bod->bounds->center().y + bod->vy * sec;
+    void step(std::shared_ptr<physics_body> pb, float sec) {
+        auto bod = pb->bod;
+        // Remove from the grid in-case we move.
+        remove_body_from_map(pb);
+
+        float tx = bod->x + pb->vx * sec;
+        float ty = bod->y + pb->vy * sec;
         // Apply gravity after applying velocity to allow movement when
         // velocity is set manually.
-        bod->vy += (gravity * sec);
+        pb->vy += (gravity * sec);
 
         line_path<> lp{
-            static_cast<int>(bod->bounds->center().x), static_cast<int>(bod->bounds->center().y),
+            static_cast<int>(bod->x), static_cast<int>(bod->y),
             static_cast<int>(tx),  static_cast<int>(ty)};
 
-        auto neighbors = get_neighbors(bod);
+        auto neighbors = get_neighbors(pb);
 
         for (const auto &p : lp) {
             int px, py;
@@ -79,11 +86,13 @@ public:
             bool should_stop = false;
             auto it = std::begin(neighbors);
             while (it != std::end(neighbors)) {
-                auto tmp = *bod->bounds;
-                tmp.center_on({static_cast<float>(px), static_cast<float>(py)});
-                if (tmp.intersects(*(*it)->bounds)) {
-                    if (bod->hit_body) {
-                        should_stop = bod->hit_body(*it) == body_action::stop || should_stop;
+                auto tmp = *bod;
+                tmp.x = static_cast<float>(px);
+                tmp.y = static_cast<float>(py);
+                auto other_bod = (*it)->bod;
+                if (tmp.intersects(*other_bod)) {
+                    if (pb->hit_body) {
+                        should_stop = pb->hit_body(*it) == physics_body_action::stop || should_stop;
                     }
                     // Don't collide with the same body.
                     it = neighbors.erase(it);
@@ -92,96 +101,83 @@ public:
                 }
             }
             // For dirt collisions we only care about the bottom middle part
-            // of the bounds.
-            if (main_land_.is_dirt(px, py + bod->bounds->size.y / 2)) {
-                if (bod->hit_land) {
-                    should_stop = bod->hit_land(px, py + bod->bounds->size.y / 2) == body_action::stop;
+            // of the bod.
+            if (main_land_.is_dirt(px, py + bod->height / 2)) {
+                if (pb->hit_land) {
+                    should_stop = pb->hit_land(px, py + bod->height / 2) == physics_body_action::stop;
                 }
             }
 
             if (should_stop) {
                 break;
             }
-            bod->bounds->center_on({static_cast<float>(px), static_cast<float>(py)});
+            bod->x = static_cast<float>(px);
+            bod->y = static_cast<float>(py);
         }
-    }
 
-    void step(float dt) {
-        auto i = std::begin(body_set_);
-        while (i != std::end(body_set_)) {
-            if ((*i)->is_dead()) {
-                remove_body_from_map(*i);
-                i = body_set_.erase(i);
-            } else {
-                remove_body_from_map(*i);
-                step(*i, dt);
-                append_body_to_map(*i);
-                (*i)->steps_til_death_--;
-                ++i;
-            }
-        }
-    }
-
-    // Not safe to call during a step (collision callbacks).
-    void append_body(std::shared_ptr<body> bod) {
-        assert(bod->bounds->size.x < max_body_size &&
-               bod->bounds->size.y < max_body_size && "body too large");
-        append_body_to_map(bod);
-        body_set_.insert(bod);
-    }
-
-    // Not safe to call during a step (collision callbacks).
-    void remove_body(std::shared_ptr<body> bod) {
-        remove_body_from_map(bod);
-        body_set_.erase(bod);
+        append_body_to_map(pb);
     }
 
 private:
     const land &main_land_;
-    std::multimap<std::pair<int, int>, std::shared_ptr<body>> bodies_;
-    std::set<std::shared_ptr<body>> body_set_;
+    std::multimap<std::pair<int, int>, std::weak_ptr<physics_body>> bodies_;
 
-    void remove_body_from_map(std::shared_ptr<body> bod) {
-        int x = static_cast<int>(bod->bounds->center().x / cell_size);
-        int y = static_cast<int>(bod->bounds->center().y / cell_size);
+    // Attempts to remove, harmless if the physical_body is not in the list.
+    void remove_body_from_map(std::shared_ptr<physics_body> pb) {
+        auto bod = pb->bod;
+        int x = static_cast<int>(bod->x / cell_size);
+        int y = static_cast<int>(bod->y / cell_size);
         //printf("removing %p from %d, %d\n", bod.get(), x, y);
         // Now remove it from the multimap.
         auto range = bodies_.equal_range(std::make_pair(x, y));
-        for (auto it = range.first; it != range.second; ++it) {
-            if (it->second == bod) {
+        auto it = range.first;
+        while (it != range.second) {
+            auto check = it->second.lock();
+            if (!check) {
+                it = bodies_.erase(it);
+                continue;
+            }
+            if (check == pb) {
                 bodies_.erase(it);
                 break;
             }
+            it++;
         }
     }
 
-    void append_body_to_map(std::shared_ptr<body> bod) {
-        int x = static_cast<int>(bod->bounds->center().x / cell_size);
-        int y = static_cast<int>(bod->bounds->center().y / cell_size);
-        //printf("appending %p to %d, %d\n", bod.get(), x, y);
-        bodies_.insert(std::make_pair(std::make_pair(x, y), bod));
+    void append_body_to_map(std::shared_ptr<physics_body> pb) {
+        auto bod = pb->bod;
+        int x = static_cast<int>(bod->x / cell_size);
+        int y = static_cast<int>(bod->y / cell_size);
+        bodies_.insert(std::make_pair(std::make_pair(x, y), pb));
     }
 
-    std::vector<std::shared_ptr<body>> get_neighbors(std::shared_ptr<body> bod) {
-        std::vector<std::shared_ptr<body>> bodies;
-        int x = static_cast<int>(bod->bounds->center().x / cell_size);
-        int y = static_cast<int>(bod->bounds->center().y / cell_size);
+    std::vector<std::shared_ptr<physics_body>> get_neighbors(std::shared_ptr<physics_body> pb) {
+        auto bod = pb->bod;
+        std::vector<std::shared_ptr<physics_body>> bodies;
+        int x = static_cast<int>(bod->x / cell_size);
+        int y = static_cast<int>(bod->y / cell_size);
         for (int dx = -1; dx <= 1; ++dx) {
             for (int dy = -1; dy <= 1; ++dy) {
                 auto range = bodies_.equal_range(std::make_pair(x + dx, y + dy));
-                for (auto it = range.first; it != range.second; ++it) {
-                    // Can't collide with self.
-                    if (it->second == bod) {
+                auto it = range.first;
+                while (it != range.second) {
+                    // See if it was free'd.
+                    auto other = it->second.lock();
+                    if (!other) {
+                        // Remove it.
+                        it = bodies_.erase(it);
                         continue;
                     }
-                    // Can't collide with a dead body.
-                    if (it->second->is_dead()) {
+                    // Can't collide with self.
+                    if (other == pb) {
                         continue;
                     }
                     // Do they touch? ;)
-                    if (bod->collision_mask & it->second->collision_mask) {
-                        bodies.push_back(it->second);
+                    if (pb->collision_mask & other->collision_mask) {
+                        bodies.push_back(other);
                     }
+                    it++;
                 }
             }
         }
