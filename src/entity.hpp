@@ -6,6 +6,9 @@
 class entity {
 public:
     virtual ~entity() {}
+
+    // Used for deletion.
+    bool alive = true;
 };
 
 // Base class for all components. Every component has a parent.

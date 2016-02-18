@@ -37,6 +37,7 @@ enum {
 
 static std::unique_ptr<m::network_manager> server;
 static m::land main_land;
+static m::physics physics{main_land};
 
 static m::player players[g_max_players];
 static m::bullet bullets[g_max_bullets];
@@ -95,8 +96,8 @@ static inline void broadcast_bullet_chunk(m::entity_op_type op, uint8_t id) {
 static inline void broadcast_crate_chunk(m::entity_op_type op) {
     m::message msg{new m::crate_message_def{
         op,
-        static_cast<uint16_t>(crate.x),
-        static_cast<uint16_t>(crate.y)}};
+        static_cast<uint16_t>(crate.get_body().x),
+        static_cast<uint16_t>(crate.get_body().y)}};
 
     server->send(msg);
 }
@@ -172,7 +173,7 @@ static void spawn_client(int id) {
     spawn_tank(id);
     broadcast_packed_land_chunk(0, 0, m::land_width, m::land_height);
     broadcast_chat(m::message_op_type::name_change, id, players[id].name);
-    if (crate.active) {
+    if (crate.alive) {
         broadcast_crate_chunk(m::entity_op_type::spawn);
     }
 
@@ -278,13 +279,13 @@ static void tank_update(int id) {
         }
     }
 
-    if (std::abs(t->x - crate.x) < 14 && std::abs(t->y - crate.y) < 14) {
+    if (std::abs(t->x - crate.get_body().x) < 14 && std::abs(t->y - crate.get_body().y) < 14) {
         if (crate.type == TRIPLER) {
             t->num_burst *= 3;
         } else {
             t->bullet = crate.type;
         }
-        crate.active = false;
+        crate.alive = false;
         broadcast_crate_chunk(m::entity_op_type::kill);
         char notice[64] = "* ";
         strcat(notice, players[id].name);
@@ -430,11 +431,11 @@ static void bullet_update(int id) {
     }
 }
 
-static void crate_update() {
-    if (!crate.active) {
-        crate.active = true;
-        crate.x = static_cast<uint16_t>(rand() % m::land_width);
-        crate.y = static_cast<uint16_t>(30);
+static void crate_update(float dt) {
+    if (!crate.alive) {
+        crate.alive = true;
+        crate.get_body().x = static_cast<uint16_t>(rand() % m::land_width);
+        crate.get_body().y = static_cast<uint16_t>(30);
 
         const int PBABYNUKE = 100;
         const int PNUKE = 20;
@@ -470,14 +471,12 @@ static void crate_update() {
         broadcast_crate_chunk(m::entity_op_type::spawn);
     }
 
-    if (main_land.is_air(static_cast<uint16_t>(crate.x), static_cast<uint16_t>(crate.y + 1))) {
-        crate.y += 1;
-        broadcast_crate_chunk(m::entity_op_type::move);
-    }
+    crate.physics_step(physics, dt);
+    broadcast_crate_chunk(m::entity_op_type::move);
 }
 
-static void step_game() {
-    crate_update();
+static void step_game(float dt) {
+    crate_update(dt);
     for (int i = 0; i < g_max_players; i++) {
         tank_update(i);
     }
@@ -514,7 +513,7 @@ static void init_game() {
     for (int i = 0; i < g_max_bullets; i++) {
         bullets[i].active = 0;
     }
-    crate.active = false;
+    crate.alive = false;
 
     for (int y = 0; y < m::land_height; ++y) {
         for (int x = 0; x < m::land_width; ++x) {
@@ -574,6 +573,7 @@ void server_main(unsigned short port) {
 
     init_game();
 
+    auto last = std::chrono::system_clock::now();
     while (true) {
         while (true) {
             auto packet = server->recv();
@@ -592,6 +592,9 @@ void server_main(unsigned short port) {
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
-        step_game();
+        auto now = std::chrono::system_clock::now();
+        auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(last - now);
+        step_game(diff.count() / 1000.f);
+        last = now;
     }
 }

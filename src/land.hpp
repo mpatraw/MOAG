@@ -6,8 +6,8 @@
 
 namespace m {
 
-const int land_width = 600;
-const int land_height = 800;
+const int land_width = 800;
+const int land_height = 600;
 
 // This is used so another class can be informed when dirt is set or unset,
 // this is primarily usefull for a sprite class or something.

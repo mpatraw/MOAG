@@ -184,8 +184,8 @@ static void draw() {
     auto &del = dynamic_cast<land_texture &>(main_land.get_delegate());
     SDL_RenderCopy(main_renderer, const_cast<SDL_Texture *>(del.sdl_texture()), nullptr, nullptr);
 
-    if (crate.active) {
-        draw_crate(crate.x - 4, crate.y - 8);
+    if (crate.alive) {
+        draw_crate(crate.get_body().x - 4, crate.get_body().y - 8);
     }
 
     draw_bullets();
@@ -290,14 +290,14 @@ static void process_packet(m::packet &p) {
             auto c = dynamic_cast<m::crate_message_def &>(msg.get_def());
 
             if (c.op == m::entity_op_type::spawn) {
-                crate.active = true;
-                crate.x = c.x;
-                crate.y = c.y;
+                crate.alive = true;
+                crate.get_body().x = c.x;
+                crate.get_body().y = c.y;
             } else if (c.op == m::entity_op_type::move) {
-                crate.x = c.x;
-                crate.y = c.y;
+                crate.get_body().x = c.x;
+                crate.get_body().y = c.y;
             } else if (c.op == m::entity_op_type::kill) {
-                crate.active = false;
+                crate.alive = false;
             } else {
                 fprintf(stderr, "Invalid CRATE_CHUNK type.\n");
                 exit(-1);
